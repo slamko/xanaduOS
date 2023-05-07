@@ -2,7 +2,7 @@ LINKER_SCRIPT=linker.ld
 OS_NAME=slavos
 LINK_ARGS=-T $(LINKER_SCRIPT) -Map=$(OS_NAME).map -z noexecstack
 CC=gcc
-CC_ARGS=-c -nostdlib -nostdinc -fno-builtin -fno-stack-protector
+CC_ARGS=-c -nostdlib -nostdinc -fno-builtin -fno-stack-protector -Wall -Wextra
 START32=startx32
 START64=startx32
 ISO32=iso_x86
