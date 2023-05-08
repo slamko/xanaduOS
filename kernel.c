@@ -1,5 +1,3 @@
-volatile char *const frame_buf = (char *)0xB8004;
-
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -12,8 +10,10 @@ typedef unsigned long u64;
 #define FB_GREY  8
 
 void fb_print_char(u16 fb_index, u8 symbol, u8 foreground, u8 background) {
-    frame_buf[fb_index + 2] = symbol;
-    frame_buf[fb_index + 3] = ((background << 4) | (foreground & 0x0f));
+
+    char *const frame_buf = (char *)0xB8000;
+    frame_buf[fb_index] = symbol;
+    frame_buf[fb_index + 1] = ((background << 4) | (foreground & 0x0f));
 }
 
 void fb_print(const char *msg, u16 size, u8 fg, u8 bg) {
@@ -21,12 +21,11 @@ void fb_print(const char *msg, u16 size, u8 fg, u8 bg) {
         fb_print_char(i * 2, msg[i], fg, bg);
     }
 }
+   
 
 void kernel_main(void) {
-    frame_buf[1] = 'H';
-    frame_buf[2] = 0x83;
-    char hello[] = "ellow";
+    char hello[] = "Hello";
     fb_print(hello, 5, FB_CYAN, FB_GREY);
-   
+
     while(1);
 }

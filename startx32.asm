@@ -14,12 +14,12 @@ align 8
     dd CHECKSUM
 
 loader:
-    mov rax, 0xCAFEBABE
-    mov rsp, kernel_stack + KERNEL_STACK_SIZE
+    mov eax, 0xCAFEBABE
+    mov esp, kernel_stack + KERNEL_STACK_SIZE
     call kernel_main
 
 section .bss
-align 8
+align 4
 kernel_stack:
     resb KERNEL_STACK_SIZE 
     
