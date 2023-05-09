@@ -7,10 +7,11 @@ START_FILE=start
 X86=x86
 X86_64=x86_64
 
-x86: arch/$(X86)/start.asm kernel.c
+x86: arch/$(X86)/start.asm drivers/fb.c kernel.c
 	nasm -f elf32 arch/$@/start.asm
-	$(CC) -m32 $(C_ARGS) kernel.c
-	ld $(LD_ARGS) -melf_i386 arch/$@/start.o kernel.o -o kernel.elf
+	nasm -f elf32 frame_buf.asm
+	$(CC) -m32 $(C_ARGS) kernel.c drivers/fb.c
+	ld $(LD_ARGS) -melf_i386 arch/$@/start.o fb.o frame_buf.o kernel.o -o kernel.elf
 	mv kernel.elf iso/$@/boot
 
 x86_64: arch/$(X86_64)/start.asm kernel.c
