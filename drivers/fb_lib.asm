@@ -1,7 +1,7 @@
 global outfb
 
 outfb:
-    mov al, [esp + 8]
-    mov dx, [esp + 4]
+    mov al, 0xFF
+    mov dx, 0xFF
     out dx, al
     ret

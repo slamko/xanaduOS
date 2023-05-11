@@ -4,8 +4,8 @@
 uint16_t row = 0;
 
 void prompt() {
-    fb_print_black("slavos>");
-    fb_newline();
+    fb_mov_cursor(row * 80);
+    fb_print_black("hello>");
 }
 
 void loop(void) {
@@ -16,12 +16,5 @@ void loop(void) {
         row ++; 
     }
 }
+    
 
-void kernel_main(void) {
-    fb_clear();
-
-    prompt();
-    prompt();
-
-    while(1);
-}
