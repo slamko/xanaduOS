@@ -1,4 +1,5 @@
 #include "lib/typedef.h"
+#include <stddef.h>
 
 void *memset(void *buf, int val, size_t siz) {
     char *bbuf = (char *) buf;

@@ -1,0 +1,50 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-Wall",
+      "-Wextra",
+      "-I../include",
+      "-m32",
+      "-c",
+      "fb.c"
+    ],
+    "directory": "/home/slamko/proj/os/slavos/drivers",
+    "file": "/home/slamko/proj/os/slavos/drivers/fb.c"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-Wall",
+      "-Wextra",
+      "-I../include",
+      "-m32",
+      "-c",
+      "int.c"
+    ],
+    "directory": "/home/slamko/proj/os/slavos/drivers",
+    "file": "/home/slamko/proj/os/slavos/drivers/int.c"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-Wall",
+      "-Wextra",
+      "-I../include",
+      "-m32",
+      "-c",
+      "slibc.c"
+    ],
+    "directory": "/home/slamko/proj/os/slavos/lib",
+    "file": "/home/slamko/proj/os/slavos/lib/slibc.c"
+  }
+]
