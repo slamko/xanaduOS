@@ -1,19 +1,22 @@
 include define.mk
 
+ELF_F=$(ARCH)
+
+include lib/Makefile
 include drivers/Makefile
 
-kernel.elf: arch/$(ARCH)/start.asm drivers_objs kernel.c
-	nasm -f elf32 arch/$(ARCH)/start.asm
-	nasm -f elf32 drivers/fb_lib.asm
-	$(CC) -m32 $(C_ARGS) kernel.c 
-	ld $(LD_ARGS) -melf_$(ARCH) arch/$(ARCH)/start.o fb.o drivers/fb_lib.o \
+kernel.elf: arch/$(ARCH)/start.asm $(DRIVERS_OBJS) $(LIB_OBJS) kernel.c
+	nasm -f elf$(ELF_F) arch/$(ARCH)/start.asm
+	$(CC) -m$(ELF_F) $(C_ARGS) kernel.c 
+	ld $(LD_ARGS) -melf_$(ARCH) arch/$(ARCH)/start.o $(DRIVERS_OBJS) \
 		kernel.o -o iso/$(ARCH)/boot/kernel.elf
 
-x86: ARCH=$(X86)
+x86: ARCH = $(X86)
+x86: ELF_F = 32
 x86: kernel.elf
 
-
-x86_64: ARCH := $(X86_64)
+x86_64: ARCH = $(X86_64)
+x86_64: ELF_F = 64
 x86_64: kernel.elf
 
 mkiso_i386: x86

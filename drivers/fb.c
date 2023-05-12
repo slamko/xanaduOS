@@ -1,5 +1,5 @@
 #include "fb.h"
-#include <stdint.h>
+#include "../include/lib/typedef.h"
 
 #define FB_COMMAND_PORT         0x3D4
 #define FB_DATA_PORT            0x3D5
@@ -20,7 +20,7 @@ struct fb_pixel {
     uint8_t bg : 4;
 } __attribute__((packed));
 
-static volatile struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
+static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
 
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background) {
@@ -75,9 +75,7 @@ void fb_mov_cursor(uint16_t pos) {
 }
 
 void fb_clear(void) {
-    for (uint16_t i = 0; i < VGA_SIZE; i++) {
-        frame_buf[i] = (struct fb_pixel){0};
-    }
+    memset(frame_buf, 0, VGA_SIZE);
 }   
 
 
