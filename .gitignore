@@ -3,5 +3,6 @@
 **.iso
 *.out
 *.map
+.cache/*
 
     
