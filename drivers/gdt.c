@@ -16,15 +16,20 @@ void gdt_fill_entry(int32_t id, uint32_t base, uint32_t limit, uint8_t flags, ui
 } 
 
 void fill_gdt() {
+    gdtr.base = (uint32_t)&gdt;
     gdtr.limit = sizeof(gdt) - 1;
-    gdtr.base = (uint32_t)gdt;
 
-    gdt_fill_entry(0, 0, 0, 0, 0);                // Null segment
-    gdt_fill_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF); // Code segment
-    gdt_fill_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF); // Data segment
-    gdt_fill_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF); // User mode code segment
-    gdt_fill_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); // User mode data segment
+    gdt_fill_entry(0, 0, 0, 0, 0);                
+    gdt_fill_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF); 
+    gdt_fill_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF); 
+    gdt_fill_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
+    gdt_fill_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); 
 
     load_gdt((uint32_t)&gdtr);
 }
+
+void init_gdt() {
+    fill_gdt();
+}
+        
 

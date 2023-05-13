@@ -4,6 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define PACKED __attribute__((packed))
+/* #define PACKED __attribute__((packed)) */
 
 #endif

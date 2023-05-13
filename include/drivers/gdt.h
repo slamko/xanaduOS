@@ -7,12 +7,12 @@ struct gdt_entry {
     uint8_t flags;
     uint8_t granularity;
     uint8_t base_high;
-} PACKED;
+} __attribute__((packed));
 
 struct gdtr {
     uint16_t limit;
     uint32_t base;
-};
+} __attribute__((packed));
 
 #define GDT_SIZE 5
 

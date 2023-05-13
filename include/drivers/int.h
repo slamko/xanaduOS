@@ -1,6 +1,6 @@
 #include "lib/typedef.h"
 #include <stdint.h>
-
+#include <sys/cdefs.h>
 
 struct idt_entry {
     uint16_t isr_low;
@@ -8,12 +8,12 @@ struct idt_entry {
     uint8_t reserved;
     uint8_t attributes;
     uint16_t isr_high;
-} PACKED;
+} __attribute__((packed));
 
 struct idtr {
     uint16_t limit;
     uint32_t base;
-} PACKED;
+} __attribute__((packed));
 
 struct x86_cpu_state {
     uint32_t eax;
@@ -36,6 +36,8 @@ struct isr_stack {
 #define CAT(x,y) CAT_(x,y)
 
 #define ISR(NUM) void CAT(isr_, NUM)(void);
+
+void init_idt();
 
 void isr_x86(struct x86_cpu_state cpu_state,
              struct isr_stack int_stack, unsigned int int_num);

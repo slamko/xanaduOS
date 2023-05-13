@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include "drivers/fb.h"
+#include "drivers/gdt.h"
+#include "drivers/int.h"
 
 uint16_t row = 0;
 
@@ -8,7 +10,7 @@ void prompt() {
     fb_newline();
 }
 
-void loop(void) {
+void shell(void) {
     fb_clear();
 
     for (int i = 0; i < 8; i++) {
@@ -18,10 +20,10 @@ void loop(void) {
 }
 
 void kernel_main(void) {
-    fb_clear();
-
-    prompt();
-    prompt();
-
+    init_gdt();
+    init_idt();
+    
+    shell();
+    
     while(1);
 }

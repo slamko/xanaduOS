@@ -3,18 +3,17 @@ extern isr_x86
 %macro no_error_code_isr 1
 global isr_%1
 isr_%1:
-    push 0
-    push %1
+    push dword 0
+    push dword %1
     jmp common_isr    
 %endmacro
 
 %macro error_code_isr 1
 global isr_%1
 isr_%1:
-    push %1
+    push dword %1
     jmp common_isr
 %endmacro
-    
 
 common_isr:
     push eax
