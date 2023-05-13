@@ -1,4 +1,4 @@
-#include "fb.h"
+#include "drivers/fb.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
 
