@@ -15,6 +15,7 @@
 #define VGA_SIZE 80 * 25
 
 static uint16_t fb_column;
+static uint16_t fb_pos;
 
 struct fb_pixel {
     uint8_t symbol;
@@ -27,7 +28,8 @@ static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background) {
 
-    uint16_t fb_i = (fb_column * VGA_WIDTH) + fb_index;
+    /* uint16_t fb_i = (fb_column * VGA_WIDTH) + fb_index; */
+    uint16_t fb_i = fb_pos + fb_index;
     if (fb_i > VGA_SIZE) {
         fb_i -= VGA_SIZE;
     }
@@ -35,6 +37,7 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
     frame_buf[fb_i].symbol = symbol;
     frame_buf[fb_i].bg = background;
     frame_buf[fb_i].fg = foreground;
+    fb_pos++;
 }
 
 void fb_putc(uint8_t c) {
@@ -57,6 +60,8 @@ void fb_newline(void) {
     if (fb_column > VGA_HEIGHT) {
         fb_column = 0;
     }
+
+    fb_pos = (fb_pos - (fb_pos % 80)) + 80;
 }
 
 void fb_print_num(unsigned int num) {

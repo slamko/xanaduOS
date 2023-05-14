@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define KBD_INPUT_PORT 0x60
+
 enum VGA_COLORS {
     FB_BLACK = 0,
     FB_BLUE  = 1,
