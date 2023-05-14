@@ -1,3 +1,4 @@
+#include "lib/slibc.h"
 #include "lib/typedef.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -18,5 +19,9 @@ uint8_t inb(uint16_t port) {
                   : "=a" (ret) 
                   : "dN" (port));
     return ret;
+}
+inline void io_wait(void)
+{
+    outb(0x80, 0);
 }
 

@@ -65,11 +65,11 @@ void fb_print_num(unsigned int num) {
     } else if (num > 100) {
         fb_putc((uint8_t)(num / 100) + 48);
         fb_putc((uint8_t)(num / 10) + 48);
-        fb_putc((uint8_t)(num % 10));
+        fb_putc((uint8_t)(num % 10) + 48);
     
     } else if (num > 10) {
         fb_putc((uint8_t)(num / 10) + 48);
-        fb_putc((uint8_t)(num % 10));
+        fb_putc((uint8_t)(num % 10) + 48);
     } else {
         fb_putc(num + 48);
     }
