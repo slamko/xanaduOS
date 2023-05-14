@@ -27,9 +27,25 @@ static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
 
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background) {
+    if (!symbol) return;
 
-    /* uint16_t fb_i = (fb_column * VGA_WIDTH) + fb_index; */
     uint16_t fb_i = fb_pos + fb_index;
+    if (symbol == '\n') {
+        fb_newline();
+        return;
+    }
+
+    if (symbol == '\t') {
+        fb_print_black("    ");
+        return;
+    }
+
+    /* if (symbol == 99) { */
+        /* frame_buf[fb_i].symbol = 0; */
+        /* fb_pos = fb_i - 1; */
+        /* return; */
+    /* } */
+    /* uint16_t fb_i = (fb_column * VGA_WIDTH) + fb_index; */
     if (fb_i > VGA_SIZE) {
         fb_i -= VGA_SIZE;
     }
@@ -46,12 +62,16 @@ void fb_putc(uint8_t c) {
 
 void fb_print(const char *msg, uint8_t fg, uint8_t bg) {
     for (uint16_t i = 0; msg[i] != 0; i++) {
-        fb_print_char(i, msg[i], fg, bg);
+        fb_print_char(0, msg[i], fg, bg);
     }
 }
 
 void fb_print_black(const char *msg) {
     fb_print(msg, FB_WHITE, FB_BLACK);
+}
+
+void prompt() {
+    fb_print_black("slavos> ");
 }
 
 void fb_newline(void) {
@@ -62,17 +82,18 @@ void fb_newline(void) {
     }
 
     fb_pos = (fb_pos - (fb_pos % 80)) + 80;
+    prompt();
 }
 
 void fb_print_num(unsigned int num) {
-    if (num > 1000) {
+    if (num >= 1000) {
         fb_print_black("big");
-    } else if (num > 100) {
+    } else if (num >= 100) {
         fb_putc((uint8_t)(num / 100) + 48);
         fb_putc((uint8_t)(num / 10) + 48);
         fb_putc((uint8_t)(num % 10) + 48);
     
-    } else if (num > 10) {
+    } else if (num >= 10) {
         fb_putc((uint8_t)(num / 10) + 48);
         fb_putc((uint8_t)(num % 10) + 48);
     } else {

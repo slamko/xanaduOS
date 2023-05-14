@@ -47,7 +47,7 @@ static char kbd_US [128] =
     0,  /* Down Arrow */
     0,  /* Page Down */
     0,  /* Insert Key */
-    0,  /* Delete Key */
+    99,  /* Delete Key */
     0,   0,   0,
     0,  /* F11 Key */
     0,  /* F12 Key */
@@ -119,7 +119,7 @@ void init_idt() {
     }
 
     asm volatile ("lidt %0" : : "m" (idtr));
-    outb(PIC1_DATA, 0xf1);
+    outb(PIC1_DATA, 0xfd);
     asm volatile ("sti");
 
     /* pic_remap(PIC1, PIC2); */
@@ -136,6 +136,7 @@ void pic_eoi(uint8_t int_id) {
 uint8_t read_scan_code() {
     uint8_t c = inb(KBD_INPUT_PORT);
     return kbd_US[c];
+    /* return c; */
 }
 
 void isr_x86(struct x86_cpu_state cpu_state,
@@ -145,10 +146,15 @@ void isr_x86(struct x86_cpu_state cpu_state,
     
     count++;
     pic_eoi(PIC1);
-    if (inb(0x64)) {
-        fb_putc(read_scan_code());
-    }
+    uint8_t a;
+    if ((a = inb(0x64))) {
+        uint8_t keycode = read_scan_code();
+        fb_putc(keycode);
+        /* fb_newline(); */
 
+        /* read_scan_code(); */
+        /* fb_putc('f'); */
+    }
     
     asm volatile ("cli;");
 }
