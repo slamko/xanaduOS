@@ -4,10 +4,7 @@
 static struct idt_entry idt[256];
 static struct idtr idtr;
 
-static void *isr_table[] = {
-    &isr_1,
-    &isr_2
-};
+extern void *isr_table[];
 
 void idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
     struct idt_entry *entry = &idt[idt_id];
@@ -22,7 +19,7 @@ void init_idt() {
     idtr.base = (uint32_t)&idt;
     idtr.limit = sizeof(idt) - 1;
 
-    for(uint8_t i = 0; i < 2; i++) {
+    for(uint8_t i = 0; i < 32; i++) {
         idt_set_entry(i, isr_table[i], 0x8e);
     }
 
