@@ -1,5 +1,6 @@
 #include "drivers/int.h"
 #include "drivers/fb.h"
+#include "drivers/shell.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
 #include <stdint.h>
@@ -67,7 +68,9 @@ static char kbd_US [128] =
 #define ICW4_BUF_SLAVE	0x08		/* Buffered mode/slave */
 #define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
- 
+
+char buf[256];
+
 /*
 arguments:
 	offset1 - vector offset for master PIC
@@ -150,6 +153,12 @@ void isr_x86(struct x86_cpu_state cpu_state,
     if ((a = inb(0x64))) {
         uint8_t keycode = read_scan_code();
         fb_putc(keycode);
+        buf[strlen(buf)] = keycode;
+
+        if (keycode == '\n') {
+            read_buf(buf);
+        }
+
         /* fb_newline(); */
 
         /* read_scan_code(); */

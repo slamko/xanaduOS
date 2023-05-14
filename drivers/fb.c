@@ -70,10 +70,6 @@ void fb_print_black(const char *msg) {
     fb_print(msg, FB_WHITE, FB_BLACK);
 }
 
-void prompt() {
-    fb_print_black("slavos> ");
-}
-
 void fb_newline(void) {
     fb_column += 1;
 
@@ -82,7 +78,6 @@ void fb_newline(void) {
     }
 
     fb_pos = (fb_pos - (fb_pos % 80)) + 80;
-    prompt();
 }
 
 void fb_print_num(unsigned int num) {
