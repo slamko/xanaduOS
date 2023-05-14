@@ -22,8 +22,11 @@ void shell(void) {
 void kernel_main(void) {
     init_gdt();
     init_idt();
+    fb_clear();
     
-    shell();
+    /* shell(); */
+    asm volatile("int $0x02");
+    asm volatile("int $0x04");
     
     while(1);
 }

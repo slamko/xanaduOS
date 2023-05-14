@@ -1,8 +1,11 @@
 #include "drivers/int.h"
+#include "drivers/fb.h"
+#include "lib/typedef.h"
 #include <stdint.h>
 
 static struct idt_entry idt[256];
 static struct idtr idtr;
+static int count;
 
 extern void *isr_table[];
 
@@ -23,13 +26,31 @@ void init_idt() {
         idt_set_entry(i, isr_table[i], 0x8e);
     }
 
-    asm volatile ("lidt %0;"
-                  "sti;" : : "m" (idtr));
+    asm volatile ("lidt %0" : : "m" (idtr));
     
+}
+
+void pic_eoi(uint8_t int_id) {
+    if (int_id >= PIC2) {
+        outb(PIC1_COMMAND, PIC_EOI);
+    } else if (int_id >= PIC1) {
+        outb(PIC2_COMMAND, PIC_EOI);
+    }
 }
 
 void isr_x86(struct x86_cpu_state cpu_state,
              struct isr_stack int_stack, unsigned int int_num) {
+    (void)cpu_state;
+    (void)int_stack;
+    
+    count++;
+    fb_newline();
+
+    fb_newline();
+    fb_print_num(int_num);
+    fb_newline();
+    fb_print_num(count);
+
     asm volatile ("cli;");
 }
 

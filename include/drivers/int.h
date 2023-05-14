@@ -1,6 +1,13 @@
 #include "lib/typedef.h"
 #include <stdint.h>
-#include <sys/cdefs.h>
+
+#define PIC_EOI 0x20
+#define PIC1 0x20
+#define PIC2 0xa0
+#define PIC1_COMMAND	PIC1
+#define PIC1_DATA	(PIC1+1)
+#define PIC2_COMMAND	PIC2
+#define PIC2_DATA	(PIC2+1)
 
 struct idt_entry {
     uint16_t isr_low;
@@ -32,16 +39,8 @@ struct isr_stack {
     uint32_t eflags;
 } __attribute__((packed));
 
-#define CAT_(x,y) x##y
-#define CAT(x,y) CAT_(x,y)
-
-#define ISR(NUM) void CAT(isr_, NUM)(void);
-
 void init_idt();
 
 void isr_x86(struct x86_cpu_state cpu_state,
              struct isr_stack int_stack, unsigned int int_num);
-
-ISR(1);
-ISR(2);
 

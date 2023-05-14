@@ -1,6 +1,7 @@
 #include "drivers/fb.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
+#include <stdint.h>
 
 #define FB_COMMAND_PORT         0x3D4
 #define FB_DATA_PORT            0x3D5
@@ -36,6 +37,10 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
     frame_buf[fb_i].fg = foreground;
 }
 
+void fb_putc(uint8_t c) {
+    fb_print_char(0, c, FB_WHITE, FB_BLACK);
+}
+
 void fb_print(const char *msg, uint8_t fg, uint8_t bg) {
     for (uint16_t i = 0; msg[i] != 0; i++) {
         fb_print_char(i, msg[i], fg, bg);
@@ -54,18 +59,20 @@ void fb_newline(void) {
     }
 }
 
-/* void outfb(uint16_t port, uint8_t data) { */
-    /* int a; */
-    /* asm volatile */
-        /* ("movl %[port], %al;" */
-        /* "movl %[data], %dx;" */
-        /* "out %al, %dx;" */
-         /* : "=r" (a) */
-         /* : [port] "r" (port) */
-         /* : [data] "r" (data)); */
-/* } */
-void outb(uint16_t port, uint16_t value) {
-    asm volatile ("out %1, %0" : : "dN" (port), "a" (value));
+void fb_print_num(unsigned int num) {
+    if (num > 1000) {
+        fb_print_black("big");
+    } else if (num > 100) {
+        fb_putc((uint8_t)(num / 100) + 48);
+        fb_putc((uint8_t)(num / 10) + 48);
+        fb_putc((uint8_t)(num % 10));
+    
+    } else if (num > 10) {
+        fb_putc((uint8_t)(num / 10) + 48);
+        fb_putc((uint8_t)(num % 10));
+    } else {
+        fb_putc(num + 48);
+    }
 }
 
 void fb_mov_cursor(uint16_t pos) {
