@@ -9,6 +9,17 @@ void *memset(void *buf, int val, size_t siz) {
     return buf;
 }
 
+void *memcpy(void *buf, void *cpy, size_t len) {
+    char *dest = (char *)buf;
+    char *copy = (char *)cpy;
+    
+    for (size_t i = 0; i < len; i++) {
+        dest[i] = copy[i];
+    }
+
+    return dest;
+}
+
 void outb(uint16_t port, uint8_t value) {
     asm volatile ("out %1, %0" : : "dN" (port), "a" (value));
 }

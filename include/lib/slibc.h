@@ -3,6 +3,8 @@
 
 void *memset(void *buf, int val, size_t siz);
 
+void *memcpy(void *buf, void *cpy, size_t len);
+
 size_t strlen(const char *str);
 
 int strcmp(const char *str, const char *cmp); 

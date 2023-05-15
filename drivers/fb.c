@@ -26,11 +26,15 @@ struct fb_pixel {
 
 static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
 
-void scroll() {
+void scroll() {    
     for (uint16_t i = 80; i < VGA_SIZE; i++) {
         frame_buf[i - 80] = frame_buf[i];
     }
-    memset(frame_buf + (VGA_SIZE - 80) + 2, 0, VGA_SIZE);
+
+    for (uint16_t i = VGA_SIZE - 80; i < VGA_SIZE; i++) {
+        frame_buf[i].symbol = 0;
+    }
+    
     fb_pos -= 80;
 }
 
@@ -49,11 +53,13 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
         return;
     }
 
-    /* if (symbol == 99) { */
-        /* frame_buf[fb_i].symbol = 0; */
-        /* fb_pos = fb_i - 1; */
-        /* return; */
-    /* } */
+    if (symbol == 127) {
+        frame_buf[fb_i].symbol = 0;
+        fb_pos = fb_i - 1;
+
+        fb_mov_cursor(fb_pos);
+        return;
+    }
 
     if (fb_i > VGA_SIZE) {
         scroll();
@@ -62,6 +68,8 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
     frame_buf[fb_i].symbol = symbol;
     frame_buf[fb_i].bg = background;
     frame_buf[fb_i].fg = foreground;
+    
+    fb_mov_cursor(fb_pos);
     fb_pos++;
 }
 
