@@ -8,21 +8,17 @@ void shell_prompt() {
     fb_print_black("slavos> ");
 }
 
-uint8_t execute(const char *buf) {
+void shell_start(void) {
+    shell_prompt();
+}
+
+int read_stream(unsigned char c) {
+    fb_putc(c);
+
+    if (c == '\n') {
+        shell_prompt();
+    }
+
     return 0;
 }
-
-void read_buf(const char *buf) {
-    execute(buf);
-    /* fb_print_black(buf); */
-
-    shell_prompt();
-}
-
-void shell(void) {
-    shell_prompt();
-    while (1) {
-    }
-}
-    
 

@@ -1,6 +1,6 @@
 #include "drivers/int.h"
 #include "drivers/fb.h"
-#include "drivers/shell.h"
+#include "drivers/keyboard.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
 #include <stdint.h>
@@ -19,41 +19,6 @@ void idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
     entry->attributes = flags;
     entry->reserved = 0;
 }
-
-static char kbd_US [128] =
-{
-    0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',   
-  '\t', /* <-- Tab */
-  'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',     
-    0, /* <-- control key */
-  'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',  0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',   0,
-  '*',
-    0,  /* Alt */
-  ' ',  /* Space bar */
-    0,  /* Caps lock */
-    0,  /* 59 - F1 key ... > */
-    0,   0,   0,   0,   0,   0,   0,   0,
-    0,  /* < ... F10 */
-    0,  /* 69 - Num lock*/
-    0,  /* Scroll Lock */
-    0,  /* Home key */
-    0,  /* Up Arrow */
-    0,  /* Page Up */
-  '-',
-    0,  /* Left Arrow */
-    0,
-    0,  /* Right Arrow */
-  '+',
-    0,  /* 79 - End key*/
-    0,  /* Down Arrow */
-    0,  /* Page Down */
-    0,  /* Insert Key */
-    99,  /* Delete Key */
-    0,   0,   0,
-    0,  /* F11 Key */
-    0,  /* F12 Key */
-    0,  /* All other keys are undefined */
-};
 /* reinitialize the PIC controllers, giving them specified vector offsets
    rather than 8h and 70h, as configured by default */
  
@@ -68,8 +33,6 @@ static char kbd_US [128] =
 #define ICW4_BUF_SLAVE	0x08		/* Buffered mode/slave */
 #define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
-
-char buf[256];
 
 /*
 arguments:
@@ -136,12 +99,6 @@ void pic_eoi(uint8_t int_id) {
     }
 }
 
-uint8_t read_scan_code() {
-    uint8_t c = inb(KBD_INPUT_PORT);
-    return kbd_US[c];
-    /* return c; */
-}
-
 void isr_x86(struct x86_cpu_state cpu_state,
              struct isr_stack int_stack, unsigned int int_num) {
     (void)cpu_state;
@@ -149,22 +106,9 @@ void isr_x86(struct x86_cpu_state cpu_state,
     
     count++;
     pic_eoi(PIC1);
-    uint8_t a;
-    if ((a = inb(0x64))) {
-        uint8_t keycode = read_scan_code();
-        fb_putc(keycode);
-        buf[strlen(buf)] = keycode;
+    interrupt();
 
-        if (keycode == '\n') {
-            read_buf(buf);
-        }
-
-        /* fb_newline(); */
-
-        /* read_scan_code(); */
-        /* fb_putc('f'); */
-    }
-    
+   
     asm volatile ("cli;");
 }
 

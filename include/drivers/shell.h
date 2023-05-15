@@ -1,3 +1,3 @@
-void shell(void);
+void shell_start(void);
 
-void read_buf(const char *buf);
+int read_stream(unsigned char);
