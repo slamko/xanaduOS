@@ -76,6 +76,37 @@ void pic_remap(int offset1, int offset2)
 	outb(PIC2_DATA, a2);
 }
 
+void pic_mask_set(uint8_t irq) {
+    uint16_t port = PIC1_DATA;
+    uint8_t value;
+
+    if (irq >= 8) {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+
+    value = inb(port) | (1 << irq);
+    outb(port, value);
+}
+
+void pic_mask_all() {
+    outb(PIC1_DATA, 0xff);
+    outb(PIC2_DATA, 0xff);
+}
+
+void pic_mask_clear(uint8_t irq) {
+    uint16_t port = PIC1_DATA;
+    uint8_t value;
+
+    if (irq >= 8) {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+
+    value = inb(port) & ~(1 << irq);
+    outb(port, value);
+}
+
 void init_idt() {
     idtr.base = (uint32_t)&idt;
     idtr.limit = sizeof(idt) - 1;
@@ -85,10 +116,12 @@ void init_idt() {
     }
 
     asm volatile ("lidt %0" : : "m" (idtr));
-    outb(PIC1_DATA, 0xfd);
-    asm volatile ("sti");
 
-    /* pic_remap(PIC1, PIC2); */
+    pic_mask_all();
+    pic_mask_clear(KBD_IRQ);
+
+    asm volatile ("sti");
+    pic_remap(PIC1, PIC2);
 }
 
 void pic_eoi(uint8_t int_id) {

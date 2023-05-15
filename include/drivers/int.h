@@ -9,6 +9,8 @@
 #define PIC2_COMMAND	PIC2
 #define PIC2_DATA	(PIC2+1)
 
+#define KBD_IRQ 1
+
 struct idt_entry {
     uint16_t isr_low;
     uint16_t cs;

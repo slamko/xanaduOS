@@ -54,7 +54,7 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
         /* fb_pos = fb_i - 1; */
         /* return; */
     /* } */
-    /* uint16_t fb_i = (fb_column * VGA_WIDTH) + fb_index; */
+
     if (fb_i > VGA_SIZE) {
         scroll();
     }
@@ -112,13 +112,25 @@ char *_print_num_rec(unsigned int num, uint32_t mul, char *str, size_t siz) {
         return str + siz - mul - 1;
     }
 
-    return NULL;
+    return str;
 }
 
 void fb_print_num(unsigned int num) {
-    char str[16] = {0};
-    _print_num_rec(num, 1, str, sizeof(str));
-    fb_print_black(str);
+    /* char str[16] = {0}; */
+    /* char *str_num = _print_num_rec(num, 1, str, sizeof(str)); */
+    /* fb_print_black(str_num); */
+    if (num >= 1000) {
+        fb_putc((uint8_t)(num / 1000) + 48);
+    } else if (num >= 100) {
+        fb_putc((uint8_t)(num / 100) + 48);
+        fb_putc((uint8_t)((num / 10) % 10) + 48);
+        fb_putc((uint8_t)(num - ((num / 10) * 10)) + 48);
+    } else if (num >= 10) {
+        fb_putc((uint8_t)(num / 10) + 48);
+        fb_putc((uint8_t)(num % 10) + 48);
+    } else {
+        fb_putc(num + 48);
+    }
 }
 
 void fb_mov_cursor(uint16_t pos) {
