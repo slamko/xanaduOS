@@ -3,8 +3,10 @@
 #include "drivers/keyboard.h"
 
 receiver receiver_f[KBD_INT_REC_NUM];
+char kbd_buf[1024];
+static size_t buf_pos;
 
-static unsigned char kbd_US [128] =
+static char kbd_US [128] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',   
   '\t', /* <-- Tab */
@@ -48,8 +50,19 @@ void interrupt() {
     uint8_t stat = inb(KBD_STATUS_PORT);
     if (stat) {
         uint8_t keycode = read_scan_code();
+
+        if (keycode) {
+            kbd_buf[buf_pos] = keycode;
+            buf_pos++;
+        }
+        
         for (size_t r_id = 0; receiver_f[r_id]; r_id++) {
             receiver_f[r_id](keycode);
+        }
+
+        if (keycode == '\n') {
+            memset(kbd_buf, 0, sizeof(kbd_buf));
+            buf_pos = 0;
         }
     }
  

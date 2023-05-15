@@ -1,6 +1,7 @@
 #ifndef FB_H
 #define FB_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 
@@ -21,11 +22,15 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
 
 void fb_putc(uint8_t c);
 
-void fb_print(const char *msg, uint8_t fg, uint8_t bg);
-
 void fb_newline(void);
 
+void fb_print(const char *msg, uint8_t fg, uint8_t bg);
+
 void fb_print_black(const char *msg);
+
+void fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz);
+
+void fb_nprint_black(const char *msg, size_t siz);
 
 void fb_print_num(unsigned int num);
 

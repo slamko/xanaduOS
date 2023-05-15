@@ -26,13 +26,15 @@ size_t strlen(const char *str) {
     return i;
 }
 
-int strncmp(const char *str, const char *cmp, size_t len) {
+int strneq(const char *str, const char *cmp, size_t len) {
     if (!str || !cmp) return -1;
-    int diff = 0;
+    if (len == 0) return 1;
     for(size_t i = 0; i < len && str[i] && cmp[i]; i++) {
-        diff += str[i] - cmp[i];
+        if (str[i] != cmp[i]) {
+            return 0;
+        }
     }
-    return diff;
+    return 1;
 }
 
 size_t strnlen(const char *str, size_t len) {

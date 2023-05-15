@@ -8,3 +8,4 @@ void interrupt();
 typedef int (*receiver)(unsigned char);
 
 extern receiver receiver_f[KBD_INT_REC_NUM];
+extern char kbd_buf[1024];

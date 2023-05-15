@@ -1,6 +1,7 @@
 #include "drivers/fb.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
+#include <stddef.h>
 #include <stdint.h>
 
 #define FB_COMMAND_PORT         0x3D4
@@ -74,8 +75,19 @@ void fb_print(const char *msg, uint8_t fg, uint8_t bg) {
     }
 }
 
+void fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz) {
+    for (uint16_t i = 0; i < siz && msg[i] != 0; i++) {
+        fb_print_char(0, msg[i], fg, bg);
+    }
+}
+
 void fb_print_black(const char *msg) {
     fb_print(msg, FB_WHITE, FB_BLACK);
+}
+
+
+void fb_nprint_black(const char *msg, size_t siz) {
+    fb_nprint(msg, FB_WHITE, FB_BLACK, siz);
 }
 
 void fb_newline(void) {
