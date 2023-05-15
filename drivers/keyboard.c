@@ -1,9 +1,8 @@
 #include "lib/typedef.h"
 #include "lib/slibc.h"
-#include "drivers/shell.h"
 #include "drivers/keyboard.h"
 
-receiver receiver_f;
+receiver receiver_f[KBD_INT_REC_NUM];
 
 static unsigned char kbd_US [128] =
 {
@@ -49,7 +48,9 @@ void interrupt() {
     uint8_t stat = inb(KBD_STATUS_PORT);
     if (stat) {
         uint8_t keycode = read_scan_code();
-        receiver_f(keycode);
+        for (size_t r_id = 0; receiver_f[r_id]; r_id++) {
+            receiver_f[r_id](keycode);
+        }
     }
  
 }

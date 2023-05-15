@@ -104,25 +104,6 @@ char *_print_num_rec(unsigned int num, uint32_t mul, char *str, size_t siz) {
 }
 
 void fb_print_num(unsigned int num) {
-    /*
-    if (num >= 10000) {
-        fb_putc((uint8_t)(num / 10000) + 48);
-    }
-    if (num >= 1000) {
-        fb_putc((uint8_t)(num / 1000) + 48);
-    }
-    
-    if (num >= 10000) {
-        fb_putc((uint8_t)(num / 10000) + 48);
-    }
-    if (num >= 1000) {
-        fb_putc((uint8_t)(num / 1000) + 48);
-    }
-    if (num >= 100) {
-        fb_putc((uint8_t)(num / 100) + 48);
-    
-    }
-    */
     char str[16] = {0};
     _print_num_rec(num, 1, str, sizeof(str));
     fb_print_black(str);

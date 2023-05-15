@@ -6,6 +6,7 @@ OBJS = $(shell find ./build -name '*.o')
 x86_build:
 	+$(MAKE) -C drivers x86
 	+$(MAKE) -C lib x86
+	+$(MAKE) -C bin x86
 
 x86_64_build:
 	+$(MAKE) -C drivers x86_64

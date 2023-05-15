@@ -2,7 +2,7 @@
 #include "drivers/fb.h"
 #include "drivers/gdt.h"
 #include "drivers/int.h"
-#include "drivers/shell.h"
+#include "bin/shell.h"
 #include "drivers/keyboard.h"
 
 void kernel_main(void) {
@@ -10,7 +10,7 @@ void kernel_main(void) {
     init_idt();
     fb_clear();
 
-    receiver_f = &read_stream;
+    receiver_f[0] = &read_stream;
     shell_start();
     
     while(1);
