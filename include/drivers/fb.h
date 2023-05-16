@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define VGA_WIDTH 80
+#define VGA_HEIGHT 25
+#define VGA_SIZE 80 * 25
 
 enum VGA_COLORS {
     FB_BLACK = 0,
@@ -15,16 +18,32 @@ enum VGA_COLORS {
 
 };
 
+
+struct fb_pixel {
+    uint8_t symbol;
+    uint8_t fg : 4;
+    uint8_t bg : 4;
+} __attribute__((packed));
+
+
 struct fb_attr {
     uint8_t non_deletable: 1;
 } __attribute__((packed));
+
+extern char fb_out[VGA_SIZE];
    
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background);
 
 void fb_putc(uint8_t c);
 
+void fb_last_written_buf(char **buf, size_t *len) ;
+
 void fb_newline(void);
+
+void fb_put_pixel(struct fb_pixel pixel);
+
+void fb_print_pixels(struct fb_pixel *pixel, size_t len);
 
 void fb_putc_attrs(uint8_t symbol, struct fb_attr attrs);
 

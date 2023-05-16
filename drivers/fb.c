@@ -12,32 +12,29 @@
 #define FB_HIGH_BYTE_COMMAND    14
 #define FB_LOW_BYTE_COMMAND     15
 
-#define VGA_WIDTH 80
-#define VGA_HEIGHT 25
-#define VGA_SIZE 80 * 25
-
-static uint16_t fb_column;
 static uint16_t fb_pos;
-
-struct fb_pixel {
-    uint8_t symbol;
-    uint8_t fg : 4;
-    uint8_t bg : 4;
-} __attribute__((packed));
 
 static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
 static struct fb_attr frame_buf_attrs[VGA_SIZE];
+char fb_out[VGA_SIZE];
+
+static inline void write_fb(uint16_t i, struct fb_pixel pixel) {
+    frame_buf[i] = pixel;
+    fb_out[i] = pixel.symbol;
+}
 
 void scroll() {    
     /* memcpy(frame_copy_buf, frame_buf, VGA_SIZE); */
     /* fb_clear(); */
     
     for (uint16_t i = 80; i < VGA_SIZE; i++) {
-        frame_buf[i - 80] = frame_buf[i];
+        write_fb(i - 80, frame_buf[i]);
+        frame_buf_attrs[i - 80] = frame_buf_attrs[i];
     }
 
     for (uint16_t i = VGA_SIZE - 80; i < VGA_SIZE; i++) {
-        frame_buf[i].symbol = 0;
+        write_fb(i, (struct fb_pixel) {0});
+        frame_buf_attrs[i] = (struct fb_attr) {0};
     }
     
     fb_pos -= 80;
@@ -75,7 +72,9 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
         }
         
         fb_pos = fb_i - 1;
-        frame_buf[fb_pos].symbol = 0;
+        struct fb_pixel del_pix = frame_buf[fb_pos];
+        del_pix.symbol = 0;
+        write_fb(fb_pos, del_pix);
 
         fb_mov_cursor(fb_pos);
         return;
@@ -86,19 +85,32 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
         fb_i = fb_pos + offset;
     }
 
-    frame_buf[fb_i].symbol = symbol;
-    frame_buf[fb_i].bg = background;
-    frame_buf[fb_i].fg = foreground;
-   
+    write_fb(fb_pos, (struct fb_pixel) {
+            .symbol = symbol,
+            .fg = foreground,
+            .bg = background
+        });
+
     fb_pos += offset + 1;
 
     if (!frame_buf[fb_pos].symbol) {
-        frame_buf[fb_pos].symbol = 0;
-        frame_buf[fb_pos].bg = background;
-        frame_buf[fb_pos].fg = foreground;
+        write_fb(fb_pos, (struct fb_pixel) {
+                .symbol = 0,
+                .fg = foreground,
+                .bg = background
+            });
     }
     
+    
     fb_mov_cursor(fb_pos);
+}
+
+void fb_last_written_buf(char **buf, size_t *len) {
+    size_t i;
+    for (i = fb_pos; !frame_buf_attrs[i].non_deletable; i--);
+
+    *len = fb_pos - i - 1;
+    *buf = &fb_out[i + 1];
 }
 
 void fb_putc(uint8_t c) {
@@ -117,23 +129,29 @@ void fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz) {
     }
 }
 
+void fb_put_pixel(struct fb_pixel pixel) {
+    fb_print_char(0, pixel.symbol, pixel.fg, pixel.bg);
+}
+
+void fb_print_pixels(struct fb_pixel *pixel, size_t len) {
+    for (uint16_t i = 0; i < len; i++) {
+        fb_put_pixel(pixel[i]);
+    }
+}
+
 void fb_print_black(const char *msg) {
     fb_print(msg, FB_WHITE, FB_BLACK);
 }
-
 
 void fb_nprint_black(const char *msg, size_t siz) {
     fb_nprint(msg, FB_WHITE, FB_BLACK, siz);
 }
 
 void fb_newline(void) {
-    fb_column += 1;
-
-    if (fb_column > VGA_HEIGHT) {
-        fb_column = 0;
-    }
-
     fb_pos = (fb_pos - (fb_pos % 80)) + 80;
+    if (fb_pos >= VGA_SIZE) {
+        scroll();
+    }
 }
 
 char *_print_num_rec(unsigned int num, uint32_t mul, char *str, size_t siz) {

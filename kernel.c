@@ -8,7 +8,6 @@
 void kernel_main(void) {
     init_gdt();
     init_idt();
-    fb_clear();
 
     /* fb_print_num(123); */
     receiver_f[0] = &read_stream;

@@ -10,14 +10,15 @@ void shell_prompt() {
 }
 
 void shell_start(void) {
+    fb_clear();
     shell_prompt();
 }
 
-int execute(const char *cmd) {
+int execute(const char *cmd, size_t len) {
     if (strneq(cmd, "echo", 4)) {
         fb_print_black(cmd + 5);
         return 0;
-    } else if (cmd[0] != '\n') {
+    } else if (cmd[0] != '\n' || len == 0) {
         fb_print_black("Unknown command");
         fb_newline();
     }
@@ -30,7 +31,10 @@ int read_stream(unsigned char c) {
     if (c == '\n') {
         /* fb_print_black(k_buf); */
         /* fb_newline(); */
-        execute(kbd_buf);
+        char *cmd = NULL;
+        size_t len;
+        fb_last_written_buf(&cmd, &len);
+        execute(cmd, len);
         shell_prompt();
     }
 
