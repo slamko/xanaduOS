@@ -15,14 +15,20 @@ enum VGA_COLORS {
 
 };
 
-void outfb(uint16_t port, uint8_t data);
-
+struct fb_attr {
+    uint8_t non_deletable: 1;
+} __attribute__((packed));
+   
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background);
 
 void fb_putc(uint8_t c);
 
 void fb_newline(void);
+
+void fb_putc_attrs(uint8_t symbol, struct fb_attr attrs);
+
+void fb_print_attrs(const char *msg, struct fb_attr attrs);
 
 void fb_print(const char *msg, uint8_t fg, uint8_t bg);
 

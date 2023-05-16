@@ -6,7 +6,7 @@
 #include "drivers/keyboard.h"
 
 void shell_prompt() {
-    fb_print_black("slavos> ");
+    fb_print_attrs("slavos> ", (struct fb_attr) {.non_deletable = 1});
 }
 
 void shell_start(void) {
@@ -26,7 +26,7 @@ int execute(const char *cmd) {
 
 int read_stream(unsigned char c) {
     fb_putc(c);
-    
+
     if (c == '\n') {
         /* fb_print_black(k_buf); */
         /* fb_newline(); */

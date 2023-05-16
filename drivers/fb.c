@@ -1,5 +1,6 @@
 #include "drivers/fb.h"
 #include "lib/typedef.h"
+#include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -25,8 +26,12 @@ struct fb_pixel {
 } __attribute__((packed));
 
 static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xB8000;
+static struct fb_attr frame_buf_attrs[VGA_SIZE];
 
 void scroll() {    
+    /* memcpy(frame_copy_buf, frame_buf, VGA_SIZE); */
+    /* fb_clear(); */
+    
     for (uint16_t i = 80; i < VGA_SIZE; i++) {
         frame_buf[i - 80] = frame_buf[i];
     }
@@ -38,11 +43,22 @@ void scroll() {
     fb_pos -= 80;
 }
 
-void fb_print_char(uint16_t fb_index, uint8_t symbol,
+void fb_putc_attrs(uint8_t symbol, struct fb_attr attrs) {
+    frame_buf_attrs[fb_pos] = attrs;
+    fb_putc(symbol);
+}
+
+void fb_print_attrs(const char *msg, struct fb_attr attrs) {
+    for (uint16_t i = 0; msg[i] != 0; i++) {
+        fb_putc_attrs(msg[i], attrs);
+    }
+}
+
+void fb_print_char(uint16_t offset, uint8_t symbol,
                    uint8_t foreground, uint8_t background) {
     if (!symbol) return;
 
-    uint16_t fb_i = fb_pos + fb_index;
+    uint16_t fb_i = fb_pos + offset;
     if (symbol == '\n') {
         fb_newline();
         return;
@@ -53,24 +69,36 @@ void fb_print_char(uint16_t fb_index, uint8_t symbol,
         return;
     }
 
-    if (symbol == 127) {
-        frame_buf[fb_i].symbol = 0;
+    if (symbol == KBD_DEL) {
+        if (frame_buf_attrs[fb_i - 1].non_deletable) {
+            return;
+        }
+        
         fb_pos = fb_i - 1;
+        frame_buf[fb_pos].symbol = 0;
 
         fb_mov_cursor(fb_pos);
         return;
     }
 
-    if (fb_i > VGA_SIZE) {
+    if (fb_i >= VGA_SIZE) {
         scroll();
+        fb_i = fb_pos + offset;
     }
 
     frame_buf[fb_i].symbol = symbol;
     frame_buf[fb_i].bg = background;
     frame_buf[fb_i].fg = foreground;
+   
+    fb_pos += offset + 1;
+
+    if (!frame_buf[fb_pos].symbol) {
+        frame_buf[fb_pos].symbol = 0;
+        frame_buf[fb_pos].bg = background;
+        frame_buf[fb_pos].fg = foreground;
+    }
     
     fb_mov_cursor(fb_pos);
-    fb_pos++;
 }
 
 void fb_putc(uint8_t c) {

@@ -2,6 +2,7 @@
 #define KBD_STATUS_PORT 0x64
 
 #define KBD_INT_REC_NUM 256
+#define KBD_DEL 127
 
 void interrupt();
 
