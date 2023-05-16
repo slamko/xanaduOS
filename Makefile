@@ -2,15 +2,13 @@ include define.mk
 
 ELF_F=$(ARCH)
 OBJS = $(shell find ./build -name '*.o')
+MODULES = drivers lib bin mem
 
-x86_build:
-	+$(MAKE) -C drivers x86
-	+$(MAKE) -C lib x86
-	+$(MAKE) -C bin x86
-
-x86_64_build:
-	+$(MAKE) -C drivers x86_64
-	+$(MAKE) -C lib x86_64
+build_modules:
+	+$(MAKE) -C drivers $(ARCH)
+	+$(MAKE) -C bin $(ARCH)
+	+$(MAKE) -C mem $(ARCH)
+	+$(MAKE) -C lib $(ARCH)
 
 kernel.elf: arch/$(ARCH)/start.asm kernel.c
 	nasm -f elf$(ELF_F) arch/$(ARCH)/start.asm
@@ -18,13 +16,13 @@ kernel.elf: arch/$(ARCH)/start.asm kernel.c
 	ld $(LD_ARGS) -melf_$(ARCH) arch/$(ARCH)/start.o $(OBJS) \
 		kernel.o -o iso/$(ARCH)/boot/kernel.elf
 
-x86: x86_build
 x86: ARCH = $(X86)
+x86: build_modules
 x86: ELF_F = 32
 x86: kernel.elf
 
-x86_64: x86_64_build
 x86_64: ARCH = $(X86_64)
+x86_64: build_modules
 x86_64: ELF_F = 64
 x86_64: kernel.elf
 

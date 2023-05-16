@@ -20,6 +20,6 @@ $(BUILD_ASM_OBJS): $(ASM_SRC)
 
 all: $(DRIVERS_OBJS)
 
-x86: all
-x86: ELF_F = 32
+i386: all
+i386: ELF_F = 32
 
