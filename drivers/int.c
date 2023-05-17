@@ -122,6 +122,8 @@ void init_idt() {
 
     asm volatile ("sti");
     pic_remap(PIC1, PIC2);
+
+    fb_print_black("Interrupts enabled\n");
 }
 
 void pic_eoi(uint8_t int_id) {

@@ -4,6 +4,7 @@
 #include "bin/shell.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
+#include "mem/flat.h"
 
 void shell_prompt() {
     fb_print_attrs("slavos> ", (struct fb_attr) {.non_deletable = 1});
@@ -11,6 +12,7 @@ void shell_prompt() {
 
 void shell_start(void) {
     fb_clear();
+    receiver_f[0] = &read_stream;
     shell_prompt();
 }
 

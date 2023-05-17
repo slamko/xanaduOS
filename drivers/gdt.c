@@ -1,4 +1,5 @@
 #include "drivers/gdt.h"
+#include "drivers/fb.h"
 #include <stdint.h>
 
 struct gdt_entry gdt[GDT_SIZE];
@@ -30,6 +31,7 @@ void fill_gdt() {
 
 void init_gdt() {
     fill_gdt();
+    fb_print_black("Setting up GDT\n");
 }
         
 
