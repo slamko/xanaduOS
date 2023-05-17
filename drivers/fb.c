@@ -170,22 +170,12 @@ char *_print_num_rec(unsigned int num, uint32_t mul, char *str, size_t siz) {
 }
 
 void fb_print_num(unsigned int num) {
-    /* char str[16] = {0}; */
-    /* char *str_num = _print_num_rec(num, 1, str, sizeof(str)); */
-    /* fb_print_black(str_num); */
-    if (num >= 1000) {
-        fb_putc((uint8_t)(num / 1000) + 48);
-    } else if (num >= 100) {
-        fb_putc((uint8_t)(num / 100) + 48);
-        fb_putc((uint8_t)((num / 10) % 10) + 48);
-        fb_putc((uint8_t)(num - ((num / 10) * 10)) + 48);
-    } else if (num >= 10) {
-        fb_putc((uint8_t)(num / 10) + 48);
-        fb_putc((uint8_t)(num % 10) + 48);
-    } else {
-        fb_putc(num + 48);
-    }
+  char str[16];
+
+  char *str_num = _print_num_rec(num, 1, str, 16);
+  fb_print_black(str_num);
 }
+
 
 void fb_mov_cursor(uint16_t pos) {
     outb(FB_COMMAND_PORT, FB_HIGH_BYTE_COMMAND);
@@ -195,7 +185,11 @@ void fb_mov_cursor(uint16_t pos) {
 }
 
 void fb_clear(void) {
-    memset(frame_buf, 0, VGA_SIZE);
+    for (size_t i = 0; i < VGA_SIZE; i++) {
+        frame_buf[i] = (struct fb_pixel) {0};
+        frame_buf_attrs[i] = (struct fb_attr) {0};
+        fb_out[i] = 0;
+    }
 }   
 
 

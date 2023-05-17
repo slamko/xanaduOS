@@ -13,7 +13,16 @@ void kernel_main(void) {
   init_gdt();
   init_idt();
 
+  char some[27];
+  for (int i = 0; i < 26; i++) {
+    some[i] = i + 'a';
+  }
+  some[26] = 0;
+
+  fb_print_black(some);
+  fb_print_num(123456789);
   /* shell_start(); */
 
-  while (1);
+  while (1)
+    ;
 }
