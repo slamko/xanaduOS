@@ -5,9 +5,15 @@
 #include "lib/slibc.h"
 #include <stdint.h>
 
+#define PIC_READ_IRR                0x0a    /* OCW3 irq ready next CMD read */
+#define PIC_READ_ISR                0x0b 
+
 static struct idt_entry idt[256];
 static struct idtr idtr;
 static int count;
+
+void isr_0();
+void isr_1();
 
 extern void *isr_table[];
 
@@ -76,6 +82,28 @@ void pic_remap(int offset1, int offset2)
 	outb(PIC2_DATA, a2);
 }
 
+/* Helper func */
+static uint16_t __pic_get_irq_reg(int ocw3)
+{
+    /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
+     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
+    outb(PIC1_COMMAND, ocw3);
+    outb(PIC2_COMMAND, ocw3);
+    return (inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
+}
+ 
+/* Returns the combined value of the cascaded PICs irq request register */
+uint16_t pic_get_irr(void)
+{
+    return __pic_get_irq_reg(PIC_READ_IRR);
+}
+ 
+/* Returns the combined value of the cascaded PICs in-service register */
+uint16_t pic_get_isr(void)
+{
+    return __pic_get_irq_reg(PIC_READ_ISR);
+}
+
 void pic_mask_set(uint8_t irq) {
     uint16_t port = PIC1_DATA;
     uint8_t value;
@@ -107,21 +135,29 @@ void pic_mask_clear(uint8_t irq) {
     outb(port, value);
 }
 
+void load_idt(uint32_t ptr);
+
 void init_idt() {
     idtr.base = (uint32_t)&idt;
     idtr.limit = sizeof(idt) - 1;
+
+    /* isr_table[0] = &isr_1; */
+    /* isr_table[1] = &isr_0; */
+    /* isr_table[13] = &isr_0; */
 
     for(uint8_t i = 0; i < 32; i++) {
         idt_set_entry(i, isr_table[i], 0x8e);
     }
 
-    asm volatile ("lidt %0" : : "m" (idtr));
+    load_idt((uint32_t)&idtr);
+    /* asm volatile ("lidt %0" : : "m" (idtr)); */
 
     pic_mask_all();
     pic_mask_clear(KBD_IRQ);
+    /* pic_mask_clear(0); */
 
     asm volatile ("sti");
-    pic_remap(PIC1, PIC2);
+    pic_remap(PIC1, PIC1 + 8);
 
     fb_print_black("Interrupts enabled\n");
 }
@@ -134,14 +170,21 @@ void pic_eoi(uint8_t int_id) {
     }
 }
 
-void isr_x86(struct x86_cpu_state cpu_state,
-             struct isr_stack int_stack, unsigned int int_num) {
-    (void)cpu_state;
-    (void)int_stack;
-    
+void isr_x86(struct x86_cpu_state c, uint32_t int_num, struct isr_stack stack) { 
     count++;
     pic_eoi(PIC1);
     interrupt();
+
+    fb_newline();
+    fb_print_num(int_num);
+    fb_newline();
+    /* fb_print_num(pic_get_irr()); */
+    /* fb_newline(); */
+    /* fb_print_num(pic_get_isr()); */
+    /* fb_newline(); */
+    /* fb_print_num(cpu_state.ebp); */
+    /* fb_newline(); */
+    /* fb_print_num(int_stack.error_code); */
 
    
     asm volatile ("cli;");

@@ -3,7 +3,7 @@
 
 #define PIC_EOI 0x20
 #define PIC1 0x20
-#define PIC2 0xa0
+#define PIC2 0xA0
 #define PIC1_COMMAND	PIC1
 #define PIC1_DATA	(PIC1+1)
 #define PIC2_COMMAND	PIC2
@@ -25,13 +25,13 @@ struct idtr {
 } __attribute__((packed));
 
 struct x86_cpu_state {
-    uint32_t eax;
-    uint32_t ebx;
-    uint32_t ecx;
-    uint32_t edx;
-    uint32_t esi;
-    uint32_t edi;
     uint32_t ebp;
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t edx;
+    uint32_t ecx;
+    uint32_t ebx;
+    uint32_t eax;
 } __attribute__((packed));
 
 struct isr_stack {
@@ -43,6 +43,5 @@ struct isr_stack {
 
 void init_idt();
 
-void isr_x86(struct x86_cpu_state cpu_state,
-             struct isr_stack int_stack, unsigned int int_num);
+void isr_x86(struct x86_cpu_state, uint32_t int_num, struct isr_stack); 
 

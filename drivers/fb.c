@@ -130,7 +130,7 @@ void fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz) {
 }
 
 void fb_put_pixel(struct fb_pixel pixel) {
-    fb_print_char(0, pixel.symbol, pixel.fg, pixel.bg);
+    fb_print_char(0, pixel.symbol, FB_WHITE, pixel.bg);
 }
 
 void fb_print_pixels(struct fb_pixel *pixel, size_t len) {

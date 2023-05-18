@@ -1,9 +1,20 @@
 extern isr_x86
+extern fb_print_num
+
+global load_idt
+
+load_idt:
+    mov eax, [esp + 4]
+    lidt [eax]
+
+    ret
     
 %macro isr_no_error_code 1
 global isr_%1
 isr_%1:
     push dword 0
+    ;; push eax
+    ;; mov eax, %1
     push dword %1
     jmp common_isr    
 %endmacro
@@ -11,20 +22,24 @@ isr_%1:
 %macro isr_error_code 1
 global isr_%1
 isr_%1:
+    ;; push eax
+    ;; mov eax, %1
     push dword %1
     jmp common_isr
 %endmacro
 
 common_isr:
-    push eax
-    push ebx
-    push ecx
-    push edx
-    push esi
-    push edi
-    push ebp
+    push dword eax
+    push dword ebx
+    push dword ecx
+    push dword edx
+    push dword esi
+    push dword edi
+    push dword ebp
 
+    ;; push eax
     call isr_x86
+    ;; pop eax
 
     pop ebp
     pop edi

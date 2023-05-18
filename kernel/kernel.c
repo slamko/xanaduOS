@@ -8,19 +8,17 @@
 #include "mem/paging.h"
 #include <stdint.h>
 
+void some(void);
+
 void kernel_main(void) {
   fb_clear();
   init_gdt();
   init_idt();
 
-  char some[27];
-  for (int i = 0; i < 26; i++) {
-    some[i] = i + 'a';
-  }
-  some[26] = 0;
-
-  fb_print_black(some);
-  fb_print_num(123456789);
+  /* fb_print_num(123456789); */
+  /* fb_putc('b'); */
+  some();
+  asm volatile ("int $0x6");
   /* shell_start(); */
 
   while (1)
