@@ -27,8 +27,18 @@ int execute(const char *cmd, size_t len) {
     return 1;
 }
 
-int read_stream(unsigned char c) {
-    fb_putc(c);
+int read_stream(uint32_t c) {
+
+    switch (c) {
+    case UP_ARROW:
+        fb_print_black("hello");
+        break;
+    case DOWN_ARROW:
+        break;
+    default:
+        fb_putc((uint8_t)c);
+        break;
+    }
 
     if (c == '\n') {
         /* fb_print_black(k_buf); */

@@ -8,7 +8,7 @@ extern kernel_main
 global loader
 
 section .text
-align 8
+align 4
     dd MAGIC_NUMBER
     dd FLAGS
     dd CHECKSUM

@@ -175,9 +175,9 @@ void isr_x86(struct x86_cpu_state c, uint32_t int_num, struct isr_stack stack) {
     pic_eoi(PIC1);
     interrupt();
 
-    fb_newline();
-    fb_print_num(int_num);
-    fb_newline();
+    /* fb_newline(); */
+    /* fb_print_num(int_num); */
+    /* fb_newline(); */
     /* fb_print_num(pic_get_irr()); */
     /* fb_newline(); */
     /* fb_print_num(pic_get_isr()); */

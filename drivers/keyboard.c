@@ -1,12 +1,13 @@
 #include "lib/typedef.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
+#include <stdint.h>
 
 receiver receiver_f[KBD_INT_REC_NUM];
-char kbd_buf[1024];
+uint32_t kbd_buf[1024];
 static size_t buf_pos;
 
-static char kbd_US [128] =
+static uint32_t kbd_US [128] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',   
   '\t', /* <-- Tab */
@@ -23,7 +24,7 @@ static char kbd_US [128] =
     0,  /* 69 - Num lock*/
     0,  /* Scroll Lock */
     0,  /* Home key */
-    0,  /* Up Arrow */
+    UP_ARROW,  /* Up Arrow */
     0,  /* Page Up */
   '-',
     0,  /* Left Arrow */
@@ -31,25 +32,25 @@ static char kbd_US [128] =
     0,  /* Right Arrow */
   '+',
     0,  /* 79 - End key*/
-    0,  /* Down Arrow */
+    DOWN_ARROW,  /* Down Arrow */
     0,  /* Page Down */
     0,  /* Insert Key */
-    127,  /* Delete Key */
+    KBD_DEL,  /* Delete Key */
     0,   0,   0,
     0,  /* F11 Key */
     0,  /* F12 Key */
     0,  /* All other keys are undefined */
 };
 
-uint8_t read_scan_code() {
-    uint8_t c = inb(KBD_INPUT_PORT);
+uint32_t read_scan_code() {
+    uint32_t c = inb(KBD_INPUT_PORT);
     return kbd_US[c];
 }
 
 void interrupt() {
     uint8_t stat = inb(KBD_STATUS_PORT);
     if (stat) {
-        uint8_t keycode = read_scan_code();
+        uint32_t keycode = read_scan_code();
 
         if (keycode) {
             kbd_buf[buf_pos] = keycode;
