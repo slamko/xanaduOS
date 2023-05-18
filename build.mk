@@ -1,14 +1,16 @@
-LOOKUP_DEPTH = 1
-
 C_SRC += $(wildcard ./*.c)
 ASM_SRC += $(wildcard ./*.asm)
-# C_SRC = $(shell find $(LOOKUP_DIR) -maxdepth $(LOOKUP_DEPTH) -name '*.c')
-# ASM_SRC = $(shell find $(LOOKUP_DIR) -maxdepth $(LOOKUP_DEPTH) -name '*.o')
+ATT_SRC += $(wildcard ./*.s)
+
 C_OBJS = $(patsubst %.c, %.o, $(C_SRC))
-BUILD_C_OBJS = $(patsubst %.o, $(BUILD_DIR)/%.o, $(C_OBJS))
 ASM_OBJS = $(patsubst %.asm, %.o, $(ASM_SRC))
+ATT_OBJS = $(patsubst %.s, %.o, $(ATT_SRC))
+
+BUILD_C_OBJS = $(patsubst %.o, $(BUILD_DIR)/%.o, $(C_OBJS))
 BUILD_ASM_OBJS = $(patsubst %.o, $(BUILD_DIR)/%.o, $(ASM_OBJS))
-BUILD_OBJS := $(BUILD_C_OBJS) $(BUILD_ASM_OBJS)
+BUILD_ATT_OBJS = $(patsubst %.o, $(BUILD_DIR)/%.o, $(ATT_OBJS))
+
+BUILD_OBJS := $(BUILD_C_OBJS) $(BUILD_ASM_OBJS) $(BUILD_ATT_OBJS)
 
 $(BUILD_C_OBJS): $(C_SRC) 
 	$(CC) $(C_ARGS) -m$(ELF_F) $^ -c
@@ -20,7 +22,13 @@ $(BUILD_ASM_OBJS): $(ASM_SRC)
 	mkdir -p $(BUILD_DIR)
 	mv $(ASM_OBJS) $(BUILD_DIR)
 
+$(BUILD_ATT_OBJS): $(ATT_SRC)
+	$(foreach asmf, $^, cc -m32 $(asmf) -c ;) 
+	mkdir -p $(BUILD_DIR)
+	mv $(ATT_OBJS) $(BUILD_DIR)
+
 
 i386: $(BUILD_OBJS)
 i386: ELF_F = 32
+
 

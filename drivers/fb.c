@@ -67,16 +67,7 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
     }
 
     if (symbol == KBD_DEL) {
-        if (frame_buf_attrs[fb_i - 1].non_deletable) {
-            return;
-        }
-        
-        fb_pos = fb_i - 1;
-        struct fb_pixel del_pix = frame_buf[fb_pos];
-        del_pix.symbol = 0;
-        write_fb(fb_pos, del_pix);
-
-        fb_mov_cursor(fb_pos);
+        fb_delete_char();
         return;
     }
 
@@ -103,6 +94,24 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
     
     
     fb_mov_cursor(fb_pos);
+}
+
+void fb_delete_char(void) {
+    if (frame_buf_attrs[fb_pos - 1].non_deletable) {
+        return;
+    }
+
+    fb_pos--;
+    struct fb_pixel del_pix = frame_buf[fb_pos];
+    del_pix.symbol = 0;
+    write_fb(fb_pos, del_pix);
+
+    fb_mov_cursor(fb_pos);
+ 
+}
+
+void fb_delete_last(uint16_t len) {
+    for (int i = 0; (i++) < len; fb_delete_char());
 }
 
 void fb_last_written_buf(char **buf, size_t *len) {

@@ -35,6 +35,10 @@ extern char fb_out[VGA_SIZE];
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background);
 
+void fb_delete_char(void);
+
+void fb_delete_last(uint16_t len);
+
 void fb_putc(uint8_t c);
 
 void fb_last_written_buf(char **buf, size_t *len) ;
