@@ -15,8 +15,8 @@
 
 static uint16_t fb_pos;
 
-/* static struct fb_pixel *frame_buf = (struct fb_pixel *)0xC03FF000; */
-static struct fb_pixel *frame_buf = (struct fb_pixel *)0xb8000;
+static struct fb_pixel *frame_buf = (struct fb_pixel *)0xC03FF000;
+/* static struct fb_pixel *frame_buf = (struct fb_pixel *)0xb8000; */
 static struct fb_attr frame_buf_attrs[VGA_SIZE];
 char fb_out[VGA_SIZE];
 
@@ -55,9 +55,9 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
     if (!symbol) return;
 
     struct fb_pixel pixel = {
+        .symbol = symbol,
         .fg = foreground,
-        .bg = background,
-        .symbol = symbol
+        .bg = background
     };
 
     uint16_t fb_i = fb_pos + offset;
@@ -193,8 +193,6 @@ void fb_mov_cursor(uint16_t pos) {
 }
 
 void fb_clear(void) {
-    frame_buf = (struct fb_pixel *)vga_buf;
-    
     for (size_t i = 0; i < VGA_SIZE; i++) {
         frame_buf[i] = (struct fb_pixel) {0};
         frame_buf_attrs[i] = (struct fb_attr) {0};

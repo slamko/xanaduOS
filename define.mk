@@ -15,3 +15,6 @@ ELF_F=$(ARCH)
 release: C_ARGS += -O2
 release: $(ARCH)
 
+debug: C_ARGS += -O0 -g
+debug: $(ARCH)
+

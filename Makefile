@@ -16,6 +16,8 @@ kernel.elf:
 # release: clean
 release: MODE=release
 
+debug: MODE=debug
+
 x86: ARCH = $(X86)
 x86: build_modules
 x86: ELF_F = 32
