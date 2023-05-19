@@ -37,6 +37,7 @@ void kernel_main(void) {
   init_gdt();
   init_idt();
   /* some(); */
+  /* fb_print_num(123456); */
   /* asm volatile ("int $0x6"); */
   shell_start();
 

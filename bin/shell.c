@@ -20,13 +20,13 @@ void shell_start(void) {
 }
 
 int execute(const char *cmd, size_t len) {
-    if (strneq(cmd, "echo", 4)) {
+    if (strneq(cmd, "echo", 4) == 0) {
         fb_print_black(cmd + 5);
-        /* fb_newline(); */
+        fb_newline();
         return 0;
-    } else if (cmd[0] != '\n' || len == 0) {
+    } else if (cmd[0] || len == 0) {
         fb_print_black("Unknown command");
-        /* fb_newline(); */
+        fb_newline();
     }
     return 1;
 }
@@ -51,10 +51,10 @@ int read_stream(uint32_t c) {
         fb_print_black(cur_cmd);
         break;
     default:
+        fb_putc((uint8_t)c);
         break;
     }
     
-    fb_putc((uint8_t)c);
 
     if (c == '\n') {
         /* fb_print_black(k_buf); */

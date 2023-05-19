@@ -39,13 +39,14 @@ size_t strlen(const char *str) {
 
 int strneq(const char *str, const char *cmp, size_t len) {
     if (!str || !cmp) return -1;
-    if (len == 0) return 1;
-    for(size_t i = 0; i < len && str[i] && cmp[i]; i++) {
+    if (len == 0) return 0;
+
+    for(size_t i = 0; i < len && (str[i] || cmp[i]); i++) {
         if (str[i] != cmp[i]) {
-            return 0;
+            return 1;
         }
     }
-    return 1;
+    return 0;
 }
 
 size_t strnlen(const char *str, size_t len) {

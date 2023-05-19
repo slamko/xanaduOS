@@ -24,9 +24,6 @@ static inline void write_fb(uint16_t i, struct fb_pixel pixel) {
 }
 
 void scroll() {    
-    /* memcpy(frame_copy_buf, frame_buf, VGA_SIZE); */
-    /* fb_clear(); */
-    
     for (uint16_t i = 80; i < VGA_SIZE; i++) {
         write_fb(i - 80, frame_buf[i]);
         frame_buf_attrs[i - 80] = frame_buf_attrs[i];
@@ -55,8 +52,15 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
                    uint8_t foreground, uint8_t background) {
     if (!symbol) return;
 
+    struct fb_pixel pixel = {
+        .fg = foreground,
+        .bg = background,
+        .symbol = symbol
+    };
+
     uint16_t fb_i = fb_pos + offset;
     if (symbol == '\n') {
+        /* fb_out[fb_i] = symbol; */
         fb_newline();
         return;
     }
@@ -76,22 +80,14 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
         fb_i = fb_pos + offset;
     }
 
-    write_fb(fb_pos, (struct fb_pixel) {
-            .symbol = symbol,
-            .fg = foreground,
-            .bg = background
-        });
+    write_fb(fb_pos, pixel);
 
     fb_pos += offset + 1;
 
     if (!frame_buf[fb_pos].symbol) {
-        write_fb(fb_pos, (struct fb_pixel) {
-                .symbol = 0,
-                .fg = foreground,
-                .bg = background
-            });
+        pixel.symbol = 0;
+        write_fb(fb_pos, pixel);
     }
-    
     
     fb_mov_cursor(fb_pos);
 }
@@ -163,26 +159,27 @@ void fb_newline(void) {
     }
 }
 
-char *_print_num_rec(unsigned int num, uint32_t mul, char *str, size_t siz) {
+char *_print_num_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     if (num >= 10) {
         uint32_t div = (uint32_t)(num / 10);
         char c = num - (div * 10) + 48;
-        str[siz - mul - 1] = c;
-        return _print_num_rec(div, mul + 1, str, siz);
+        str[siz - *mul - 1] = c;
+        *mul += 1;
+        return _print_num_rec(div, mul, str, siz);
     } else {
         char c = num + 48;
-        str[siz - mul - 1] = c;
-        return str + siz - mul - 1;
+        str[siz - *mul - 1] = c;
+        return str + siz - *mul - 1;
     }
 
     return str;
 }
 
 void fb_print_num(unsigned int num) {
-  char str[16];
-
-  char *str_num = _print_num_rec(num, 1, str, 16);
-  fb_print_black(str_num);
+    char str[16];
+    uint32_t mul = 1;
+    char *str_num = _print_num_rec(num, &mul, str, 16);
+    fb_nprint_black(str_num, mul);
 }
 
 
