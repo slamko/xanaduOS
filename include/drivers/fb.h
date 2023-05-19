@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "drivers/dev.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -18,6 +19,7 @@ enum VGA_COLORS {
 
 };
 
+extern struct char_buffer fb_char_device;
 
 struct fb_pixel {
     uint8_t symbol;
@@ -25,13 +27,14 @@ struct fb_pixel {
     uint8_t bg : 4;
 } __attribute__((packed));
 
-
 struct fb_attr {
     uint8_t non_deletable: 1;
 } __attribute__((packed));
 
 extern char fb_out[VGA_SIZE];
-   
+
+void fb_flush(void);
+
 void fb_print_char(uint16_t fb_index, uint8_t symbol,
                    uint8_t foreground, uint8_t background);
 

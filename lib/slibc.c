@@ -9,7 +9,9 @@ void *memset(void *buf, int val, size_t siz) {
     return buf;
 }
 
-void *memcpy(void *buf, void *cpy, size_t len) {
+void *memcpy(void *buf, const void *cpy, size_t len) {
+    if (!buf || !cpy) return NULL;
+    
     char *dest = (char *)buf;
     char *copy = (char *)cpy;
     
@@ -24,11 +26,35 @@ void outb(uint16_t port, uint8_t value) {
     asm volatile ("out %1, %0" : : "dN" (port), "a" (value));
 }
 
+uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    asm volatile ("inb %1, %0" : "=a" (ret) : "dN" (port));
+    return ret;
+}
+
 int strcmp(const char *str, const char *cmp) {
     if (!str || !cmp) return -1;
+
     int diff = 0;
-    for(size_t i = 0; str[i] && cmp[i]; diff += str[i] - cmp[i]);
+
+    for(size_t i = 0; ; ) {
+        diff += str[i] - cmp[i];
+        if (str[i] <= 0 || cmp[i] <= 0) {
+            break;
+        }
+    }
+
     return diff;
+}
+
+char *strcpy(char *str, const char *cpy, size_t len) {
+    if (!str || !cpy) return NULL;
+    
+    for (size_t i = 0; i < len && str[i] && cpy[i]; i++) {
+        str[i] = cpy[i];
+    }
+
+    return str;
 }
 
 size_t strlen(const char *str) {
@@ -54,15 +80,6 @@ size_t strnlen(const char *str, size_t len) {
     for (i = 0; i < len && str[i] != 0; i++);
     return i;
 }
-
-uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ("inb %1, %0" 
-                  : "=a" (ret) 
-                  : "dN" (port));
-    return ret;
-}
-
 inline void io_wait(void)
 {
     outb(0x80, 0);

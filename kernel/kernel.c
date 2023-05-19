@@ -6,6 +6,7 @@
 #include "lib/slibc.h"
 #include "mem/flat.h"
 #include "drivers/serial.h"
+#include "io.h"
 #include <stdint.h>
 
 void kernel_main(void) {
@@ -15,18 +16,12 @@ void kernel_main(void) {
   init_idt();
   serial_init();
 
-  serial_send(COM1, '\r');
-  serial_send(COM1, '\n');
-  serial_send(COM1, 'a');
-  serial_send(COM1, '\r');
-  serial_send(COM1, '\n');
-  serial_send(COM1, 'b');
-  serial_send(COM1, 127);
-  serial_send(COM1, 127);
-  
+  fb_print_black("hello");
+  /* fprintf(fb_char_device, "Hello world\n"); */
+  /* flush(fb_char_device); */
   /* fb_print_num(123456); */
   /* asm volatile ("int $0x6"); */
-  shell_start();
+  /* shell_start(); */
 
   while (1)
     ;

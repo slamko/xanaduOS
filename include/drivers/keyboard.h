@@ -1,3 +1,6 @@
+#ifndef KEYBOARD_H
+#define KEYBOARD_H
+
 #include <stdint.h>
 #define KBD_INPUT_PORT 0x60
 #define KBD_STATUS_PORT 0x64
@@ -16,3 +19,5 @@ typedef int (*receiver)(uint32_t);
 
 extern receiver receiver_f[KBD_INT_REC_NUM];
 extern uint32_t kbd_buf[1024];
+
+#endif

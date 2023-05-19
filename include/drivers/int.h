@@ -1,3 +1,6 @@
+#ifndef INT_H
+#define INT_H
+
 #include "lib/typedef.h"
 #include <stdint.h>
 
@@ -45,3 +48,4 @@ void init_idt();
 
 void isr_x86(struct x86_cpu_state, uint32_t int_num, struct isr_stack); 
 
+#endif

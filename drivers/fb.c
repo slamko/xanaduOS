@@ -3,6 +3,8 @@
 #include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include "mem/paging.h"
+#include "drivers/dev.h"
+#include <bits/types.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,12 +22,30 @@ static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xb8000;
 static struct fb_attr frame_buf_attrs[VGA_SIZE];
 char fb_out[VGA_SIZE];
 
-static inline void write_fb(uint16_t i, struct fb_pixel pixel) {
+struct char_buffer fb_char_device = {
+    .buf = fb_out,
+    .pos = 0,
+    .size = VGA_SIZE,
+    .flush = &fb_flush,
+};
+
+static inline void write_fb_sync(uint16_t i, struct fb_pixel pixel) {
+    frame_buf[i] = pixel;
+}
+
+static inline void write_fb_local(uint16_t i, struct fb_pixel pixel) {
     frame_buf[i] = pixel;
     fb_out[i] = pixel.symbol;
 }
 
-void scroll() {    
+void (*volatile write_fb)(uint16_t i, struct fb_pixel pixel) = &write_fb_local;
+
+static inline void set_fb_pos(uint16_t new_pos) {
+    fb_pos = new_pos;
+    fb_char_device.pos = new_pos;
+}
+
+static void scroll(void) {    
     for (uint16_t i = 80; i < VGA_SIZE; i++) {
         write_fb(i - 80, frame_buf[i]);
         frame_buf_attrs[i - 80] = frame_buf_attrs[i];
@@ -36,7 +56,16 @@ void scroll() {
         frame_buf_attrs[i] = (struct fb_attr) {0};
     }
     
-    fb_pos -= 80;
+    set_fb_pos(fb_pos - 80);
+}
+
+void fb_flush(void) {
+    /* fb_print_black("hello"); */
+    write_fb = &write_fb_sync;
+    for (size_t i = fb_pos; i <= fb_char_device.pos; i++) {
+        fb_putc(fb_out[i]);
+    }
+    write_fb = &write_fb_local;
 }
 
 void fb_putc_attrs(uint8_t symbol, struct fb_attr attrs) {
@@ -53,6 +82,8 @@ void fb_print_attrs(const char *msg, struct fb_attr attrs) {
 void fb_print_char(uint16_t offset, uint8_t symbol,
                    uint8_t foreground, uint8_t background) {
     if (!symbol) return;
+
+    if (symbol == '\r') return;
 
     struct fb_pixel pixel = {
         .symbol = symbol,
@@ -83,8 +114,7 @@ void fb_print_char(uint16_t offset, uint8_t symbol,
     }
 
     write_fb(fb_pos, pixel);
-
-    fb_pos += offset + 1;
+    set_fb_pos(offset + 1 + fb_pos);
 
     if (!frame_buf[fb_pos].symbol) {
         pixel.symbol = 0;
@@ -99,7 +129,7 @@ void fb_delete_char(void) {
         return;
     }
 
-    fb_pos--;
+    set_fb_pos(fb_pos - 1);
     struct fb_pixel del_pix = frame_buf[fb_pos];
     del_pix.symbol = 0;
     write_fb(fb_pos, del_pix);
@@ -155,7 +185,8 @@ void fb_nprint_black(const char *msg, size_t siz) {
 }
 
 void fb_newline(void) {
-    fb_pos = (fb_pos - (fb_pos % 80)) + 80;
+    set_fb_pos((fb_pos - (fb_pos % 80)) + 80);
+
     if (fb_pos >= VGA_SIZE) {
         scroll();
     }
