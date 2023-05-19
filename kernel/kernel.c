@@ -5,7 +5,7 @@
 #include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include "mem/flat.h"
-#include "mem/paging.h"
+#include "drivers/serial.h"
 #include <stdint.h>
 
 void kernel_main(void) {
@@ -13,6 +13,9 @@ void kernel_main(void) {
   fb_clear();
   init_gdt();
   init_idt();
+  serial_init();
+
+  serial_send(COM1, 'a');
   
   /* fb_print_num(123456); */
   /* asm volatile ("int $0x6"); */
