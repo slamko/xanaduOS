@@ -4,10 +4,11 @@ ELF_F=$(ARCH)
 OBJS = $(shell find ./build -name '*.o')
 MODULES = arch drivers lib bin mem kernel
 MODE=
+QEMU_ARGS= -enable-kvm -cdrom $(OS_NAME).iso -boot menu=on -drive file=Image.img -m 1G
 
 build_modules:
 	for md in $(MODULES); do \
-		$(MAKE) -C $$md $(MODE) $(ARCH); \
+		$(MAKE) -C $$md $(MODE) $(ARCH) || exit; \
 	done
 
 kernel.elf:
@@ -17,6 +18,7 @@ kernel.elf:
 release: MODE=release
 
 debug: MODE=debug
+debug: QEMU_ARGS=-s -S
 
 x86: ARCH = $(X86)
 x86: build_modules
@@ -44,9 +46,11 @@ mkiso_i386: kernel.elf
 mkiso_x86_64: x86_64
 	grub-mkrescue -o grub.iso iso/x86_64
 
+debug_run: debug mkiso_$(ARCH)
+	qemu-system-$(ARCH) -s -S $(QEMU_ARGS) 
+
 run: mkiso_$(ARCH)
-	qemu-system-$(ARCH) -enable-kvm -cdrom $(OS_NAME).iso \
-			-boot menu=on -drive file=Image.img -m 1G
+	qemu-system-$(ARCH) $(QEMU_ARGS) 
 
 clean:
 	$(RM) *.o

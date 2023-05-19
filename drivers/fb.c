@@ -15,8 +15,8 @@
 
 static uint16_t fb_pos;
 
-static struct fb_pixel *frame_buf = (struct fb_pixel *)0xC03FF000;
-/* static struct fb_pixel *frame_buf = (struct fb_pixel *)0xb8000; */
+/* static struct fb_pixel *frame_buf = (struct fb_pixel *)0xC03FF000; */
+static struct fb_pixel *const frame_buf = (struct fb_pixel *)0xb8000;
 static struct fb_attr frame_buf_attrs[VGA_SIZE];
 char fb_out[VGA_SIZE];
 
