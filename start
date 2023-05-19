@@ -5,7 +5,7 @@ KERNEL_STACK_SIZE equ 0x1000
 
 extern kernel_main
     
-global loader
+global _start
 
 section .text
 align 4
@@ -13,7 +13,7 @@ align 4
     dd FLAGS
     dd CHECKSUM
 
-loader:
+_start:
     mov eax, 0xCAFEBABE
     mov esp, kernel_stack + KERNEL_STACK_SIZE
     call kernel_main

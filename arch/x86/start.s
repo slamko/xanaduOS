@@ -12,6 +12,8 @@
 .long FLAGS
 .long CHECKSUM
 
+.globl boot_page_directory
+
 # Allocate the initial stack.
 .section .bootstrap_stack, "aw", @nobits
 stack_bottom:

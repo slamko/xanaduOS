@@ -28,18 +28,18 @@ void test() {
   /* fb_print_black(sec); */
   free(some);
   free(sec);
-
-
 }
 
 void kernel_main(void) {
-  fb_clear();
-  init_gdt();
-  init_idt();
+  /* init_gdt(); */
+  /* init_idt(); */
+  paging_init();
+  /* fb_clear(); */
+  
   /* some(); */
   /* fb_print_num(123456); */
   /* asm volatile ("int $0x6"); */
-  shell_start();
+  /* shell_start(); */
 
   while (1)
     ;

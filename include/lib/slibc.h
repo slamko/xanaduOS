@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define ARR_SIZE(obj) (sizeof(obj) / sizeof(*obj))
+
 void *memset(void *buf, int val, size_t siz);
 
 void *memcpy(void *buf, void *cpy, size_t len);
