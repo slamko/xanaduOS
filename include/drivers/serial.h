@@ -16,6 +16,8 @@ enum COM_Ports {
     COM8 = 0x4E8,
 };
 
+typedef enum COM_Ports port_t;
+
 void serial_send(enum COM_Ports port, uint8_t data);
 
 uint8_t wait_serial_read(enum COM_Ports port);

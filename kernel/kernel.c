@@ -9,13 +9,20 @@
 #include <stdint.h>
 
 void kernel_main(void) {
-  /* paging_init(); */
   fb_clear();
+
   init_gdt();
   init_idt();
   serial_init();
 
+  serial_send(COM1, '\r');
+  serial_send(COM1, '\n');
   serial_send(COM1, 'a');
+  serial_send(COM1, '\r');
+  serial_send(COM1, '\n');
+  serial_send(COM1, 'b');
+  serial_send(COM1, 127);
+  serial_send(COM1, 127);
   
   /* fb_print_num(123456); */
   /* asm volatile ("int $0x6"); */
