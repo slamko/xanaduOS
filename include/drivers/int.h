@@ -12,7 +12,11 @@
 #define PIC2_COMMAND	PIC2
 #define PIC2_DATA	(PIC2+1)
 
-#define KBD_IRQ 1
+enum IRQ_Ids {
+    KBD_IRQ  = 1,
+    COM2_IRQ = 3,
+    COM1_IRQ = 4,
+};
 
 struct idt_entry {
     uint16_t isr_low;

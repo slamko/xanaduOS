@@ -2,6 +2,7 @@
 #define SERIAL_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 void serial_init(void);
 
@@ -18,9 +19,14 @@ enum COM_Ports {
 
 typedef enum COM_Ports port_t;
 
+void serial_interrupt();
 void serial_send(enum COM_Ports port, uint8_t data);
 
 uint8_t wait_serial_read(enum COM_Ports port);
+
+int serial_read_buf(port_t port, char *buf, size_t buf_len);
+
+void serial_print(port_t port, char *msg);
 
 #endif
 

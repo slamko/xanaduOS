@@ -12,9 +12,6 @@ static struct idt_entry idt[256];
 static struct idtr idtr;
 static int count;
 
-void isr_0();
-void isr_1();
-
 extern void *isr_table[];
 
 void idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
@@ -154,6 +151,8 @@ void init_idt() {
 
     pic_mask_all();
     pic_mask_clear(KBD_IRQ);
+    /* pic_mask_clear(COM1_IRQ); */
+    /* pic_mask_clear(3); */
     /* pic_mask_clear(0); */
 
     asm volatile ("sti");
@@ -171,12 +170,15 @@ void pic_eoi(uint8_t int_id) {
 }
 
 void isr_x86(struct x86_cpu_state c, uint32_t int_num, struct isr_stack stack) { 
+    (void)c;
+    (void)stack;
+    
     count++;
     pic_eoi(PIC1);
     interrupt();
 
-    fb_newline();
-    fb_print_num(int_num);
+    /* fb_newline(); */
+    /* fb_print_num(int_num); */
     /* fb_newline(); */
     /* fb_print_num(pic_get_irr()); */
     /* fb_newline(); */

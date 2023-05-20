@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "drivers/fb.h"
 #include "bin/shell.h"
+#include "drivers/serial.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
 #include "mem/flat.h"
@@ -17,6 +18,18 @@ void shell_start(void) {
     fb_clear();
     receiver_f[0] = &read_stream;
     shell_prompt();
+}
+
+void serial_shell(void) {
+    char buf[256];
+
+    while (1) {
+        serial_read_buf(COM1, buf, ARR_SIZE(buf));
+        serial_print(COM1, buf);
+
+        serial_print(COM1, "\r\nslavos> ");
+        memset(buf, 0, ARR_SIZE(buf));
+    }
 }
 
 int execute(const char *cmd, size_t len) {

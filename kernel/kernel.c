@@ -17,6 +17,9 @@ void kernel_main(void) {
   serial_init();
 
   fb_print_black("hello");
+  serial_send(COM1, 'a');
+
+  serial_shell();
   /* fprintf(fb_char_device, "Hello world\n"); */
   /* flush(fb_char_device); */
   /* fb_print_num(123456); */
