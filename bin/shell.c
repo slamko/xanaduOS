@@ -80,6 +80,8 @@ int read_stream(uint32_t c) {
         shell_prompt();
     }
 
+    /* asm volatile("int $1"); */
+
     return 0;
 }
 

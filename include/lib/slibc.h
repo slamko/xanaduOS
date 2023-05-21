@@ -6,6 +6,8 @@
 
 #define ARR_SIZE(obj) (sizeof(obj) / sizeof(*obj))
 
+#define GET_BIT(obj, bit) (((obj) & (1 << (bit))) >> bit)
+
 void *memset(void *buf, int val, size_t siz);
 
 void *memcpy(void *buf, const void *cpy, size_t len);

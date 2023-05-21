@@ -85,6 +85,7 @@ isr_no_error_code 28
 isr_no_error_code 29
 isr_error_code    30
 isr_no_error_code 31
+isr_no_error_code 128    
     
 
 global isr_table
