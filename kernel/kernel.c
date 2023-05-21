@@ -13,7 +13,7 @@ void kernel_main(void) {
   fb_clear();
 
   init_gdt();
-  /* init_idt(); */
+  init_idt();
   serial_init();
 
   /* fb_print_black("hello"); */
@@ -24,8 +24,8 @@ void kernel_main(void) {
   /* flush(fb_char_device); */
   /* fb_print_num(123456); */
   /* asm volatile ("int $0x6"); */
+  asm volatile("int $128");
   /* shell_start(); */
-  /* asm volatile("int $9"); */
 
   while (1)
     ;
