@@ -13,7 +13,7 @@ enum SPEC_CODES {
     DOWN_ARROW = 345
 };
 
-void interrupt();
+void kbd_interrupt(uint32_t int_id);
 
 typedef int (*receiver)(uint32_t);
 

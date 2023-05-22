@@ -47,7 +47,7 @@ uint32_t read_scan_code() {
     return kbd_US[c];
 }
 
-void interrupt() {
+void kbd_interrupt(uint32_t int_id) {
     uint8_t stat = inb(KBD_STATUS_PORT);
     if (stat) {
         uint32_t keycode = read_scan_code();

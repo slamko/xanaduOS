@@ -25,7 +25,7 @@ enum DESCRIPTOR_ACCESS {
 
 enum DESCRIPTOR_FLAGS {
     GDTF_GRAN = (1 << 3),
-    GDTF_SIZE = (1 << 2),
+    GDTF_PROTECTED_MODE = (1 << 2),
     GDTF_LONG_MODE = (1 << 1),
 };
 

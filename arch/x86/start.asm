@@ -4,8 +4,13 @@ CHECKSUM equ -MAGIC_NUMBER
 KERNEL_STACK_SIZE equ 0x4000
 
 extern kernel_main
-    
 global _start
+
+section .bss
+align 16
+kernel_stack_start:
+    resb KERNEL_STACK_SIZE 
+kernel_stack_end:   
 
 section .text
 align 4
@@ -14,12 +19,12 @@ align 4
     dd CHECKSUM
 
 _start:
-    mov eax, 0xCAFEBABE
-    mov esp, kernel_stack + KERNEL_STACK_SIZE
+    ;; mov eax, 0xCAFEBABE
+    mov esp, kernel_stack_end
     call kernel_main
 
-section .bss
-align 4
-kernel_stack:
-    resb KERNEL_STACK_SIZE 
-    
+.loop:
+    cli
+    hlt
+    jmp .loop
+   

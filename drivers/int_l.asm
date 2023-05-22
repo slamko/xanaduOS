@@ -3,6 +3,7 @@ extern fb_print_num
 
 global load_idt
 
+section .text
 load_idt:
     mov eax, [esp + 4]
     lidt [eax]
@@ -12,6 +13,7 @@ load_idt:
 %macro isr_no_error_code 1
 global isr_%1
 isr_%1:
+    cli
     push dword 0
     ;; push eax
     ;; mov eax, %1
@@ -22,6 +24,7 @@ isr_%1:
 %macro isr_error_code 1
 global isr_%1
 isr_%1:
+    cli
     ;; push eax
     ;; mov eax, %1
     push dword %1
@@ -51,6 +54,7 @@ common_isr:
 
     add esp, 8
 
+    sti
     iret
 
 isr_no_error_code 0
@@ -85,13 +89,30 @@ isr_no_error_code 28
 isr_no_error_code 29
 isr_error_code    30
 isr_no_error_code 31
-isr_no_error_code 128    
-    
+isr_no_error_code 32
 
 global isr_table
-isr_table:
+
+    
+section .data
+align 16    
+isr_table:  
+    ;;  intel irqs
 %assign i 0 
 %rep 32 
-    dd isr_%+i ; use DQ instead if targeting 64-bit
+    dd isr_%+i
+    ;; mov dword [isr_table + i], isr_%+i ; use DQ instead if targeting 64-bit
+%assign i i+1 
+    %endrep
+    
+%assign i 33 
+%rep 256
+    section .text
+    isr_no_error_code i
+    section .data
+    dd isr_%+i
+    ;; mov dword [isr_table + i], isr_%+i ; use DQ instead if targeting 64-bit
 %assign i i+1 
 %endrep
+
+

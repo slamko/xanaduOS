@@ -14,6 +14,10 @@
 #define PIC2_COMMAND	PIC2
 #define PIC2_DATA	(PIC2+1)
 
+#define PIC_REMAP 0x20
+
+uint16_t pic_get_irr(void);
+
 void pic_mask(uint8_t irq);
 
 void pic_mask_all();

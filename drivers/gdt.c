@@ -33,13 +33,13 @@ void fill_gdt() {
                    GDTD_NON_SYSTEM_SEG_MASK |
                    GDTD_EXEC_MASK |
                    GDTD_RW_MASK,
-                   GDTF_GRAN | GDTF_SIZE); 
+                   GDTF_GRAN | GDTF_PROTECTED_MODE); 
 
     gdt_fill_entry(2, 0, UINTPTR_MAX,
                    GDTD_PRESENT_MASK |
                    GDTD_NON_SYSTEM_SEG_MASK |
                    GDTD_RW_MASK,
-                   GDTF_GRAN | GDTF_SIZE); 
+                   GDTF_GRAN | GDTF_PROTECTED_MODE); 
 
     gdt_fill_entry(3, 0, UINTPTR_MAX,
                    GDTD_PRESENT_MASK |
@@ -47,14 +47,14 @@ void fill_gdt() {
                    GDTD_DPL_MASK |
                    GDTD_EXEC_MASK |
                    GDTD_RW_MASK,
-                   GDTF_GRAN | GDTF_SIZE);
+                   GDTF_GRAN | GDTF_PROTECTED_MODE);
 
     gdt_fill_entry(4, 0, UINTPTR_MAX,
                    GDTD_PRESENT_MASK |
                    GDTD_NON_SYSTEM_SEG_MASK |
                    GDTD_DPL_MASK |
                    GDTD_RW_MASK,
-                   GDTF_GRAN | GDTF_SIZE);
+                   GDTF_GRAN | GDTF_PROTECTED_MODE);
 
     load_gdt((uintptr_t)&gdtr);
 }

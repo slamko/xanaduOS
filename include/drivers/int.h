@@ -16,6 +16,13 @@ enum BASE_IRQ {
     COM1_MASK = (1 << COM1_IRQ),
 };
 
+enum IDT_DESCRIPTOR_FLAGS {
+    IDTD_PRESENT = (1 << 7),
+    IDTD_PROTECTED_MODE = (1 << 3),
+};
+
+#define INT_GATE_MASK (0x6)
+
 struct idt_entry {
     uint16_t isr_low;
     uint16_t cs;
@@ -61,9 +68,15 @@ struct isr_full_stack {
     uint32_t eflags;
 } __attribute__((packed));
 
-void cli(void);
+static inline void cli(void) {
+    asm volatile ("cli");
+}
 
 void init_idt();
+
+static inline void sti(void) {
+    asm volatile ("sti");
+}
 
 /* void isr_x86(struct x86_cpu_state, uint32_t int_num, struct isr_stack);  */
 void isr_x86 (struct isr_full_stack);

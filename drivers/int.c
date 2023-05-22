@@ -4,14 +4,21 @@
 #include "drivers/fb.h"
 #include "drivers/pic.h"
 #include "drivers/keyboard.h"
+#include "int/except_handler.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
+#include "drivers/gdt.h"
 
-static struct idt_entry idt[256];
+static struct idt_entry idt[256] __attribute__((aligned(4)));
 static struct idtr idtr;
 static int count;
 
 extern void *isr_table[];
+
+typedef void (*isr_handler_t)(uint32_t);
+static isr_handler_t isr_handlers[256];
+
+void load_idt(uint32_t ptr);
 
 static void idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
     struct idt_entry *entry = &idt[idt_id];
@@ -22,42 +29,29 @@ static void idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
     entry->reserved = 0;
 }
 
-void isr_128(void);
-
-void syscall_int(void) {
-    fb_print_black("syscall");
-}
-
-void load_idt(uint32_t ptr);
-
-void cli(void) {
-    asm volatile ("cli");
-}
-
-static inline void sti(void) {
-    asm volatile ("sti");
+static void void_handler(uint32_t int_id) {
+    fb_newline();
+    fb_print_black("Unknown interrupt");
+    fb_print_num(int_id);
+    fb_newline();
 }
 
 void init_idt() {
     idtr.base = (uint32_t)&idt;
     idtr.limit = sizeof(idt) - 1;
 
-    for (uint8_t i = 0; i < 32; i++) {
+    for (uint8_t i = 0; i < 255; i++) {
         idt_set_entry(i, isr_table[i], 0x8e);
+                      /* IDTD_PRESENT | IDTD_PROTECTED_MODE | INT_GATE_MASK); */
+        isr_handlers[i] = &void_handler;
     }
 
-    /* for (uint8_t i = 80; i < ARR_SIZE(idt) - 1; i++) { */
-        /* isr_table[i] = &isr_128; */
-    /* } */
-
-    isr_table[SYSCALL - 1] = isr_128;
-    isr_table[SYSCALL] = isr_128;
-    idt_set_entry(SYSCALL - 1, isr_table[SYSCALL - 1], 0x8e);
-    idt_set_entry(SYSCALL, isr_table[SYSCALL], 0x8e);
+    isr_handlers[13] = &gp_fault;
+    isr_handlers[PIC_REMAP + KBD_IRQ + 1] = &kbd_interrupt;
 
     load_idt((uint32_t)&idtr);
 
-    pic_init(KBD_MASK);
+    pic_init(KBD_MASK | COM1_MASK | COM2_MASK);
     sti();
 
     fb_print_black("Interrupts enabled\n");
@@ -66,13 +60,13 @@ void init_idt() {
 /* void isr_x86(struct x86_cpu_state c, uint32_t int_num, */
              /* struct isr_stack stack) {  */
 void isr_x86(struct isr_full_stack isr) {
-    
-    count++;
     pic_eoi(PIC1);
-    interrupt();
 
-    fb_newline();
-    fb_print_num(isr.int_num);
+    count++;
+    isr_handlers[isr.int_num](isr.int_num);
+
+    /* fb_newline(); */
+    /* fb_print_num(isr.int_num); */
     /* fb_newline(); */
     /* fb_print_num(pic_get_irr()); */
     /* fb_newline(); */
@@ -81,9 +75,7 @@ void isr_x86(struct isr_full_stack isr) {
     /* fb_print_num(cpu_state.ebp); */
     /* fb_newline(); */
     /* fb_print_num(int_stack.error_code); */
-
    
-    cli();
 }
 
 

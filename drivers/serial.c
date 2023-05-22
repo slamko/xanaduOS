@@ -1,4 +1,5 @@
 #include "lib/slibc.h"
+#include "drivers/fb.h"
 #include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include "drivers/serial.h"
@@ -16,7 +17,7 @@ enum COM_Registers {
 };
 
 #define PROBE_DATA 0x42
-#define PROBE_CHECK
+/* #define PROBE_CHECK */
 
 void com_init(uint32_t port) {
     outb(port + LINE_CR, (1 << 7));
@@ -82,7 +83,9 @@ int serial_read_buf(port_t port, char *buf, size_t buf_len) {
 }
 
 void serial_init(void) {
-    /* com_init(COM1); */
+    com_init(COM1);
     /* com_init(COM2); */
+
+    fb_print_black("Serial port COM1 initialised");
 }
 
