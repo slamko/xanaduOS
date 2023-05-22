@@ -1,6 +1,7 @@
+#include "drivers/int.h"
 #include "int/except_handler.h"
 #include <stdint.h>
 
-void gp_fault(uint32_t i) {
+void gp_fault(struct isr_handler_args i) {
     
 }

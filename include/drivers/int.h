@@ -21,6 +21,16 @@ enum IDT_DESCRIPTOR_FLAGS {
     IDTD_PROTECTED_MODE = (1 << 3),
 };
 
+enum RESERVED_INTERRUPTS {
+    DIV_BY_ZERO_INT = 0x00,
+    SSI = 0x01,
+    NMI = 0x02,
+    OVERFLOW_INT = 0x04,
+    DOUBLE_F_INT = 0x08,
+    GP_INT = 0x0D,
+    PAGE_F_INT = 0x0E,
+};
+
 #define INT_GATE_MASK (0x6)
 
 struct idt_entry {
@@ -37,12 +47,13 @@ struct idtr {
 } __attribute__((packed));
 
 struct x86_cpu_state {
-    uint32_t ebp;
     uint32_t edi;
     uint32_t esi;
+    uint32_t ebp;
+    uint32_t esp;
+    uint32_t ebx;
     uint32_t edx;
     uint32_t ecx;
-    uint32_t ebx;
     uint32_t eax;
 } __attribute__((packed));
 
@@ -54,19 +65,17 @@ struct isr_stack {
 } __attribute__((packed));
 
 struct isr_full_stack {
-    uint32_t ebp;
-    uint32_t edi;
-    uint32_t esi;
-    uint32_t edx;
-    uint32_t ecx;
-    uint32_t ebx;
-    uint32_t eax;
+    struct x86_cpu_state cpu_st;
     uint32_t int_num;
     uint32_t error_code;
     uint32_t eip;
     uint32_t cs;
     uint32_t eflags;
 } __attribute__((packed));
+
+struct isr_handler_args {
+    uint32_t int_id;
+};
 
 static inline void cli(void) {
     asm volatile ("cli");

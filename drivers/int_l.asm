@@ -32,26 +32,11 @@ isr_%1:
 %endmacro
 
 common_isr:
-    push dword eax
-    push dword ebx
-    push dword ecx
-    push dword edx
-    push dword esi
-    push dword edi
-    push dword ebp
+    pushad
 
-    ;; push eax
     call isr_x86
-    ;; pop eax
-
-    pop ebp
-    pop edi
-    pop esi
-    pop edx
-    pop ecx
-    pop ebx
-    pop eax
-
+    
+    popad
     add esp, 8
 
     sti
@@ -93,7 +78,6 @@ isr_no_error_code 32
 
 global isr_table
 
-    
 section .data
 align 16    
 isr_table:  

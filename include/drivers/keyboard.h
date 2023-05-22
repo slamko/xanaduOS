@@ -1,6 +1,7 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
+#include "drivers/int.h"
 #include <stdint.h>
 #define KBD_INPUT_PORT 0x60
 #define KBD_STATUS_PORT 0x64
@@ -13,7 +14,7 @@ enum SPEC_CODES {
     DOWN_ARROW = 345
 };
 
-void kbd_interrupt(uint32_t int_id);
+void kbd_interrupt(struct isr_handler_args);
 
 typedef int (*receiver)(uint32_t);
 

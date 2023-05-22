@@ -1,3 +1,4 @@
+#include "drivers/int.h"
 #include "lib/typedef.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
@@ -47,7 +48,7 @@ uint32_t read_scan_code() {
     return kbd_US[c];
 }
 
-void kbd_interrupt(uint32_t int_id) {
+void kbd_interrupt(struct isr_handler_args args) {
     uint8_t stat = inb(KBD_STATUS_PORT);
     if (stat) {
         uint32_t keycode = read_scan_code();
