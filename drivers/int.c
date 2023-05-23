@@ -60,7 +60,7 @@ void init_idt() {
 /* void isr_x86(struct x86_cpu_state c, uint32_t int_num, */
              /* struct isr_stack stack) {  */
 void isr_x86(struct isr_full_stack isr) {
-    pic_eoi(PIC1);
+    pic_eoi(isr.int_num);
 
     count++;
     isr_handlers[isr.int_num](

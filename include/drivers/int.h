@@ -11,24 +11,24 @@ enum IRQ_Ids {
 };
 
 enum BASE_IRQ {
-    KBD_MASK = (1 << KBD_IRQ),
-    COM2_MASK = (1 << COM2_IRQ),
-    COM1_MASK = (1 << COM1_IRQ),
+    KBD_MASK    = (1 << KBD_IRQ),
+    COM2_MASK   = (1 << COM2_IRQ),
+    COM1_MASK   = (1 << COM1_IRQ),
 };
 
 enum IDT_DESCRIPTOR_FLAGS {
-    IDTD_PRESENT = (1 << 7),
+    IDTD_PRESENT        = (1 << 7),
     IDTD_PROTECTED_MODE = (1 << 3),
 };
 
 enum RESERVED_INTERRUPTS {
     DIV_BY_ZERO_INT = 0x00,
-    SSI = 0x01,
-    NMI = 0x02,
-    OVERFLOW_INT = 0x04,
-    DOUBLE_F_INT = 0x08,
-    GP_INT = 0x0D,
-    PAGE_F_INT = 0x0E,
+    SSI             = 0x01,
+    NMI             = 0x02,
+    OVERFLOW_INT    = 0x04,
+    DOUBLE_F_INT    = 0x08,
+    GP_INT          = 0x0D,
+    PAGE_F_INT      = 0x0E,
 };
 
 #define INT_GATE_MASK (0x6)

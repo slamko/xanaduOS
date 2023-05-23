@@ -4,29 +4,29 @@
 #include <stdint.h>
 
 enum ACCESS_BITS {
-    GDTD_PRESENT = 7,
-    GDTD_DPL = 5,
+    GDTD_PRESENT        = 7,
+    GDTD_DPL            = 5,
     GDTD_NON_SYSTEM_SEG = 4,
-    GDTD_EXEC = 3,
-    GDTD_DC = 2,
-    GDTD_RW = 1,
-    GDTD_ACCESSED = 0,
+    GDTD_EXEC           = 3,
+    GDTD_DC             = 2,
+    GDTD_RW             = 1,
+    GDTD_ACCESSED       = 0,
 };
 
 enum DESCRIPTOR_ACCESS {
-    GDTD_PRESENT_MASK = (1 << 7),
-    GDTD_DPL_MASK = (3 << 5),
-    GDTD_NON_SYSTEM_SEG_MASK = (1 << 4),
-    GDTD_EXEC_MASK = (1 << 3),
-    GDTD_DC_MASK = (1 << 2),
-    GDTD_RW_MASK = (1 << 1),
-    GDTD_ACCESSED_MASK = (1 << 0),
+    GDTD_PRESENT_MASK           = (1 << 7),
+    GDTD_DPL_MASK               = (3 << 5),
+    GDTD_NON_SYSTEM_SEG_MASK    = (1 << 4),
+    GDTD_EXEC_MASK              = (1 << 3),
+    GDTD_DC_MASK                = (1 << 2),
+    GDTD_RW_MASK                = (1 << 1),
+    GDTD_ACCESSED_MASK          = (1 << 0),
 };
 
 enum DESCRIPTOR_FLAGS {
-    GDTF_GRAN = (1 << 3),
+    GDTF_GRAN           = (1 << 3),
     GDTF_PROTECTED_MODE = (1 << 2),
-    GDTF_LONG_MODE = (1 << 1),
+    GDTF_LONG_MODE      = (1 << 1),
 };
 
 struct gdt_entry {
