@@ -74,7 +74,6 @@ isr_no_error_code 28
 isr_no_error_code 29
 isr_error_code    30
 isr_no_error_code 31
-isr_no_error_code 32
 
 global isr_table
 
@@ -89,7 +88,7 @@ isr_table:
 %assign i i+1 
     %endrep
     
-%assign i 33 
+%assign i 32 
 %rep 256
     section .text
     isr_no_error_code i

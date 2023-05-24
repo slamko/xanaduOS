@@ -19,10 +19,10 @@ void kernel_main(void) {
   /* fb_print_black("hello"); */
   serial_send(COM1, 'a');
 
-  /* while (1) { */
-      /* wait_serial_read(COM1); */
-        /* serial_send(COM1, 'a'); */
-  /* } */
+  while (1) {
+      wait_serial_read(COM1);
+        serial_send(COM1, 'a');
+  }
 
   /* serial_shell(); */
   /* fprintf(fb_char_device, "Hello world\n"); */
@@ -31,7 +31,7 @@ void kernel_main(void) {
   /* asm volatile ("int $0x6"); */
   /* asm volatile ("int $0x7"); */
   /* asm volatile("int $128"); */
-  shell_start();
+  /* shell_start(); */
 
   while (1)
     ;

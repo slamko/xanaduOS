@@ -1,6 +1,7 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
+#include "drivers/int.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -19,7 +20,7 @@ enum COM_Ports {
 
 typedef enum COM_Ports port_t;
 
-void serial_interrupt();
+void serial_interrupt(struct isr_handler_args args);
 void serial_send(enum COM_Ports port, uint8_t data);
 
 uint8_t wait_serial_read(enum COM_Ports port);

@@ -1,5 +1,6 @@
 #include "lib/slibc.h"
 #include "drivers/fb.h"
+#include "drivers/int.h"
 #include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include "drivers/serial.h"
@@ -16,13 +17,18 @@ enum COM_Registers {
     MODEM_STAT_REG = 6,
 };
 
+enum {
+    BAUD_DIVISOR = 0x0C  
+};
+
 #define PROBE_DATA 0x42
 /* #define PROBE_CHECK */
 
 void com_init(uint32_t port) {
     outb(port + LINE_CR, (1 << 7));
-    outb(port + 0, 0x0C);
-    outb(port + 1, 0x00);
+    outb(port + 0, BAUD_DIVISOR);
+    outb(port + 0, 0x00);
+    outb(port + 2, 0xC7);
     outb(port + LINE_CR, 0x3);
 
 #ifdef PROBE_CHECK
@@ -33,7 +39,7 @@ void com_init(uint32_t port) {
     }
 #endif
 
-    outb(port + MODEM_CR, 0x0F); 
+    outb(port + MODEM_CR, 0x0B); 
     outb(port + INT_REG, 0x3);
     /* outb(port + INT_REG, 0x0); */
 }
@@ -52,8 +58,8 @@ uint8_t wait_serial_read(port_t port) {
     return inb(port + DATA_REG);
 }
 
-void serial_interrupt() {
-    outb(COM1 + DATA_REG, 'a');
+void serial_interrupt(struct isr_handler_args args) {
+
 }
 
 void serial_send(port_t port, uint8_t data) {

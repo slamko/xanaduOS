@@ -2,6 +2,8 @@
 
 #include "drivers/int.h"
 #include "drivers/fb.h"
+#include "drivers/serial.h"
+#include "kernel/syscall.h"
 #include "drivers/pic.h"
 #include "drivers/keyboard.h"
 #include "int/except_handler.h"
@@ -47,7 +49,9 @@ void init_idt() {
     }
 
     isr_handlers[GP_INT] = &gp_fault;
-    isr_handlers[PIC_REMAP + KBD_IRQ + 1] = &kbd_interrupt;
+    isr_handlers[PIC_REMAP + KBD_IRQ] = &kbd_interrupt;
+    isr_handlers[PIC_REMAP + COM1_IRQ] = &serial_interrupt;
+    isr_handlers[SYSCALL_INT] = &syscall_handler; 
 
     load_idt((uint32_t)&idtr);
 
@@ -67,6 +71,9 @@ void isr_x86(struct isr_full_stack isr) {
         (struct isr_handler_args) {
             .int_id = isr.int_num
         });
+
+    fb_newline();
+    fb_print_num(isr.int_num);
 }
 
 

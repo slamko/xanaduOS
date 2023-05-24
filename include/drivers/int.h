@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define SYSCALL_INT 0x80
+
 enum IRQ_Ids {
     KBD_IRQ  = 1,
     COM2_IRQ = 3,
