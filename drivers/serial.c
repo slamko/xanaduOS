@@ -21,6 +21,10 @@ enum {
     BAUD_DIVISOR = 0x0C  
 };
 
+static char serial_buf[1024];
+static int write_pos = 0;
+static int cur_pos = 0;
+
 #define PROBE_DATA 0x42
 /* #define PROBE_CHECK */
 
@@ -44,7 +48,7 @@ void com_init(uint32_t port) {
     /* outb(port + INT_REG, 0x0); */
 }
 
-static int rx_free(port_t port) {
+static int rx_ready(port_t port) {
     return (inb(port + LINE_STAT_REG) & (1 << 0));
 }
 
@@ -52,20 +56,46 @@ static int tx_free(port_t port) {
     return (inb(port + LINE_STAT_REG) & (1 << 5));
 }
 
-uint8_t wait_serial_read(port_t port) {
-    while(!rx_free(port));
+void serial_send(port_t port, char data) {
+    outb(port + DATA_REG, data);
+}
 
+char serial_read(port_t port) {
     return inb(port + DATA_REG);
 }
 
-void serial_interrupt(struct isr_handler_args args) {
+uint8_t wait_serial_read(port_t port) {
+    while(!rx_ready(port));
 
+    return serial_read(port);
 }
 
-void serial_send(port_t port, uint8_t data) {
+void wait_serial_send(port_t port, char data) {
     while(!tx_free(port));
 
-    outb(port + DATA_REG, data);
+    serial_send(port, data);
+}
+
+void serial_write(port_t port, const char *buf, size_t len) {
+    strcpy(serial_buf + write_pos, buf, len);
+    cur_pos++;
+    write_pos += len;
+    wait_serial_send(port, buf[0]);
+}
+
+void serial_interrupt(struct isr_handler_args args) {
+    port_t port = COM1;
+    
+    if (tx_free(port) && cur_pos != write_pos) {
+        cur_pos++;
+        serial_send(port, serial_buf[cur_pos - 1]);
+    }
+
+    if (rx_ready(port)) {
+        write_pos++;
+        serial_buf[write_pos] = serial_read(port);
+    }
+    
 }
 
 void serial_print(port_t port, char *msg) {

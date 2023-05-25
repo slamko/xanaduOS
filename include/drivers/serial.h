@@ -21,8 +21,13 @@ enum COM_Ports {
 typedef enum COM_Ports port_t;
 
 void serial_interrupt(struct isr_handler_args args);
-void serial_send(enum COM_Ports port, uint8_t data);
 
+void serial_send(enum COM_Ports port, char data);
+char serial_read(enum COM_Ports port);
+
+void serial_write(port_t port, const char *buf, size_t len);
+
+void wait_serial_send(enum COM_Ports port, char data);
 uint8_t wait_serial_read(enum COM_Ports port);
 
 int serial_read_buf(port_t port, char *buf, size_t buf_len);

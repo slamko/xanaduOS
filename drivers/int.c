@@ -72,8 +72,8 @@ void isr_x86(struct isr_full_stack isr) {
             .int_id = isr.int_num
         });
 
-    fb_newline();
-    fb_print_num(isr.int_num);
+    /* fb_newline(); */
+    /* fb_print_num(count); */
 }
 
 

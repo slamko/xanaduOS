@@ -50,7 +50,7 @@ int strcmp(const char *str, const char *cmp) {
 char *strcpy(char *str, const char *cpy, size_t len) {
     if (!str || !cpy) return NULL;
     
-    for (size_t i = 0; i < len && str[i] && cpy[i]; i++) {
+    for (size_t i = 0; i < len; i++) {
         str[i] = cpy[i];
     }
 
