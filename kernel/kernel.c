@@ -9,20 +9,20 @@
 #include "io.h"
 #include <stdint.h>
 
+void jump_usermode(void);
+
 void kernel_main(void) {
   fb_clear();
 
   init_gdt();
   init_idt();
-  serial_init();
-
-  /* fb_print_black("hello"); */
+  /* serial_init(); */
 
   /* while (1) { */
       /* wait_serial_read(COM1); */
         /* serial_send(COM1, 'a'); */
   /* } */
-  serial_write(COM1, "Hello, World", 13);
+  /* serial_write(COM1, "Hello, World", 13); */
 
   /* serial_shell(); */
   /* fprintf(fb_char_device, "Hello world\n"); */
@@ -32,7 +32,10 @@ void kernel_main(void) {
   /* asm volatile ("int $0x7"); */
   /* asm volatile("int $128"); */
   /* shell_start(); */
+  jump_usermode();
 
-  while (1)
-    ;
+  fb_newline();
+  fb_print_black("rello");
+
+  while (1);
 }

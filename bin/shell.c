@@ -75,6 +75,7 @@ int read_stream(uint32_t c) {
 
         fb_last_written_buf(&cmd, &len);
         memcpy(last_cmd, cmd, len);
+        serial_write(COM1, cmd, len);
 
         execute(cmd, len);
         shell_prompt();

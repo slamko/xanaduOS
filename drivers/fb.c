@@ -215,7 +215,6 @@ void fb_print_num(unsigned int num) {
     fb_nprint_black(str_num, mul);
 }
 
-
 void fb_mov_cursor(uint16_t pos) {
     outb(FB_COMMAND_PORT, FB_HIGH_BYTE_COMMAND);
     outb(FB_DATA_PORT, (pos >> 8) & 0xFF);
@@ -229,6 +228,7 @@ void fb_clear(void) {
         frame_buf_attrs[i] = (struct fb_attr) {0};
         fb_out[i] = 0;
     }
+    fb_pos = 0;
 }   
 
 

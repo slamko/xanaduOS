@@ -72,7 +72,7 @@ struct gdtr {
     uintptr_t base;
 } __attribute__((packed));
 
-#define GDT_SIZE 5
+#define GDT_SIZE 6
 
 void init_gdt();
 

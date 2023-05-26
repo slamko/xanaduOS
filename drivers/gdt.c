@@ -1,6 +1,7 @@
 #include "drivers/gdt.h"
 #include "drivers/fb.h"
 #include "drivers/int.h"
+#include "drivers/tss.h"
 #include "lib/slibc.h"
 #include <stdint.h>
 
@@ -56,7 +57,14 @@ void fill_gdt() {
                    GDTD_RW_MASK,
                    GDTF_GRAN | GDTF_PROTECTED_MODE);
 
+    gdt_fill_entry(5, (uintptr_t)&tss, sizeof(tss),
+                   GDTD_ACCESSED_MASK |
+                   GDTD_EXEC_MASK |
+                   GDTD_PRESENT_MASK,
+                   0x00);
+
     load_gdt((uintptr_t)&gdtr);
+    load_tss();
 }
 
 void init_gdt() {

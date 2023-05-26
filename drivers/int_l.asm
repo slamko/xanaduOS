@@ -98,4 +98,20 @@ isr_table:
 %assign i i+1 
 %endrep
 
+global jump_usermode
+extern usermode
+jump_usermode:
+    mov ax, 0x20 | 3
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
 
+    mov eax, esp
+    push 0x20 | 3
+    push eax
+    pushf
+    push 0x18 | 3
+    push usermode
+    int 0x9
+    iret

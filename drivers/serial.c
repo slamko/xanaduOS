@@ -21,9 +21,11 @@ enum {
     BAUD_DIVISOR = 0x0C  
 };
 
-static char serial_buf[1024];
-static int write_pos = 0;
-static int cur_pos = 0;
+static char write_buf[1024];
+static char read_buf[1024];
+static size_t write_pos = 0;
+static size_t read_pos = 0;
+static size_t cur_pos = 0;
 
 #define PROBE_DATA 0x42
 /* #define PROBE_CHECK */
@@ -77,7 +79,7 @@ void wait_serial_send(port_t port, char data) {
 }
 
 void serial_write(port_t port, const char *buf, size_t len) {
-    strcpy(serial_buf + write_pos, buf, len);
+    strcpy(write_buf + write_pos, buf, len);
     cur_pos++;
     write_pos += len;
     wait_serial_send(port, buf[0]);
@@ -85,17 +87,17 @@ void serial_write(port_t port, const char *buf, size_t len) {
 
 void serial_interrupt(struct isr_handler_args args) {
     port_t port = COM1;
+    UNUSED(args);
     
     if (tx_free(port) && cur_pos != write_pos) {
         cur_pos++;
-        serial_send(port, serial_buf[cur_pos - 1]);
+        serial_send(port, write_buf[cur_pos - 1]);
     }
 
     if (rx_ready(port)) {
-        write_pos++;
-        serial_buf[write_pos] = serial_read(port);
+        read_pos++;
+        read_buf[read_pos - 1] = serial_read(port);
     }
-    
 }
 
 void serial_print(port_t port, char *msg) {
