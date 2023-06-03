@@ -21,6 +21,7 @@ enum BASE_IRQ {
 enum IDT_DESCRIPTOR_FLAGS {
     IDTD_PRESENT        = (1 << 7),
     IDTD_PROTECTED_MODE = (1 << 3),
+    IDTD_RING3          = (3 << 5) 
 };
 
 enum RESERVED_INTERRUPTS {
@@ -33,7 +34,7 @@ enum RESERVED_INTERRUPTS {
     PAGE_F_INT      = 0x0E,
 };
 
-#define INT_GATE_MASK (0x6)
+#define INT_GATE_MASK (0xE)
 
 struct idt_entry {
     uint16_t isr_low;
@@ -82,6 +83,11 @@ struct isr_handler_args {
 static inline void cli(void) {
     asm volatile ("cli");
 }
+
+typedef void (*isr_handler_t)(struct isr_handler_args);
+
+void add_irq_handler(uint8_t irq_num, isr_handler_t handler);
+void add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags);
 
 void init_idt();
 

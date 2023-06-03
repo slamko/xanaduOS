@@ -3,6 +3,7 @@
 #include "drivers/gdt.h"
 #include "drivers/int.h"
 #include "drivers/keyboard.h"
+#include "drivers/mouse.h"
 #include "lib/slibc.h"
 #include "mem/flat.h"
 #include "drivers/serial.h"
@@ -16,8 +17,10 @@ void kernel_main(void) {
 
   init_gdt();
   init_idt();
-  /* serial_init(); */
-
+  serial_init();
+  kbd_init();
+  ps2_init();
+  
   /* while (1) { */
       /* wait_serial_read(COM1); */
         /* serial_send(COM1, 'a'); */
@@ -31,11 +34,12 @@ void kernel_main(void) {
   /* asm volatile ("int $0x6"); */
   /* asm volatile ("int $0x7"); */
   /* asm volatile("int $128"); */
-  /* shell_start(); */
-  jump_usermode();
+  /* asm volatile ("int $0x80"); */
+  /* jump_usermode(); */
 
-  fb_newline();
-  fb_print_black("rello");
+  /* fb_newline(); */
+  /* shell_start(); */
+  /* fb_print_black("rello"); */
 
   while (1);
 }

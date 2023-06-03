@@ -17,7 +17,6 @@ static int count;
 
 extern void *isr_table[];
 
-typedef void (*isr_handler_t)(struct isr_handler_args);
 static isr_handler_t isr_handlers[256];
 
 void load_idt(uint32_t ptr);
@@ -44,21 +43,30 @@ void init_idt() {
 
     for (uint8_t i = 0; i < 255; i++) {
         idt_set_entry(i, isr_table[i], 
-                      IDTD_PRESENT | IDTD_PROTECTED_MODE | INT_GATE_MASK);
+                      IDTD_PRESENT | INT_GATE_MASK);
         isr_handlers[i] = &void_handler;
     }
 
     isr_handlers[GP_INT] = &gp_fault;
-    isr_handlers[PIC_REMAP + KBD_IRQ] = &kbd_interrupt;
-    isr_handlers[PIC_REMAP + COM1_IRQ] = &serial_interrupt;
     isr_handlers[SYSCALL_INT] = &syscall_handler; 
+    idt_set_entry(SYSCALL_INT, isr_table[SYSCALL_INT],
+                  IDTD_PRESENT | IDTD_RING3 | INT_GATE_MASK);
 
     load_idt((uint32_t)&idtr);
 
-    pic_init(KBD_MASK | COM1_MASK | COM2_MASK);
+    pic_init(KBD_MASK | COM1_MASK | COM2_MASK | (1<< 12) | (1 << 11) | (1 << 13));
     sti();
 
     fb_print_black("Interrupts enabled\n");
+}
+
+void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
+    isr_handlers[PIC_REMAP + irq_num] = handler;
+}
+
+void add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
+    isr_handlers[int_num] = handler;
+    idt_set_entry(int_num, isr_table[int_num], flags);
 }
 
 /* void isr_x86(struct x86_cpu_state c, uint32_t int_num, */

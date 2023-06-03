@@ -50,7 +50,7 @@ uint32_t read_scan_code() {
 
 void kbd_interrupt(struct isr_handler_args args) {
     uint8_t stat = inb(KBD_STATUS_PORT);
-    if (stat) {
+    if (stat & (1 << 0)) {
         uint32_t keycode = read_scan_code();
 
         if (keycode) {
@@ -67,5 +67,8 @@ void kbd_interrupt(struct isr_handler_args args) {
             buf_pos = 0;
         }
     }
- 
+}
+
+void kbd_init(void) {
+    add_irq_handler(KBD_IRQ, &kbd_interrupt);
 }

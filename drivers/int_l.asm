@@ -89,7 +89,7 @@ isr_table:
     %endrep
     
 %assign i 32 
-%rep 256
+%rep 224
     section .text
     isr_no_error_code i
     section .data
@@ -101,17 +101,22 @@ isr_table:
 global jump_usermode
 extern usermode
 jump_usermode:
-    mov ax, 0x20 | 3
+    mov ax, 0x23
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
 
     mov eax, esp
-    push 0x20 | 3
+    push 0x23
     push eax
     pushf
-    push 0x18 | 3
+    push 0x1B
     push usermode
-    int 0x9
     iret
+
+global ltr
+ltr:
+    mov ax, 0x28
+    ltr ax
+    ret

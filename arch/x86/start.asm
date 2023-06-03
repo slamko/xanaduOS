@@ -6,9 +6,14 @@ KERNEL_STACK_SIZE equ 0x4000
 extern kernel_main
 global _start
 global kernel_stack_end
+global kernel_stack_start
+global kernel_int_stack_end
 
 section .bss
 align 16
+kernel_int_stack_start
+    resb 0x1000
+kernel_int_stack_end:   
 kernel_stack_start:
     resb KERNEL_STACK_SIZE 
 kernel_stack_end:   
