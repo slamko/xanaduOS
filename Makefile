@@ -52,6 +52,17 @@ debug_run: debug mkiso_$(ARCH)
 run: mkiso_$(ARCH)
 	qemu-system-$(ARCH) $(QEMU_ARGS) 
 
+floppy:
+	umount /dev/loop0 ; \
+	losetup -d /dev/loop0 ; \
+	rm -f floppy.img && \
+	dd if=/dev/zero of=floppy.img bs=1024KiB count=10 && \
+	losetup /dev/loop0 floppy.img && \
+	mkfs -t ext4 /dev/loop0
+
+bochs:
+	bochs -f bochsrc.txt
+
 clean:
 	$(RM) *.o
 	$(RM) *.elf
