@@ -4,6 +4,7 @@
 #include "drivers/int.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
+#include "drivers/pit.h"
 #include "lib/slibc.h"
 #include "mem/flat.h"
 #include "drivers/serial.h"
@@ -19,7 +20,8 @@ void kernel_main(void) {
   init_idt();
   serial_init();
   kbd_init();
-  ps2_init();
+  /* ps2_init(); */
+  pit_init(50);
   
   /* while (1) { */
       /* wait_serial_read(COM1); */

@@ -54,13 +54,14 @@ void init_idt() {
 
     load_idt((uint32_t)&idtr);
 
-    pic_init(KBD_MASK | COM1_MASK | COM2_MASK | (1<< 12) | (1 << 11) | (1 << 13));
+    pic_init(0);
     sti();
 
     fb_print_black("Interrupts enabled\n");
 }
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
+    pic_unmask(irq_num);
     isr_handlers[PIC_REMAP + irq_num] = handler;
 }
 
@@ -80,7 +81,7 @@ void isr_x86(struct isr_full_stack isr) {
             .int_id = isr.int_num
         });
 
-    fb_print_num(isr.int_num);
+    /* fb_print_num(isr.int_num); */
 }
 
 
