@@ -38,6 +38,8 @@ enum {
 
 #define ICW1 (((ICW_INIT | ICW4_INIT) & ~SINGLE_MODE) & ~LEVEL_TRIG_MODE)
 
+static uint16_t cached_mask;
+
 static inline void outb_wait(uint16_t port, uint8_t value) {
     outb(port, value);
     io_wait();
@@ -91,13 +93,15 @@ void pic_mask(uint8_t irq) {
         irq -= 8;
     }
 
-    value = inb(port) | (1 << irq);
+    value = cached_mask | (1 << irq);
+    cached_mask = value;
     outb(port, value);
 }
 
 static void pic_mask_set(uint16_t mask) {
     uint8_t mask_low = mask & 0xFF;
     uint8_t mask_high = (mask >> 8) & 0xFF;
+    cached_mask = mask;
 
     outb(PIC1_DATA, mask_low);
     outb(PIC2_DATA, mask_high);
@@ -106,14 +110,14 @@ static void pic_mask_set(uint16_t mask) {
 static void pic_mask_clear(uint16_t mask) {
     uint8_t mask_low = ~(mask & 0xFF);
     uint8_t mask_high = ~((mask >> 8) & 0xFF);
+    cached_mask = mask;
 
     outb(PIC1_DATA, mask_low);
     outb(PIC2_DATA, mask_high);
 }
 
 void pic_mask_all() {
-    outb(PIC1_DATA, 0xff);
-    outb(PIC2_DATA, 0xff);
+    pic_mask_set(0xFFFF);
 }
 
 void pic_unmask(uint8_t irq) {
@@ -125,7 +129,8 @@ void pic_unmask(uint8_t irq) {
         irq -= 8;
     }
 
-    value = inb(port) & ~(1 << irq);
+    value = cached_mask & ~(1 << irq);
+    cached_mask = value;
     outb(port, value);
 }
 
@@ -138,7 +143,9 @@ void pic_eoi(uint8_t int_id) {
 
 void pic_init(uint16_t mask) {
     pic_remap(PIC1_REMAP, PIC2_REMAP);
-
     pic_mask_all();
-    pic_mask_clear(mask);
+    
+    if (mask) {
+        pic_mask_clear(mask);
+    }
 }

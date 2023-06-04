@@ -61,8 +61,8 @@ void init_idt() {
 }
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
-    pic_unmask(irq_num);
     isr_handlers[PIC_REMAP + irq_num] = handler;
+    pic_unmask(irq_num);
 }
 
 void add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {

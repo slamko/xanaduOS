@@ -21,13 +21,13 @@ void kernel_main(void) {
   serial_init();
   kbd_init();
   /* ps2_init(); */
-  pit_init(0);
+  pit_init(1);
   
  /* jump_usermode(); */
 
   /* fb_newline(); */
-  sleep_ms(500);
-  shell_start();
+  /* sleep_ms(500); */
+  /* shell_start(); */
   /* fb_print_black("rello"); */
 
   while (1);

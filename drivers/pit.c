@@ -3,16 +3,23 @@
 #include "drivers/int.h"
 #include "drivers/pic.h"
 #include "lib/kernel.h"
+#include "lib/slibc.h"
 #include <stdint.h>
 
-#define XTAL_FREQ 1193182
-
+static const unsigned long XTAL_FREQ = 1193182;
 static unsigned long tick;
-static unsigned long pit_freq = XTAL_FREQ;
+static unsigned long pit_freq = 1;
+
+enum PIT_channels{
+    PIT_CH0         = 0x40,
+    PIT_CH1         = 0x41,
+    PIT_CH2         = 0x42,
+};
 
 enum {
-    SQUARE_WAVE = 0x3,
-    LOHI_MODE   = 0x3, 
+    SQUARE_WAVE     = 0x3,
+    LOHI_MODE       = 0x30, 
+    PIT_MODE_REG    = 0x43,
 };
 
 void sleep_ms(unsigned long delay) {
@@ -27,10 +34,16 @@ void sleep_ms(unsigned long delay) {
 
 void pit_handler(struct isr_handler_args args) {
     tick++;
-    if (tick > 100) {
-        fb_newline();
-        fb_print_num(tick);
-    }
+    fb_newline();
+    fb_print_num(tick);
+}
+
+uint16_t get_pit_count(enum PIT_channels ch) {
+    outb(PIT_MODE_REG, (ch & 0x0F) << 6);
+
+    uint16_t count = inb(ch);
+    count |= inb(ch) << 8;
+    return count;
 }
 
 int pit_init(unsigned long freq) {
@@ -38,19 +51,26 @@ int pit_init(unsigned long freq) {
         return 1;
     }
 
+    cli();
+
     if (freq) {
         pit_freq = freq;
     } else {
         freq = pit_freq;
     }
     
-    add_irq_handler(IRQ0, &pit_handler);
 
-    outb(PIT_MODE_REG, (LOHI_MODE << 4) | (SQUARE_WAVE << 1));
-    uint16_t divisor = XTAL_FREQ / freq;
+    outb(PIT_MODE_REG, LOHI_MODE | (SQUARE_WAVE << 1));
+    uint16_t divisor = XTAL_FREQ / 1000;
+    fb_newline();
+    fb_print_num(divisor);
 
     outb(PIT_CH0, divisor & 0xFF);
     outb(PIT_CH0, (divisor >> 8) & 0xFF);
 
+    io_wait();
+
+    /* add_irq_handler(IRQ0, &pit_handler); */
+    asm volatile("sti");
     return 0;
 }
