@@ -8,7 +8,9 @@ enum {
     PIT_MODE_REG    = 0x43,
 };
 
-int pit_init(long freq);
+int pit_init(unsigned long freq);
+
+void sleep_ms(unsigned long delay);
 
 void pit_handler(struct isr_handler_args);
 #endif

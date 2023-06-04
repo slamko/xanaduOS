@@ -1,3 +1,4 @@
+#include "drivers/fb.h"
 #include "drivers/int.h"
 #include "lib/kernel.h"
 #include "lib/slibc.h"
@@ -50,21 +51,24 @@ uint32_t read_scan_code() {
 
 void kbd_interrupt(struct isr_handler_args args) {
     uint8_t stat = inb(KBD_STATUS_PORT);
+
     if (stat & (1 << 0)) {
         uint32_t keycode = read_scan_code();
+        /* fb_newline(); */
+        /* fb_print_num(keycode); */
 
-        if (keycode) {
+        if (keycode && keycode < KBD_LAYOUT_MAX_CODE) {
             kbd_buf[buf_pos] = keycode;
             buf_pos++;
-        }
         
-        for (size_t r_id = 0; receiver_f[r_id]; r_id++) {
-            receiver_f[r_id](keycode);
-        }
+            for (size_t r_id = 0; receiver_f[r_id]; r_id++) {
+                receiver_f[r_id](keycode);
+            }
 
-        if (keycode == '\n') {
-            memset(kbd_buf, 0, sizeof(kbd_buf));
-            buf_pos = 0;
+            if (keycode == '\n') {
+                memset(kbd_buf, 0, sizeof(kbd_buf));
+                buf_pos = 0;
+            }
         }
     }
 }

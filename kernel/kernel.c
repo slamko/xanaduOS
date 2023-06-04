@@ -21,26 +21,13 @@ void kernel_main(void) {
   serial_init();
   kbd_init();
   /* ps2_init(); */
-  pit_init(50);
+  pit_init(0);
   
-  /* while (1) { */
-      /* wait_serial_read(COM1); */
-        /* serial_send(COM1, 'a'); */
-  /* } */
-  /* serial_write(COM1, "Hello, World", 13); */
-
-  /* serial_shell(); */
-  /* fprintf(fb_char_device, "Hello world\n"); */
-  /* flush(fb_char_device); */
-  /* fb_print_num(123456); */
-  /* asm volatile ("int $0x6"); */
-  /* asm volatile ("int $0x7"); */
-  /* asm volatile("int $128"); */
-  /* asm volatile ("int $0x80"); */
-  /* jump_usermode(); */
+ /* jump_usermode(); */
 
   /* fb_newline(); */
-  /* shell_start(); */
+  sleep_ms(500);
+  shell_start();
   /* fb_print_black("rello"); */
 
   while (1);

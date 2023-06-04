@@ -3,11 +3,15 @@
 
 #include "drivers/int.h"
 #include <stdint.h>
+
 #define KBD_INPUT_PORT 0x60
 #define KBD_STATUS_PORT 0x64
 
-#define KBD_INT_REC_NUM 256
-#define KBD_DEL 127
+enum {
+    KBD_INT_REC_NUM      = 256,
+    KBD_DEL              = 127,
+    KBD_LAYOUT_MAX_CODE  = 512,
+};
 
 enum SPEC_CODES {
     UP_ARROW = 344,
@@ -20,6 +24,5 @@ void kbd_init(void);
 typedef int (*receiver)(uint32_t);
 
 extern receiver receiver_f[KBD_INT_REC_NUM];
-extern uint32_t kbd_buf[1024];
 
 #endif

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "drivers/fb.h"
 #include "bin/shell.h"
+#include "drivers/pit.h"
 #include "drivers/serial.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
@@ -33,6 +34,7 @@ void serial_shell(void) {
 }
 
 int execute(const char *cmd, size_t len) {
+    sleep_ms(900);
     if (strneq(cmd, "echo", 4) == 0) {
         fb_print_black(cmd + 5);
         fb_newline();

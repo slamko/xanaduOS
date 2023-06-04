@@ -95,6 +95,10 @@ static inline void sti(void) {
     asm volatile ("sti");
 }
 
+static inline void halt(void) {
+    asm volatile ("hlt");
+}
+
 /* void isr_x86(struct x86_cpu_state, uint32_t int_num, struct isr_stack);  */
 void isr_x86 (struct isr_full_stack);
 
