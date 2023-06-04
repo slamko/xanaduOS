@@ -1,5 +1,5 @@
 #include "drivers/int.h"
-#include "lib/typedef.h"
+#include "lib/kernel.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
 #include <stdint.h>

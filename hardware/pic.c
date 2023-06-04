@@ -3,7 +3,7 @@
 #include "drivers/pic.h"
 #include "drivers/int.h"
 #include "lib/slibc.h"
-#include "lib/typedef.h"
+#include "lib/kernel.h"
 
 #define PIC1            0x20
 #define PIC2            0xA0

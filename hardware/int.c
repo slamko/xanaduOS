@@ -7,7 +7,7 @@
 #include "drivers/pic.h"
 #include "drivers/keyboard.h"
 #include "int/except_handler.h"
-#include "lib/typedef.h"
+#include "lib/kernel.h"
 #include "lib/slibc.h"
 #include "drivers/gdt.h"
 

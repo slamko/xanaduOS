@@ -4,7 +4,7 @@
 #include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include "drivers/serial.h"
-#include "lib/typedef.h"
+#include "lib/kernel.h"
 #include <stddef.h>
 #include <stdint.h>
 

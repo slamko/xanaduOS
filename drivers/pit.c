@@ -1,10 +1,13 @@
 #include "drivers/pit.h"
+#include "drivers/fb.h"
 #include "drivers/int.h"
 #include "drivers/pic.h"
-#include "lib/typedef.h"
+#include "lib/kernel.h"
 #include <stdint.h>
 
 #define XTAL_FREQ 1193182
+
+unsigned long cnt;
 
 enum {
     SQUARE_WAVE = 0x3,
@@ -12,6 +15,10 @@ enum {
 };
 
 void pit_handler(struct isr_handler_args args) {
+    fb_print_black("pit: ");
+    fb_print_num(cnt);
+    fb_newline();
+    cnt++;
 }
 
 int pit_init(long freq) {

@@ -1,3 +1,6 @@
+#ifndef PIT_H
+#define PIT_H
+
 #include "drivers/int.h"
 
 enum {
@@ -8,3 +11,4 @@ enum {
 int pit_init(long freq);
 
 void pit_handler(struct isr_handler_args);
+#endif

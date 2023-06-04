@@ -1,5 +1,5 @@
 #include "drivers/fb.h"
-#include "lib/typedef.h"
+#include "lib/kernel.h"
 #include "drivers/keyboard.h"
 #include "lib/slibc.h"
 #include "mem/paging.h"
