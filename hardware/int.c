@@ -37,24 +37,28 @@ static void void_handler(struct isr_handler_args args) {
     fb_newline();
 }
 
+static void spurious_handler(struct isr_handler_args args) {
+    
+}
+
 void init_idt() {
     idtr.base = (uint32_t)&idt;
     idtr.limit = sizeof(idt) - 1;
 
     for (uint8_t i = 0; i < 255; i++) {
-        idt_set_entry(i, isr_table[i], 
-                      IDTD_PRESENT | INT_GATE_MASK);
+        idt_set_entry(i, isr_table[i], IDTD_DEFAULT);
         isr_handlers[i] = &void_handler;
     }
 
-    isr_handlers[GP_INT] = &gp_fault;
+    isr_handlers[PIC_REMAP + IRQ7] = &spurious_handler;
     isr_handlers[SYSCALL_INT] = &syscall_handler; 
     idt_set_entry(SYSCALL_INT, isr_table[SYSCALL_INT],
                   IDTD_PRESENT | IDTD_RING3 | INT_GATE_MASK);
 
     load_idt((uint32_t)&idtr);
-
-    pic_init(0);
+    pic_init(0, true);
+    exception_handlers_init();
+    
     sti();
 
     fb_print_black("Interrupts enabled\n");
@@ -67,13 +71,14 @@ void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
 
 void add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
     isr_handlers[int_num] = handler;
-    idt_set_entry(int_num, isr_table[int_num], flags);
+
+    if (flags) {
+        idt_set_entry(int_num, isr_table[int_num], flags);
+    }
 }
 
-/* void isr_x86(struct x86_cpu_state c, uint32_t int_num, */
-             /* struct isr_stack stack) {  */
 void isr_x86(struct isr_full_stack isr) {
-    pic_eoi(isr.int_num);
+    /* pic_eoi(isr.int_num); */
 
     count++;
     isr_handlers[isr.int_num](

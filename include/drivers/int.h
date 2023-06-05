@@ -18,13 +18,16 @@ enum BASE_IRQ {
     COM1_MASK   = (1 << COM1_IRQ),
 };
 
+#define INT_GATE_MASK (0xE)
+
 enum IDT_DESCRIPTOR_FLAGS {
     IDTD_PRESENT        = (1 << 7),
     IDTD_PROTECTED_MODE = (1 << 3),
-    IDTD_RING3          = (3 << 5) 
+    IDTD_RING3          = (3 << 5) ,
+    IDTD_DEFAULT        = IDTD_PRESENT | INT_GATE_MASK, 
 };
 
-enum RESERVED_INTERRUPTS {
+enum {
     DIV_BY_ZERO_INT = 0x00,
     SSI             = 0x01,
     NMI             = 0x02,
@@ -34,7 +37,6 @@ enum RESERVED_INTERRUPTS {
     PAGE_F_INT      = 0x0E,
 };
 
-#define INT_GATE_MASK (0xE)
 
 struct idt_entry {
     uint16_t isr_low;

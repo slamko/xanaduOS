@@ -6,5 +6,5 @@ ata0-master:     type=cdrom, path=slavos.iso, status=inserted
 boot:            cdrom
 log:             bochslog.txt
 clock:           sync=realtime, time0=local
-mouse:           enabled=1
+mouse:           type=imps2, enabled=1
 cpu:             count=1, ips=1000000

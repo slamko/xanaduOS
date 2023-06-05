@@ -98,9 +98,25 @@ isr_table:
 %assign i i+1 
 %endrep
 
+extern fb_print_num
+usermodea:
+    str ax
+    cmp ax, 0x28
+    je loop
+    push ax
+    call fb_print_num
+loop:
+    jmp loop
+    
 global jump_usermode
 extern usermode
 jump_usermode:
+    pushf
+    call fb_print_num 
+    or word [esp], 0x4000
+    call fb_print_num 
+    popf
+    
     mov ax, 0x23
     mov ds, ax
     mov es, ax
@@ -117,6 +133,6 @@ jump_usermode:
 
 global ltr
 ltr:
-    mov ax, 0x28
+    mov ax, 0x28 | 3
     ltr ax
     ret

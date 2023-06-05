@@ -2,6 +2,7 @@
 #define PIC_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define PIC1_REMAP 0x20
 #define PIC2_REMAP 0x28
@@ -36,6 +37,6 @@ void pic_unmask(uint8_t irq);
 
 void pic_eoi(uint8_t int_id);
 
-void pic_init(uint16_t mask);
+void pic_init(uint16_t mask, bool auto_eoi);
 
 #endif

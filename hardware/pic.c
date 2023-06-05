@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "drivers/pic.h"
 #include "drivers/int.h"
@@ -45,7 +46,8 @@ static inline void outb_wait(uint16_t port, uint8_t value) {
     io_wait();
 }
 
-static void pic_remap(uint16_t master_offset, uint16_t slave_offset) {
+static void pic_remap(uint16_t master_offset, uint16_t slave_offset,
+                      bool auto_eoi) {
     uint8_t master_mask, slave_mask;
 
     master_mask = inb(PIC1_DATA);
@@ -60,8 +62,13 @@ static void pic_remap(uint16_t master_offset, uint16_t slave_offset) {
     outb_wait(PIC1_DATA, SLAVE_PIN_IR);
     outb_wait(PIC2_DATA, SLAVE_ID);
 
-    outb_wait(PIC1_DATA, X8086_MODE);
-    outb_wait(PIC2_DATA, X8086_MODE);
+    uint8_t icw4 = X8086_MODE;
+    if (auto_eoi) {
+        icw4 |= AUTO_EOI;
+    }
+    
+    outb_wait(PIC1_DATA, icw4);
+    outb_wait(PIC2_DATA, icw4);
     
     outb(PIC1_DATA, master_mask);
     outb(PIC2_DATA, slave_mask);
@@ -141,8 +148,8 @@ void pic_eoi(uint8_t int_id) {
     outb(PIC1_COMMAND, PIC_EOI);
 }
 
-void pic_init(uint16_t mask) {
-    pic_remap(PIC1_REMAP, PIC2_REMAP);
+void pic_init(uint16_t mask, bool auto_eoi) {
+    pic_remap(PIC1_REMAP, PIC2_REMAP, auto_eoi);
     pic_mask_all();
     
     if (mask) {

@@ -8,7 +8,7 @@
 
 static const unsigned long XTAL_FREQ = 1193182;
 static unsigned long tick;
-static unsigned long pit_freq = 1;
+static unsigned long pit_freq = XTAL_FREQ;
 
 enum PIT_channels{
     PIT_CH0         = 0x40,
@@ -34,8 +34,6 @@ void sleep_ms(unsigned long delay) {
 
 void pit_handler(struct isr_handler_args args) {
     tick++;
-    fb_newline();
-    fb_print_num(tick);
 }
 
 uint16_t get_pit_count(enum PIT_channels ch) {
@@ -58,19 +56,20 @@ int pit_init(unsigned long freq) {
     } else {
         freq = pit_freq;
     }
-    
 
     outb(PIT_MODE_REG, LOHI_MODE | (SQUARE_WAVE << 1));
-    uint16_t divisor = XTAL_FREQ / 1000;
-    fb_newline();
-    fb_print_num(divisor);
+    uint16_t divisor = XTAL_FREQ / freq;
 
     outb(PIT_CH0, divisor & 0xFF);
     outb(PIT_CH0, (divisor >> 8) & 0xFF);
 
     io_wait();
 
-    /* add_irq_handler(IRQ0, &pit_handler); */
+    add_irq_handler(IRQ0, &pit_handler);
     asm volatile("sti");
+
+    fb_newline();
+    fb_print_black("PIT initialized");
+    
     return 0;
 }

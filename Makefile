@@ -60,8 +60,8 @@ floppy:
 	losetup /dev/loop0 floppy.img && \
 	mkfs -t ext4 /dev/loop0
 
-bochs:
-	bochs -f bochsrc.txt
+bochs: mkiso_i386
+	bochs -q -f bochsrc.txt
 
 clean:
 	$(RM) *.o

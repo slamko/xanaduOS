@@ -31,7 +31,7 @@
 00000000000i[      ]   Sound support: no
 00000000000i[      ]   USB support: no
 00000000000i[      ]   VGA extension support: vbe
-00000000000i[MEM0  ] allocated memory at 0x7fc0c7fdd010. after alignment, vector=0x7fc0c7fde000
+00000000000i[MEM0  ] allocated memory at 0x7f8af17dd010. after alignment, vector=0x7f8af17de000
 00000000000i[MEM0  ] 32.00MB
 00000000000i[MEM0  ] mem block size = 0x00020000, blocks=256
 00000000000i[MEM0  ] rom at 0xfffe0000/131072 ('/usr/share/bochs/BIOS-bochs-latest')
@@ -41,7 +41,7 @@
 00000000000i[DEV   ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[PLUGIN] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS  ] Using local time for initial clock
-00000000000i[CMOS  ] Setting initial clock to: Sun Jun  4 13:09:21 2023 (time0=1685876961)
+00000000000i[CMOS  ] Setting initial clock to: Mon Jun  5 19:30:33 2023 (time0=1685986233)
 00000000000i[PLUGIN] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA   ] channel 4 used by cascade
 00000000000i[PLUGIN] init_dev of 'pic' plugin device by virtual method
@@ -191,6 +191,6 @@
 00000000000i[CPU0  ] | EIP=0000fff0 (0000fff0)
 00000000000i[CPU0  ] | CR0=0x60000010 CR2=0x00000000
 00000000000i[CPU0  ] | CR3=0x00000000 CR4=0x00000000
-00000000000i[CMOS  ] Last time is 1685876961 (Sun Jun  4 13:09:21 2023)
+00000000000i[CMOS  ] Last time is 1685986233 (Mon Jun  5 19:30:33 2023)
 00000000000i[XGUI  ] Exit
 00000000000i[SIM   ] quit_sim called with exit code 0

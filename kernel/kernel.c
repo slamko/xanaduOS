@@ -20,10 +20,10 @@ void kernel_main(void) {
   init_idt();
   serial_init();
   kbd_init();
-  /* ps2_init(); */
-  pit_init(1);
+  ps2_init();
+  pit_init(0);
   
- /* jump_usermode(); */
+  jump_usermode();
 
   /* fb_newline(); */
   /* sleep_ms(500); */

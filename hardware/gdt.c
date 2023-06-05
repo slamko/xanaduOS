@@ -57,10 +57,10 @@ void fill_gdt() {
                    GDTD_RW_MASK,
                    GDTF_GRAN | GDTF_PROTECTED_MODE);
 
-    gdt_fill_entry(5, (uintptr_t)&tss, sizeof(tss),
+    gdt_fill_entry(5, (uintptr_t)&tss,  (uintptr_t)&tss + sizeof(tss) - 1,
                    GDTD_ACCESSED_MASK |
-                   GDTD_DPL_MASK |
                    GDTD_EXEC_MASK |
+                   GDTD_DPL_MASK |
                    GDTD_PRESENT_MASK,
                    0x00);
 
