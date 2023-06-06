@@ -31,7 +31,7 @@
 00000000000i[      ]   Sound support: no
 00000000000i[      ]   USB support: no
 00000000000i[      ]   VGA extension support: vbe
-00000000000i[MEM0  ] allocated memory at 0x7f8af17dd010. after alignment, vector=0x7f8af17de000
+00000000000i[MEM0  ] allocated memory at 0x7fb01addd010. after alignment, vector=0x7fb01adde000
 00000000000i[MEM0  ] 32.00MB
 00000000000i[MEM0  ] mem block size = 0x00020000, blocks=256
 00000000000i[MEM0  ] rom at 0xfffe0000/131072 ('/usr/share/bochs/BIOS-bochs-latest')
@@ -41,7 +41,7 @@
 00000000000i[DEV   ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[PLUGIN] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS  ] Using local time for initial clock
-00000000000i[CMOS  ] Setting initial clock to: Mon Jun  5 19:30:33 2023 (time0=1685986233)
+00000000000i[CMOS  ] Setting initial clock to: Tue Jun  6 21:44:39 2023 (time0=1686080679)
 00000000000i[PLUGIN] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA   ] channel 4 used by cascade
 00000000000i[PLUGIN] init_dev of 'pic' plugin device by virtual method
@@ -173,24 +173,131 @@
 00000000000i[XGUI  ] Mouse capture on
 00000000000i[      ] set SIGINT handler to bx_debug_ctrlc_handler
 00000000000i[XGUI  ] Mouse capture off
-00000000000i[      ] dbg: Quit
-00000000000i[CPU0  ] CPU is in real mode (active)
-00000000000i[CPU0  ] CS.mode = 16 bit
-00000000000i[CPU0  ] SS.mode = 16 bit
-00000000000i[CPU0  ] EFER   = 0x00000000
-00000000000i[CPU0  ] | EAX=00000000  EBX=00000000  ECX=00000000  EDX=00000000
-00000000000i[CPU0  ] | ESP=00000000  EBP=00000000  ESI=00000000  EDI=00000000
-00000000000i[CPU0  ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf zf af pf cf
-00000000000i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
-00000000000i[CPU0  ] |  CS:f000( 1e00| 0|  0) ffff0000 0000ffff 0 0
-00000000000i[CPU0  ] |  DS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
-00000000000i[CPU0  ] |  SS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
-00000000000i[CPU0  ] |  ES:0000( 0000| 0|  0) 00000000 0000ffff 0 0
-00000000000i[CPU0  ] |  FS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
-00000000000i[CPU0  ] |  GS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
-00000000000i[CPU0  ] | EIP=0000fff0 (0000fff0)
-00000000000i[CPU0  ] | CR0=0x60000010 CR2=0x00000000
-00000000000i[CPU0  ] | CR3=0x00000000 CR4=0x00000000
-00000000000i[CMOS  ] Last time is 1685986233 (Mon Jun  5 19:30:33 2023)
-00000000000i[XGUI  ] Exit
-00000000000i[SIM   ] quit_sim called with exit code 0
+00000004662i[BIOS  ] $Revision: 13752 $ $Date: 2019-12-30 14:16:18 +0100 (Mon, 30 Dec 2019) $
+00000282155i[XGUI  ] charmap update. Font is 9 x 16
+00000317062i[KBD   ] reset-disable command received
+00000318319i[BIOS  ] Starting rombios32
+00000318757i[BIOS  ] Shutdown flag 0
+00000319347i[BIOS  ] ram_size=0x02000000
+00000319769i[BIOS  ] ram_end=32MB
+00000331808i[BIOS  ] Found 1 cpu(s)
+00000345460i[BIOS  ] bios_table_addr: 0x000f9db8 end=0x000fcc00
+00000673281i[PCI   ] i440FX PMC write to PAM register 59 (TLB Flush)
+00001001211i[P2ISA ] PCI IRQ routing: PIRQA# set to 0x0b
+00001001230i[P2ISA ] PCI IRQ routing: PIRQB# set to 0x09
+00001001249i[P2ISA ] PCI IRQ routing: PIRQC# set to 0x0b
+00001001268i[P2ISA ] PCI IRQ routing: PIRQD# set to 0x09
+00001001278i[P2ISA ] write: ELCR2 = 0x0a
+00001002048i[BIOS  ] PIIX3/PIIX4 init: elcr=00 0a
+00001015672i[BIOS  ] PCI: bus=0 devfn=0x00: vendor_id=0x8086 device_id=0x1237 class=0x0600
+00001017985i[BIOS  ] PCI: bus=0 devfn=0x08: vendor_id=0x8086 device_id=0x7000 class=0x0601
+00001020137i[BIOS  ] PCI: bus=0 devfn=0x09: vendor_id=0x8086 device_id=0x7010 class=0x0101
+00001020372i[PIDE  ] BAR #4: i/o base address = 0xc000
+00001020988i[BIOS  ] region 4: 0x0000c000
+00001023053i[BIOS  ] PCI: bus=0 devfn=0x0b: vendor_id=0x8086 device_id=0x7113 class=0x0680
+00001023297i[ACPI  ] new IRQ line = 11
+00001023311i[ACPI  ] new IRQ line = 9
+00001023338i[ACPI  ] new PM base address: 0xb000
+00001023352i[ACPI  ] new SM base address: 0xb100
+00001023380i[PCI   ] setting SMRAM control register to 0x4a
+00001187473i[CPU0  ] Enter to System Management Mode
+00001187484i[CPU0  ] RSM: Resuming from System Management Mode
+00001351505i[PCI   ] setting SMRAM control register to 0x0a
+00001378179i[BIOS  ] MP table addr=0x000f9e90 MPC table addr=0x000f9dc0 size=0xc8
+00001380050i[BIOS  ] SMBIOS table addr=0x000f9ea0
+00001382236i[BIOS  ] ACPI tables: RSDP addr=0x000f9fd0 ACPI DATA addr=0x01ff0000 size=0xff8
+00001385483i[BIOS  ] Firmware waking vector 0x1ff00cc
+00001387963i[PCI   ] i440FX PMC write to PAM register 59 (TLB Flush)
+00001388686i[BIOS  ] bios_table_cur_addr: 0x000f9ff4
+00001517557i[VBIOS ] VGABios $Id: vgabios.c 226 2020-01-02 21:36:23Z vruppert $
+00001517628i[BXVGA ] VBE known Display Interface b0c0
+00001517660i[BXVGA ] VBE known Display Interface b0c5
+00001520303i[VBIOS ] VBE Bios $Id: vbe.c 228 2020-01-02 23:09:02Z vruppert $
+00002354534i[XGUI  ] charmap update. Font is 9 x 16
+00005305310i[BIOS  ] IDE time out
+00217890000e[XGUI  ] xkeypress(): keysym ffeb unhandled!
+00408382832i[BIOS  ] Booting from 07c0:0000
+00408483331i[BIOS  ] int13_harddisk: function 41, unmapped device for ELDL=80
+00408487008i[BIOS  ] int13_harddisk: function 08, unmapped device for ELDL=80
+00408490671i[BIOS  ] *** int 15h function AX=00c0, BX=0000 not yet supported!
+00410804354i[SER   ] com1: FIFO enabled
+00410804379e[SER   ] com1: ignoring invalid baud rate divisor
+00413719212e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00413760481e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00413799457e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00413873984e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00413908172e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00413979297e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414006851e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414073424e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414107752e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414180256e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414217344e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414283759e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414320188e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414393602e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414430237e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414500271e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414537292e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414610911e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414648816e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414726790e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414761164e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414831615e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414868941e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414942639e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00414979507e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415046943e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415083428e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415154616e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415189055e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415258150e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415290541e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415359335e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415397187e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415471584e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415506263e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415569471e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415603195e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415673776e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415711562e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415785303e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415818213e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415894547e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415929089e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00415999308e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416036240e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416107123e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416145526e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416222195e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416258754e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416325277e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416353617e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416431168e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416471535e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416552199e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416590124e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416666583e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416705022e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416779637e[PIT81 ] Count of 1 is invalid in pit mode 3.
+00416788000p[XGUI  ] >>PANIC<< POWER button turned off.
+00416788000i[CPU0  ] CPU is in protected mode (active)
+00416788000i[CPU0  ] CS.mode = 32 bit
+00416788000i[CPU0  ] SS.mode = 32 bit
+00416788000i[CPU0  ] EFER   = 0x00000000
+00416788000i[CPU0  ] | EAX=ffffffff  EBX=00000000  ECX=00000000  EDX=ffffffff
+00416788000i[CPU0  ] | ESP=3ffd2188  EBP=3ffd21c4  ESI=ffffffff  EDI=0002cef1
+00416788000i[CPU0  ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf zf af PF cf
+00416788000i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00416788000i[CPU0  ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00416788000i[CPU0  ] |  DS:0023( 0004| 0|  3) 00000000 ffffffff 1 1
+00416788000i[CPU0  ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00416788000i[CPU0  ] |  ES:0023( 0004| 0|  3) 00000000 ffffffff 1 1
+00416788000i[CPU0  ] |  FS:0023( 0004| 0|  3) 00000000 ffffffff 1 1
+00416788000i[CPU0  ] |  GS:0023( 0004| 0|  3) 00000000 ffffffff 1 1
+00416788000i[CPU0  ] | EIP=0010258a (0010258a)
+00416788000i[CPU0  ] | CR0=0x60000011 CR2=0x00000000
+00416788000i[CPU0  ] | CR3=0x00000000 CR4=0x00000000
+00416788000i[CMOS  ] Last time is 1686081095 (Tue Jun  6 21:51:35 2023)
+00416788000i[XGUI  ] Exit
+00416788000i[SIM   ] quit_sim called with exit code 1

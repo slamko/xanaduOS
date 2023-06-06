@@ -10,23 +10,23 @@ extern void *kernel_int_stack_end;
 void ltr(void);
 
 struct tss_entry tss __attribute__((aligned(4096)));
+void syscall(void);
 
 void usermode(void) {
-    /* fb_print_black("helo"); */
-    asm volatile("cli");
-    asm volatile("int $0x80");
-
-    fb_print_num(tss.cs);
-    shell_start();
-
+    /* fb_print_num(tss.cs); */
+    /* asm volatile("cli"); */
+    syscall();
+    
     while(1);
 }
 
 void load_tss(void) {
     tss = (struct tss_entry){0}; 
-    tss.link = 0x28;
-    tss.ss0 = 0x10 | 0;
+    tss.ss0 = 0x10;
     tss.esp0 = (uint32_t)kernel_int_stack_end;
+
+    tss.cs = 0x8 | 3;
+    tss.ss = tss.ds = tss.es = tss.fs = tss.gs = 0x10;
 
     ltr();
 }

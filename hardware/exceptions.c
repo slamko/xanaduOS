@@ -12,7 +12,11 @@ void invalid_tss_handler(struct isr_handler_args args) {
     klog_error("Invalid TSS\n");
 }
 
+void invalid_opcode(struct isr_handler_args args) {
+}
+
 void exception_handlers_init(void) {
     add_isr_handler(13, &gp_fault, 0);
+    add_isr_handler(6, &invalid_opcode, 0);
     add_isr_handler(10, &invalid_tss_handler, 0);
 }
