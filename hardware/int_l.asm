@@ -99,24 +99,22 @@ isr_table:
 %endrep
 
 extern fb_print_num
-usermodea:
-    str ax
-    cmp ax, 0x28
-    je loop
-    push ax
+extern usermode
+usermode_bootstrap:
+    mov eax, ss
+    push eax
     call fb_print_num
+
+    and eax, 0x3
+    cmp eax, 0x3
+    jz loop
+    call usermode
+    
 loop:
     jmp loop
     
 global jump_usermode
-extern usermode
 jump_usermode:
-    pushf
-    call fb_print_num 
-    or word [esp], 0x4000
-    call fb_print_num 
-    popf
-    
     mov ax, 0x23
     mov ds, ax
     mov es, ax
@@ -124,15 +122,19 @@ jump_usermode:
     mov gs, ax
 
     mov eax, esp
-    push 0x23
+    push dword 0x23
     push eax
-    pushf
+    pushfd
+;;  make sure NT flag is set  
+    or word [esp], 0x4000
+    popfd
+    pushfd
     push 0x1B
     push usermode
     iret
 
 global ltr
 ltr:
-    mov ax, 0x28 | 3
+    mov ax, 0x28
     ltr ax
     ret
