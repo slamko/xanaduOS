@@ -9,6 +9,7 @@
 #include "mem/flat.h"
 #include "drivers/serial.h"
 #include "io.h"
+#include "kernel/syscall.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -22,6 +23,7 @@ void kernel_main(void) {
   kbd_init();
   ps2_init();
   pit_init(0);
+  syscall_init();
   
   jump_usermode();
 

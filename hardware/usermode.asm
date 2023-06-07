@@ -1,16 +1,16 @@
 section .data
     syscall_msg db "In kernel", 10, 0
     legacy_msg db "Using legacy int", 10, 0
+
+section .bss
+    _sysenter_avl resb 1
     
 section .text
 extern fb_print_num
 usermode_bootstrap:
     mov eax, cs
-    push eax
-
     and eax, 0x3
-    cmp eax, 0x3
-    jnz loop
+    jz loop
     call usermode
     
 loop:
@@ -22,24 +22,29 @@ SYSENTER_ESP equ 0x175
 SYSENTER_EIP equ 0x176
 EFLAGS_ID    equ 0x200000
 
+global syscall_setup
+syscall_setup:
+    mov byte [_sysenter_avl], 0
 
-scall_handler:
-    push syscall_msg
-    call fb_print_black
-    sysexit
+    pushfd
+    or dword [esp], EFLAGS_ID
+    popfd
 
-global jump_usermode
-extern usermode
-extern fb_print_black    
-extern fb_print_num    
-jump_usermode:
-    ;; pushfd
-    ;; or dword [esp], EFLAGS_ID
-    ;; mov eax, [esp]
-    ;; shr eax, 21
-    ;; push eax
-    ;; call fb_print_num
-    ;; mov eax, [esp]
+    pushfd
+    mov eax, [esp]
+    shr eax, 21
+    and eax, 0x1
+    jz _legacy_setup
+    popfd
+
+    mov eax, 1
+    cpuid
+    shr edx, 11
+    and edx, 1
+    jz _legacy_setup
+
+_sysenter_setup:
+    mov byte [_sysenter_avl], 1
     mov ecx, SYSENTER_CS
     mov eax, 0x8
     wrmsr
@@ -49,9 +54,20 @@ jump_usermode:
     wrmsr
 
     mov ecx, SYSENTER_EIP
-    mov eax, scall_handler
+    mov eax, syscall_handler
     wrmsr   
 
+    ret
+
+_legacy_setup:
+    ret
+
+global jump_usermode
+extern usermode
+extern fb_print_black    
+extern fb_print_num    
+
+jump_usermode:
     cli
     mov ax, 0x23
     mov ds, ax
@@ -67,49 +83,27 @@ jump_usermode:
     sti
     push usermode_bootstrap
     iret
+
 extern kernel_int_stack_end
 extern syscall_handler
 global syscall
 syscall:
-real:   
-    mov eax, cs
-    cmp eax, 0x18 | 3
-    jz gcall
-    push eax
-    call fb_print_num
+    test byte [_sysenter_avl], 0
+    jnz _legacy
 
-gcall:  
-    pushfd
-    or dword [esp], EFLAGS_ID
-    popfd
-    pushfd
-    mov eax, [esp]
-    shr eax, 21
-    and eax, 0x1
-    jz legacy
-    popfd
-
-    mov eax, 1
-    cpuid
-    shr edx, 11
-    and edx, 1
-    jz legacy
-
-enter:  
     mov ecx, esp
-    mov edx, after
+    mov edx, _after
     sysenter
 
-    jmp after
+    jmp _after
 
-legacy:
+_legacy:
     ;; push legacy_msg
     ;; call fb_print_black
-    ;; int 0x80
+    int 0x80
     
-after:
-    jmp after
-
+_after:
+    ret
 
 global ltr
 ltr:

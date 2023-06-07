@@ -13,7 +13,6 @@ struct tss_entry tss __attribute__((aligned(4096)));
 void syscall(void);
 
 void usermode(void) {
-    /* fb_print_num(tss.cs); */
     /* asm volatile("cli"); */
     syscall();
     

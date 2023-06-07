@@ -62,7 +62,6 @@ void init_idt() {
                   IDTD_PRESENT | 0x60 | INT_GATE_MASK);
 
 
-
     load_idt((uint32_t)&idtr);
     pic_init(0, true);
     exception_handlers_init();
