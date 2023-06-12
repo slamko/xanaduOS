@@ -6,6 +6,8 @@ section .bss
     _sysenter_avl resb 1
     
 section .text
+
+extern fb_newline
 extern fb_print_num
 usermode_bootstrap:
     mov eax, cs
@@ -15,12 +17,24 @@ usermode_bootstrap:
     
 loop:
     jmp loop
-    
 
 SYSENTER_CS  equ 0x174
 SYSENTER_ESP equ 0x175
 SYSENTER_EIP equ 0x176
 EFLAGS_ID    equ 0x200000
+
+get_eip:
+    mov eax, [esp]
+    ret
+
+extern syscall_handler
+scall_wrapper:
+    push ecx
+    push edx
+    call syscall_handler
+    pop edx
+    pop ecx
+    sysexit
 
 global syscall_setup
 syscall_setup:
@@ -54,7 +68,7 @@ _sysenter_setup:
     wrmsr
 
     mov ecx, SYSENTER_EIP
-    mov eax, syscall_handler
+    mov eax, scall_wrapper
     wrmsr   
 
     ret
@@ -85,7 +99,6 @@ jump_usermode:
     iret
 
 extern kernel_int_stack_end
-extern syscall_handler
 global syscall
 syscall:
     test byte [_sysenter_avl], 0
@@ -95,11 +108,12 @@ syscall:
     mov edx, _after
     sysenter
 
+    push legacy_msg
+    call fb_print_black
+    
     jmp _after
 
 _legacy:
-    ;; push legacy_msg
-    ;; call fb_print_black
     int 0x80
     
 _after:

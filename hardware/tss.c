@@ -15,6 +15,7 @@ void syscall(void);
 void usermode(void) {
     /* asm volatile("cli"); */
     syscall();
+    syscall();
     
     while(1);
 }

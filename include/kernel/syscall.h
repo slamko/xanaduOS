@@ -1,5 +1,5 @@
 #include "drivers/int.h"
 
-void syscall_handler(struct isr_handler_args args) ;
+void syscall_handler(void) ;
 
 void syscall_init(void);

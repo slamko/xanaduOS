@@ -37,9 +37,7 @@ static void void_handler(struct isr_handler_args args) {
     fb_newline();
 }
 
-static void spurious_handler(struct isr_handler_args args) {
-    
-}
+
 
 void init_idt() {
     idtr.base = (uint32_t)&idt;
@@ -49,18 +47,6 @@ void init_idt() {
         idt_set_entry(i, isr_table[i], IDTD_DEFAULT);
         isr_handlers[i] = &void_handler;
     }
-
-    isr_handlers[PIC_REMAP + IRQ7] = &spurious_handler;
-    isr_handlers[SYSCALL_INT] = &syscall_handler; 
-    idt_set_entry(SYSCALL_INT, isr_table[SYSCALL_INT],
-                  IDTD_PRESENT | 0x60 | INT_GATE_MASK);
-    isr_handlers[SYSCALL_INT - 1] = &syscall_handler; 
-    idt_set_entry(SYSCALL_INT - 1, isr_table[SYSCALL_INT - 1],
-                  IDTD_PRESENT | 0x60 | INT_GATE_MASK);
-    isr_handlers[SYSCALL_INT + 1] = &syscall_handler; 
-    idt_set_entry(SYSCALL_INT + 1, isr_table[SYSCALL_INT + 1],
-                  IDTD_PRESENT | 0x60 | INT_GATE_MASK);
-
 
     load_idt((uint32_t)&idtr);
     pic_init(0, true);
@@ -88,11 +74,12 @@ void isr_x86(struct isr_full_stack isr) {
     /* pic_eoi(isr.int_num); */
     /* fb_newline(); */
     /* fb_print_num(isr.cs); */
-
+    
     count++;
     isr_handlers[isr.int_num](
         (struct isr_handler_args) {
-            .int_id = isr.int_num
+            .int_id = isr.int_num,
+            .eip = isr.eip
         });
 
     /* fb_print_num(isr.int_num); */

@@ -3,7 +3,7 @@
 
 void syscall_setup(void);
 
-void syscall_handler(struct isr_handler_args args) {
+void syscall_handler(void) {
     fb_newline();
     fb_print_black("syscall");
 }
