@@ -1,4 +1,5 @@
 #include "drivers/tss.h"
+#include "kernel/syscall.h"
 #include "drivers/fb.h"
 #include "bin/shell.h"
 #include <stdint.h>
@@ -10,12 +11,12 @@ extern void *kernel_int_stack_end;
 void ltr(void);
 
 struct tss_entry tss __attribute__((aligned(4096)));
-void syscall(void);
+void sysenter(int num, ...);
 
 void usermode(void) {
     /* asm volatile("cli"); */
-    syscall();
-    syscall();
+    syscall_handler(1, 3);
+    syscall_handler(1, 3);
     
     while(1);
 }

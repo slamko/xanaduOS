@@ -29,9 +29,13 @@ get_eip:
 
 extern syscall_handler
 scall_wrapper:
+    ;; push 4
+    push dword [ecx + 4]
     push ecx
     push edx
+
     call syscall_handler
+
     pop edx
     pop ecx
     sysexit
@@ -99,8 +103,8 @@ jump_usermode:
     iret
 
 extern kernel_int_stack_end
-global syscall
-syscall:
+global sysenter
+sysenter:
     test byte [_sysenter_avl], 0
     jnz _legacy
 
