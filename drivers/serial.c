@@ -122,9 +122,8 @@ int serial_read_buf(port_t port, char *buf, size_t buf_len) {
 
 void serial_init(void) {
     com_init(COM1);
-    /* com_init(COM2); */
     add_irq_handler(COM1_IRQ, &serial_interrupt);
 
-    fb_print_black("Serial port COM1 initialised");
+    klog("Serial port COM1 initialised\n");
 }
 

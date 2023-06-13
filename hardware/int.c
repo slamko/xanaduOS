@@ -54,7 +54,7 @@ void init_idt() {
     
     sti();
 
-    fb_print_black("Interrupts enabled\n");
+    klog("Interrupts enabled\n");
 }
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {

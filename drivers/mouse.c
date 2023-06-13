@@ -150,7 +150,6 @@ int ps2_init()
   mouse_read();  //Acknowledge
 
   add_irq_handler(12, ps2_handler);
-  fb_newline();
-  fb_print_black("PS/2 Mouse enabled");
+  klog("PS/2 Mouse enabled\n");
   return 0;
 }

@@ -68,8 +68,7 @@ int pit_init(unsigned long freq) {
     add_irq_handler(IRQ0, &pit_handler);
     asm volatile("sti");
 
-    fb_newline();
-    fb_print_black("PIT initialized");
+    klog("PIT initialized\n");
     
     return 0;
 }

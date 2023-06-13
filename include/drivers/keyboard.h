@@ -20,6 +20,7 @@ enum SPEC_CODES {
 
 void kbd_interrupt(struct isr_handler_args);
 void kbd_init(void);
+uint32_t kbd_read(void);
 
 typedef int (*receiver)(uint32_t);
 

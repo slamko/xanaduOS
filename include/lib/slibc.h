@@ -4,9 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define ARR_SIZE(obj) (sizeof(obj) / sizeof(*obj))
+#define ARR_SIZE(obj) (sizeof(obj) / sizeof(*(obj)))
 
-#define GET_BIT(obj, bit) (((obj) & (1 << (bit))) >> bit)
+#define GET_BIT(obj, bit) (((obj) & (1 << (bit))) >> (bit))
 
 #define UNUSED(X) (void)((X))
 

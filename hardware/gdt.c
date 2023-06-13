@@ -2,6 +2,7 @@
 #include "drivers/fb.h"
 #include "drivers/int.h"
 #include "drivers/tss.h"
+#include "lib/kernel.h"
 #include "lib/slibc.h"
 #include <stdint.h>
 
@@ -71,7 +72,7 @@ void fill_gdt() {
 void init_gdt() {
     cli();
     fill_gdt();
-    fb_print_black("Setting up GDT\n");
+    klog("Setting up GDT\n");
 }
         
 

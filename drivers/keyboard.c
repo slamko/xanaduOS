@@ -3,10 +3,13 @@
 #include "lib/kernel.h"
 #include "lib/slibc.h"
 #include "drivers/keyboard.h"
+#include <stddef.h>
 #include <stdint.h>
 
 receiver receiver_f[KBD_INT_REC_NUM];
 uint32_t kbd_buf[1024];
+
+static size_t read_pos;
 static size_t buf_pos;
 
 static uint32_t kbd_US [128] =
@@ -60,10 +63,11 @@ void kbd_interrupt(struct isr_handler_args args) {
         if (keycode && keycode < KBD_LAYOUT_MAX_CODE) {
             kbd_buf[buf_pos] = keycode;
             buf_pos++;
-        
-            for (size_t r_id = 0; receiver_f[r_id]; r_id++) {
-                receiver_f[r_id](keycode);
-            }
+
+            
+            /* for (size_t r_id = 0; receiver_f[r_id]; r_id++) { */
+                /* receiver_f[r_id](keycode); */
+            /* } */
 
             if (keycode == '\n') {
                 memset(kbd_buf, 0, sizeof(kbd_buf));
@@ -71,6 +75,13 @@ void kbd_interrupt(struct isr_handler_args args) {
             }
         }
     }
+}
+
+uint32_t kbd_read(void) {
+    if (read_pos == buf_pos) return 0;
+    
+    read_pos ++;
+    return kbd_buf[read_pos - 1];
 }
 
 void kbd_init(void) {
