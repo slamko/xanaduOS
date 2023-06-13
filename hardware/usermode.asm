@@ -7,6 +7,8 @@ section .bss
     
 section .text
 
+    
+extern SYSCALL_MAX_ARGS_NUM
 extern fb_newline
 extern fb_print_num
 usermode_bootstrap:
@@ -29,11 +31,10 @@ get_eip:
 
 extern syscall_handler
 scall_wrapper:
-    ;; push 4
     push ecx
     push edx
 
-    mov edi, 5
+    mov edi, [SYSCALL_MAX_ARGS_NUM]
 _push_args:
     dec edi
     push dword [ecx + edi*4 + 8]
@@ -43,7 +44,9 @@ _push_args:
 
     call [ecx + 4] 
 
-    add esp, 5 * 4
+    mov eax, 4
+    mul dword [SYSCALL_MAX_ARGS_NUM]
+    add esp, eax
 
     pop edx
     pop ecx

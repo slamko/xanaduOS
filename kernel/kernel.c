@@ -24,7 +24,7 @@ void kernel_main(void) {
   ps2_init();
   pit_init(0);
   syscall_init();
-  
+
   jump_usermode();
 
   /* fb_newline(); */

@@ -1,4 +1,5 @@
-#include "kernel/syscall.h"
+/*
+  #include "kernel/syscall.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -24,18 +25,13 @@ int read_stream(uint32_t c) {
     size_t len;
 
     if (c == '\n') {
-        /* fb_print_black(k_buf); */
-        /* fb_newline(); */
-
-        fb_last_written_buf(&cmd, &len);
-        memcpy(last_cmd, cmd, len);
-        serial_write(COM1, cmd, len);
+         fb_print_black(k_buf); 
+         fb_newline(); 
 
         execute(cmd, len);
         shell_prompt();
     }
 
-    /* asm volatile("int $0x6"); */
 
     return 0;
 }
@@ -45,3 +41,4 @@ void usershell() {
 }
 
 
+*/

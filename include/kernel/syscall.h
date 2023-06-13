@@ -1,5 +1,7 @@
 #include "drivers/int.h"
 
+extern unsigned int SYSCALL_MAX_ARGS_NUM;
+
 enum {
     SYS_READ = 0,
     SYS_WRITE = 1,

@@ -11,18 +11,9 @@ extern void *kernel_int_stack_end;
 void ltr(void);
 
 struct tss_entry tss __attribute__((aligned(4096)));
-void sysenter(int num, ...);
-
-void usermode(void) {
-    /* asm volatile("cli"); */
-    syscall(1, "Hello\n", 6);
-    syscall(1, "Hello\n", 6);
-    
-    while(1);
-}
 
 void load_tss(void) {
-    tss = (struct tss_entry){0}; 
+    tss = (struct tss_entry){0};
     tss.ss0 = 0x10;
     tss.esp0 = (uint32_t)kernel_int_stack_end;
 

@@ -5,11 +5,11 @@
 #include "drivers/fb.h"
 #include "drivers/keyboard.h"
 
+unsigned int SYSCALL_MAX_ARGS_NUM = 5;
+
 void syscall_setup(void);
 
 void sysenter(void *, ...);
-
-__attribute__((regparm(0))) void sysenter_call();
 
 int sys_write(const char *msg, size_t len) {
     fb_nprint_black(msg, len);
@@ -32,22 +32,55 @@ int sys_echo(int len) {
     return len;
 }
 
+#define _STRCAT(a, b) a ## b 
+#define STRCAT(a, b) _STRCAT(a, b)
+
+#define SYSCALL0(func)                               \
+    sysenter(func, 0, 0, 0, 0, 0);
+
+#define SYSCALL1(func, args, type)                   \
+    sysenter(func, va_arg(args, type), 0, 0, 0, 0);
+
+#define SYSCALL2(func, args, type1, type2)  ;               \
+    type1 STRCAT(func, 1) = va_arg(args, type1);        \
+    type2 STRCAT(func, 2) = va_arg(args, type2);        \
+    sysenter(func, STRCAT(func, 1), STRCAT(func, 2), 0, 0, 0);
+ 
+#define SYSCALL3(func, args, type1, type2, type3)  ;        \
+    type1 STRCAT(func, 1) = va_arg(args, type1);        \
+    type2 STRCAT(func, 2) = va_arg(args, type2);        \
+    type3 STRCAT(func, 3) = va_arg(args, type3);        \
+    sysenter(func, STRCAT(func, 1), STRCAT(func, 2),    \
+             STRCAT(func, 3), 0, 0);
+
+#define SYSCALL4(func, args, type1, type2, type3, type4); \
+    type1 STRCAT(func, 1) = va_arg(args, type1);                        \
+    type2 STRCAT(func, 2) = va_arg(args, type2);                        \
+    type3 STRCAT(func, 3) = va_arg(args, type3);        \
+    type4 STRCAT(func, 4) = va_arg(args, type4);        \
+    sysenter(func, STRCAT(func, 1), STRCAT(func, 2),    \
+STRCAT(func, 3), STRCAT(func, 4), 0);
+
+#define SYSCALL5(func, args, type1, type2, type3, type4, type5)       \
+    sysenter(func,                                                    \
+             va_arg(args, type1),                                    \
+             va_arg(args, type2),                                   \
+             va_arg(args, type3),                                   \
+             va_arg(args, type4),                                   \
+             va_arg(args, type5),                                   \
+             0);
+
 int syscall(unsigned int num, ...) {
     va_list args;
     va_start(args, num);
-    /* fb_print_num(num); */
 
     switch (num) {
     case SYS_READ:
+        SYSCALL2(sys_read, args, void *, size_t);
         break;
     case SYS_WRITE:
-    {
-        const char *msg = va_arg(args, const char *);
-        size_t len = va_arg(args, size_t);
-        sysenter(&sys_write, msg, len, 1, 2, 4);
-
+        SYSCALL2(sys_write, args, const char *, size_t);
         break;
-    }
     }
 
     va_end(args);
