@@ -160,10 +160,12 @@ void fb_print(const char *msg, uint8_t fg, uint8_t bg) {
     }
 }
 
-void fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz) {
-    for (uint16_t i = 0; i < siz && msg[i] != 0; i++) {
+size_t fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz) {
+    size_t i;
+    for (i = 0; i < siz && msg[i] != 0; i++) {
         fb_print_char(0, msg[i], fg, bg);
     }
+    return i;
 }
 
 void fb_put_pixel(struct fb_pixel pixel) {
@@ -180,8 +182,8 @@ void fb_print_black(const char *msg) {
     fb_print(msg, FB_WHITE, FB_BLACK);
 }
 
-void fb_nprint_black(const char *msg, size_t siz) {
-    fb_nprint(msg, FB_WHITE, FB_BLACK, siz);
+size_t fb_nprint_black(const char *msg, size_t siz) {
+    return fb_nprint(msg, FB_WHITE, FB_BLACK, siz);
 }
 
 void fb_newline(void) {
