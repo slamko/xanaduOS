@@ -15,8 +15,8 @@ void sysenter(int num, ...);
 
 void usermode(void) {
     /* asm volatile("cli"); */
-    syscall_handler(1, 3);
-    syscall_handler(1, 3);
+    syscall(1, "Hello\n", 6);
+    syscall(1, "Hello\n", 6);
     
     while(1);
 }

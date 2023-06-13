@@ -30,11 +30,20 @@ get_eip:
 extern syscall_handler
 scall_wrapper:
     ;; push 4
-    push dword [ecx + 4]
     push ecx
     push edx
 
-    call syscall_handler
+    mov edi, 5
+_push_args:
+    dec edi
+    push dword [ecx + edi*4 + 8]
+
+    cmp edi, 0
+    jne _push_args
+
+    call [ecx + 4] 
+
+    add esp, 5 * 4
 
     pop edx
     pop ecx
