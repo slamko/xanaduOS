@@ -34,20 +34,22 @@ scall_wrapper:
     push ecx
     push edx
 
-    mov edi, [SYSCALL_MAX_ARGS_NUM]
+    lea ebp, [ecx + 5*4 + 4]
+    mov edi, [ebp]
+
 _push_args:
+    push dword [ebp + edi*4 + 4]
     dec edi
-    push dword [ecx + edi*4 + 8]
+    jnz _push_args
 
-    cmp edi, 0
-    jne _push_args
-
-    call [ecx + 4] 
+    call [ebp + 4] 
+    push eax
 
     mov eax, 4
-    mul dword [SYSCALL_MAX_ARGS_NUM]
+    mul dword [ebp]
     add esp, eax
 
+    pop eax
     pop edx
     pop ecx
     sysexit
@@ -120,6 +122,12 @@ sysenter:
     test byte [_sysenter_avl], 0
     jnz _legacy
 
+    push ebx
+    push esp
+    push ebp
+    push esi
+    push edi
+
     mov ecx, esp
     mov edx, _after
     sysenter
@@ -133,6 +141,11 @@ _legacy:
     int 0x80
     
 _after:
+    pop edi
+    pop esi
+    pop ebp
+    pop esp
+    pop ebx
     ret
 
 global ltr
