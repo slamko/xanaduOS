@@ -19,6 +19,7 @@ load_page_dir:
     mov cr3, eax
     ret
 
+extern _kernel_end
 enable_paging:
     mov ebx, cr0
     mov eax, 1
