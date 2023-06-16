@@ -75,7 +75,9 @@ void paging_init() {
     
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     heap_base_addr = kernel_end_addr + 0x1000;
-    /* fb_print_num(heap_base_addr); */
+
+    fb_print_hex((*(uintptr_t **)page_dir[0])[0]);
+    fb_print_hex(kernel_page_table[0]);
     
     load_page_dir((uintptr_t)&page_dir);
     /* load_all_tables(); */
@@ -89,40 +91,49 @@ static inline int tab_present(uintptr_t descriptor) {
     return descriptor & PRESENT;
 }
 
-int map_page(uint16_t pde, uint16_t pte) {
-    (*(uintptr_t **)page_dir[pde])[pte] =
-            ((0x1000 * pte) + (0x400000 * pde)) | 0x3;
+static inline uintptr_t get_page_addr(uint16_t pde, uint16_t pte) {
+    return (pde * 0x400000) + (pte * 0x1000);
+}
 
-    klog("Map page\n");
+int map_page(uintptr_t *pt_addr, uint16_t pde, uint16_t pte) {
+    pt_addr[pte] = get_page_addr(pde, pte) | 0x3;
+    /* klog("Map page\n"); */
 
     return pte;
 }
-
 int alloc_table(uint16_t pde, uint16_t pte) {
-
     if (!tab_present(page_dir[pde])) {
-        uintptr_t table_addr = heap_base_addr + ((pde - 4) * 0x2000);
-        uintptr_t **table_addr_ptr = (uintptr_t **)((void *)table_addr);
+        /*
+        uintptr_t temp_pt[1024] = {0};
 
-        page_dir[pde] = table_addr;
-        *table_addr_ptr = (uintptr_t *)(table_addr + 0x1000);
-        fb_print_num((uintptr_t)(*(uintptr_t **)page_dir[pde]));
-        fb_print_num((uintptr_t)*table_addr_ptr);
+        for (unsigned int i = 0; i < ARR_SIZE(temp_pt); i++) {
+            temp_pt[i] = get_page_addr(pde, pte) | 0x3;
+        }
+        page_dir[pde] = (uintptr_t)&temp_pt | 0x3;
+        */
+        
+        uintptr_t table_addr = heap_base_addr + ((pde - 4) * 0x1000);
+        /* uintptr_t **table_addr_ptr = (uintptr_t **)((void *)table_addr); */
+        /* fb_print_hex(table_addr); */
+
+        /* *table_addr_ptr = (uintptr_t *)(table_addr); */
+        /* fb_print_num((uintptr_t)(*(uintptr_t **)page_dir[pde])); */
+        /* fb_print_num((uintptr_t)*table_addr_ptr); */
 
         for (unsigned int i = 0; i < 1024; i++) {
-            map_page(pde, i);
+            map_page((uintptr_t *)table_addr, pde, i);
         }
 
         klog("Alloc table\n"); 
-        page_dir[pde] |= 0x3;
+        page_dir[pde] = table_addr | 0x3;
+
         return pde;
     } else if (!tab_present(((uintptr_t *)page_dir[pde])[pte])) {
-        map_page(pde, pte);
+        /* map_page(pde, pte); */
     }
 
     return -1;
 }
-
 
 void *kalloc(size_t siz) {
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
@@ -145,8 +156,8 @@ void page_fault(struct isr_handler_args args) {
     pde = fault_addr >> 22;
     pte = (fault_addr >> 12) & 0x3ff;
 
-    fb_print_num(page_dir[pde] & PRESENT);
-    /* fb_print_num(((uintptr_t)page_dir[pde])); */
+    /* fb_print_hex(page_dir[pde] & PRESENT); */
+    /* fb_print_hex(((uintptr_t)page_dir[pde])); */
 
     /* struct virt_addr fault_virt_addr = *(struct virt_addr *)&fault_addr; */
 
