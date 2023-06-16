@@ -11,6 +11,7 @@
 #include "drivers/serial.h"
 #include "io.h"
 #include "kernel/syscall.h"
+#include "lib/kernel.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -25,7 +26,10 @@ void kernel_main(void) {
   ps2_init();
   pit_init(0);
   syscall_init();
+  fb_print_num(1);
   paging_init();
+
+  klog("Hello paging!\n");
 
   /* jump_usermode(); */
 

@@ -38,6 +38,8 @@ void print_cr0(void);
 uintptr_t page_dir[1024] __attribute__((aligned(4096)));
 uintptr_t kernel_page_table[4096] __attribute__((aligned(4096)));
 
+struct kalloc_table kalloc_dir[1024];
+
 extern uintptr_t _kernel_end;
 static uintptr_t kernel_end_addr;
 static uintptr_t heap_base_addr;
@@ -82,35 +84,70 @@ void paging_init() {
     klog("Paging enabled\n");
 }
 
-void *kmalloc(size_t siz) {
-    
+static inline int tab_present(uintptr_t descriptor) {
+    return descriptor & PRESENT;
 }
 
-int alloc_table(uint16_t pde) {
-    klog_error("Page fault\n");
-    page_dir[pde] = (kernel_end_addr) | PRESENT | USER_SUPERVISOR;
-    ((uintptr_t *)kernel_end_addr)[0] = (kernel_end_addr + 0x1000);
+int map_page(uint16_t pde, uint16_t pte) {
+    ((uintptr_t *)page_dir[pde])[pte] =
+            ((0x1000 * pte) + (0x400000 * pde)) | 0x3;
 
-    for (unsigned int i = 0; i < 1024; i++) {
-        ((uintptr_t *)(kernel_end_addr + 0x1000))[i] =
-            ((pde * 0x400000) + (i * 0x1000)) | PRESENT | USER_SUPERVISOR;
+    /* klog("Map page\n"); */
+    /* fb_print_num(((uintptr_t *)page_dir[pde])[pte]); */
+            
+    return pte;
+}
+
+int alloc_table(uint16_t pde, uint16_t pte) {
+
+    if (!tab_present(page_dir[pde])) {
+        uintptr_t table_addr = heap_base_addr + ((pde - 4) * 0x2000);
+        uintptr_t **table_addr_ptr = (uintptr_t **)((void *)table_addr);
+
+        page_dir[pde] = table_addr | 0x3;
+        *table_addr_ptr = (uintptr_t *)(table_addr + 0x1000);
+
+        for (unsigned int i = 0; i < 1024; i++) {
+            map_page(pde, i);
+        }
+
+        klog("Alloc table\n");
+        return pde;
+    } else if (!tab_present(((uintptr_t *)page_dir[pde])[pte])) {
+        map_page(pde, pte);
     }
-    return 0;
+
+    return -1;
+}
+
+
+void *kalloc(size_t siz) {
+    for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
+        unsigned int pd = i + 4;
+
+        alloc_table(pd, 0);
+        return (void *)(pd << 22);
+    }
+
+    return NULL;
 }
 
 void page_fault(struct isr_handler_args args) {
     uintptr_t fault_addr;
     uint16_t pde;
+    uint16_t pte;
 
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
     pde = fault_addr >> 22;
-
+    pte = (fault_addr >> 12) & 0x3ff;
     /* fb_print_num(page_dir[pde]); */
+    fb_print_num(((uintptr_t)page_dir[pde]));
+
     /* struct virt_addr fault_virt_addr = *(struct virt_addr *)&fault_addr; */
 
-    if (!(fault_addr & PRESENT)) {
-        alloc_table(pde);
+    if (!(page_dir[pde] & PRESENT)) {
+        alloc_table(pde, pte);
         /* pde = kmalloc(sizeof(kmalloc_page_table)); */
     }
     

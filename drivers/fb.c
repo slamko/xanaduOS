@@ -215,6 +215,7 @@ void fb_print_num(unsigned int num) {
     uint32_t mul = 1;
     char *str_num = _print_num_rec(num, &mul, str, 16);
     fb_nprint_black(str_num, mul);
+    fb_newline();
 }
 
 void fb_mov_cursor(uint16_t pos) {
