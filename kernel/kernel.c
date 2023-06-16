@@ -34,7 +34,7 @@ void kernel_main(void) {
 
   /* fb_newline(); */
   /* sleep_ms(500); */
-  /* shell_start(); */
+  shell_start();
   /* fb_print_black("rello"); */
 
   while (1);

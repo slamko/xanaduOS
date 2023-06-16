@@ -35,30 +35,19 @@ void load_page_dir(uintptr_t dir);
 void enable_paging(void);
 void print_cr0(void);
 
-uintptr_t page_dir[1024] __attribute__((aligned(4096)));
-uintptr_t kernel_page_table[4096] __attribute__((aligned(4096)));
+#define KERNEL_INIT_PT_COUNT 4
+#define PT_SIZE 1024
+#define PAGE_SIZE 4096
 
-struct kalloc_table kalloc_dir[1024];
+static uintptr_t page_dir[1024] __attribute__((aligned(PAGE_SIZE)));
+
+static uintptr_t kernel_page_table[KERNEL_INIT_PT_COUNT * 0x400]
+    __attribute__((aligned(PAGE_SIZE)));
 
 extern uintptr_t _kernel_end;
-static uintptr_t kernel_end_addr;
-static uintptr_t heap_base_addr;
-
-void func(const char *ad) {
-    fb_print_num((uintptr_t)ad);
-}
-
-void load_all_tables() {
-    
-    /* for (unsigned int i = 0; i < ; i++) { */
-    
-    for (unsigned int i = 0; i < 0x400 - 4; i++) {
-        ((uintptr_t *)(void *)_kernel_end)[i * 0x1000] =
-            (_kernel_end + 0x400000 + (i * 0x1000));
-        page_dir[i + 4] = _kernel_end + (i * 0x1000);
-    }
-}
-    
+static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
+static uintptr_t heap_base_addr __attribute__((aligned(PAGE_SIZE)));
+  
 void paging_init() {
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
         page_dir[i] |= R_W;
@@ -68,21 +57,15 @@ void paging_init() {
         kernel_page_table[i] = (i * 0x1000) | PRESENT | USER_SUPERVISOR;
     }
 
-    page_dir[0] = (uintptr_t)&kernel_page_table[1024 * 0] | 0x3;
-    page_dir[1] = (uintptr_t)&kernel_page_table[1024 * 1] | 0x3;
-    page_dir[2] = (uintptr_t)&kernel_page_table[1024 * 2] | 0x3;
-    page_dir[3] = (uintptr_t)&kernel_page_table[1024 * 3] | 0x3;
+    for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
+        page_dir[i] = (uintptr_t)&kernel_page_table[PT_SIZE * i] | 0x3;
+    }
     
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     heap_base_addr = kernel_end_addr + 0x1000;
 
-    fb_print_hex((*(uintptr_t **)page_dir[0])[0]);
-    fb_print_hex(kernel_page_table[0]);
-    
     load_page_dir((uintptr_t)&page_dir);
-    /* load_all_tables(); */
     enable_paging();
-
 
     klog("Paging enabled\n");
 }
@@ -97,49 +80,45 @@ static inline uintptr_t get_page_addr(uint16_t pde, uint16_t pte) {
 
 int map_page(uintptr_t *pt_addr, uint16_t pde, uint16_t pte) {
     pt_addr[pte] = get_page_addr(pde, pte) | 0x3;
-    /* klog("Map page\n"); */
 
     return pte;
 }
-int alloc_table(uint16_t pde, uint16_t pte) {
-    if (!tab_present(page_dir[pde])) {
-        /*
-        uintptr_t temp_pt[1024] = {0};
 
-        for (unsigned int i = 0; i < ARR_SIZE(temp_pt); i++) {
-            temp_pt[i] = get_page_addr(pde, pte) | 0x3;
-        }
-        page_dir[pde] = (uintptr_t)&temp_pt | 0x3;
-        */
-        
-        uintptr_t table_addr = heap_base_addr + ((pde - 4) * 0x1000);
-        /* uintptr_t **table_addr_ptr = (uintptr_t **)((void *)table_addr); */
-        /* fb_print_hex(table_addr); */
+int pt_present(uint16_t pde) {
+    return tab_present(page_dir[pde]);
+}
 
-        /* *table_addr_ptr = (uintptr_t *)(table_addr); */
-        /* fb_print_num((uintptr_t)(*(uintptr_t **)page_dir[pde])); */
-        /* fb_print_num((uintptr_t)*table_addr_ptr); */
+int page_present(uint16_t pde, uint16_t pte) {
+    return tab_present(((uintptr_t *)page_dir[pde])[pte]);
+}
 
-        for (unsigned int i = 0; i < 1024; i++) {
-            map_page((uintptr_t *)table_addr, pde, i);
-        }
+int map_pt(uint16_t pde) {
+    uintptr_t table_addr = heap_base_addr + (pde * 0x1000);
 
-        klog("Alloc table\n"); 
-        page_dir[pde] = table_addr | 0x3;
-
-        return pde;
-    } else if (!tab_present(((uintptr_t *)page_dir[pde])[pte])) {
-        /* map_page(pde, pte); */
+    for (unsigned int i = 0; i < 1024; i++) {
+        map_page((uintptr_t *)table_addr, pde, i);
     }
 
-    return -1;
+    klog("Alloc page table\n"); 
+    page_dir[pde] = table_addr | 0x3;
+
+    return pde;
+ }
+
+int page_fault_handle(uint16_t pde, uint16_t pte) {
+    if (!pt_present(pde)) {
+        map_pt(pde);
+    } else if (!page_present(pde, pte)) {
+        map_page((uintptr_t *)page_dir[pde], pde, pte);
+    }
+
+    return 1;
 }
 
 void *kalloc(size_t siz) {
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
         unsigned int pd = i + 4;
 
-        alloc_table(pd, 0);
         return (void *)(pd << 22);
     }
 
@@ -151,22 +130,14 @@ void page_fault(struct isr_handler_args args) {
     uint16_t pde;
     uint16_t pte;
 
+    klog_warn("Page fault\n");
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
     pde = fault_addr >> 22;
     pte = (fault_addr >> 12) & 0x3ff;
 
-    /* fb_print_hex(page_dir[pde] & PRESENT); */
-    /* fb_print_hex(((uintptr_t)page_dir[pde])); */
-
-    /* struct virt_addr fault_virt_addr = *(struct virt_addr *)&fault_addr; */
-
-    if (!(page_dir[pde] & PRESENT)) {
-        alloc_table(pde, pte);
-        /* fb_print_num((*(uintptr_t **)page_dir[pde])[pte]); */
-        /* pde = kmalloc(sizeof(kmalloc_page_table)); */
-    }
+    page_fault_handle(pde, pte);
     
-    /* fb_print_num(args.error); */
+    fb_print_num(args.error);
 }
 

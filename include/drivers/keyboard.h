@@ -18,11 +18,14 @@ enum SPEC_CODES {
     DOWN_ARROW = 345
 };
 
+typedef int (*receiver)(uint32_t);
+
 void kbd_interrupt(struct isr_handler_args);
+void kbd_add_receiver(receiver f);
+
 void kbd_init(void);
 uint32_t kbd_read(void);
 
-typedef int (*receiver)(uint32_t);
 
 extern receiver receiver_f[KBD_INT_REC_NUM];
 

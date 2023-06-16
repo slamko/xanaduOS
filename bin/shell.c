@@ -17,7 +17,7 @@ void shell_prompt() {
 
 void shell_start(void) {
     fb_clear();
-    receiver_f[0] = &read_stream;
+    kbd_add_receiver(&read_stream);
     shell_prompt();
 }
 
@@ -72,14 +72,13 @@ int read_stream(uint32_t c) {
     
 
     if (c == '\n') {
-        /* fb_print_black(k_buf); */
+        /* fb_print_black("hello"); */
         /* fb_newline(); */
 
-        fb_last_written_buf(&cmd, &len);
-        memcpy(last_cmd, cmd, len);
-        serial_write(COM1, cmd, len);
+        /* fb_last_written_buf(&cmd, &len); */
 
-        execute(cmd, len);
+
+        /* execute(cmd, len); */
         shell_prompt();
     }
 
