@@ -213,7 +213,39 @@ char *_print_num_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
 void fb_print_num(unsigned int num) {
     char str[16];
     uint32_t mul = 1;
-    char *str_num = _print_num_rec(num, &mul, str, 16);
+    char *str_num = _print_num_rec(num, &mul, str, sizeof(str));
+    fb_nprint_black(str_num, mul);
+    fb_newline();
+}
+
+char dec_to_hex(unsigned int num) {
+    if (num >= 10) {
+        return num + 48 + 7;
+    }
+    return num + 48;
+}
+
+char *_print_hex_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
+    if (num >= 16) {
+        uint32_t div = (uint32_t)(num / 16);
+        /* fb_print_num(div); */
+        char c = dec_to_hex(num - (div * 16)); 
+        str[siz - *mul - 1] = c;
+        *mul += 1;
+        return _print_hex_rec(div, mul, str, siz);
+    } else {
+        char c = dec_to_hex(num);
+        str[siz - *mul - 1] = c;
+        return str + siz - *mul - 1;
+    }
+
+    return str;
+}
+
+void fb_print_hex(unsigned int num) {
+    char str[16];
+    uint32_t mul = 1;
+    char *str_num = _print_hex_rec(num, &mul, str, sizeof(str));
     fb_nprint_black(str_num, mul);
     fb_newline();
 }

@@ -26,7 +26,6 @@ void kernel_main(void) {
   ps2_init();
   pit_init(0);
   syscall_init();
-  fb_print_num(1);
   paging_init();
 
   klog("Hello paging!\n");

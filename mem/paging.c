@@ -75,6 +75,7 @@ void paging_init() {
     
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     heap_base_addr = kernel_end_addr + 0x1000;
+    /* fb_print_num(heap_base_addr); */
     
     load_page_dir((uintptr_t)&page_dir);
     /* load_all_tables(); */
@@ -89,12 +90,11 @@ static inline int tab_present(uintptr_t descriptor) {
 }
 
 int map_page(uint16_t pde, uint16_t pte) {
-    ((uintptr_t *)page_dir[pde])[pte] =
+    (*(uintptr_t **)page_dir[pde])[pte] =
             ((0x1000 * pte) + (0x400000 * pde)) | 0x3;
 
-    /* klog("Map page\n"); */
-    /* fb_print_num(((uintptr_t *)page_dir[pde])[pte]); */
-            
+    klog("Map page\n");
+
     return pte;
 }
 
@@ -104,14 +104,17 @@ int alloc_table(uint16_t pde, uint16_t pte) {
         uintptr_t table_addr = heap_base_addr + ((pde - 4) * 0x2000);
         uintptr_t **table_addr_ptr = (uintptr_t **)((void *)table_addr);
 
-        page_dir[pde] = table_addr | 0x3;
+        page_dir[pde] = table_addr;
         *table_addr_ptr = (uintptr_t *)(table_addr + 0x1000);
+        fb_print_num((uintptr_t)(*(uintptr_t **)page_dir[pde]));
+        fb_print_num((uintptr_t)*table_addr_ptr);
 
         for (unsigned int i = 0; i < 1024; i++) {
             map_page(pde, i);
         }
 
-        klog("Alloc table\n");
+        klog("Alloc table\n"); 
+        page_dir[pde] |= 0x3;
         return pde;
     } else if (!tab_present(((uintptr_t *)page_dir[pde])[pte])) {
         map_page(pde, pte);
@@ -141,13 +144,15 @@ void page_fault(struct isr_handler_args args) {
 
     pde = fault_addr >> 22;
     pte = (fault_addr >> 12) & 0x3ff;
-    /* fb_print_num(page_dir[pde]); */
-    fb_print_num(((uintptr_t)page_dir[pde]));
+
+    fb_print_num(page_dir[pde] & PRESENT);
+    /* fb_print_num(((uintptr_t)page_dir[pde])); */
 
     /* struct virt_addr fault_virt_addr = *(struct virt_addr *)&fault_addr; */
 
     if (!(page_dir[pde] & PRESENT)) {
         alloc_table(pde, pte);
+        /* fb_print_num((*(uintptr_t **)page_dir[pde])[pte]); */
         /* pde = kmalloc(sizeof(kmalloc_page_table)); */
     }
     
