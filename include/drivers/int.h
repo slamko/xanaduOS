@@ -80,6 +80,7 @@ struct isr_full_stack {
 
 struct isr_handler_args {
     uint32_t int_id;
+    uint32_t error;
     uintptr_t eip;
 };
 

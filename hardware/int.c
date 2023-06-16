@@ -79,10 +79,11 @@ void isr_x86(struct isr_full_stack isr) {
     isr_handlers[isr.int_num](
         (struct isr_handler_args) {
             .int_id = isr.int_num,
+            .error = isr.error_code,
             .eip = isr.eip
         });
 
-    /* fb_print_num(isr.int_num); */
+    /* fb_print_num(isr.eip); */
 }
 
 

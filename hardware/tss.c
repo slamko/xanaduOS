@@ -18,7 +18,7 @@ void load_tss(void) {
     tss.esp0 = (uint32_t)kernel_int_stack_end;
 
     tss.cs = 0x8 | 3;
-    tss.ss = tss.ds = tss.es = tss.fs = tss.gs = 0x10;
+    tss.ss = tss.ds = tss.es = tss.fs = tss.gs = 0x10 | 3;
 
     ltr();
 }

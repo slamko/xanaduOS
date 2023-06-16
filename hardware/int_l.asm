@@ -15,8 +15,6 @@ global isr_%1
 isr_%1:
     cli
     push dword 0
-    ;; push eax
-    ;; mov eax, %1
     push dword %1
     jmp common_isr    
 %endmacro
@@ -25,8 +23,6 @@ isr_%1:
 global isr_%1
 isr_%1:
     cli
-    ;; push eax
-    ;; mov eax, %1
     push dword %1
     jmp common_isr
 %endmacro

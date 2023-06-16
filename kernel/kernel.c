@@ -4,6 +4,7 @@
 #include "drivers/int.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
+#include "mem/paging.h"
 #include "drivers/pit.h"
 #include "lib/slibc.h"
 #include "mem/flat.h"
@@ -24,8 +25,9 @@ void kernel_main(void) {
   ps2_init();
   pit_init(0);
   syscall_init();
+  paging_init();
 
-  jump_usermode();
+  /* jump_usermode(); */
 
   /* fb_newline(); */
   /* sleep_ms(500); */
