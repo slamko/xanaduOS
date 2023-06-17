@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/cdefs.h>
 #include "drivers/int.h"
 #include "lib/kernel.h"
 #include "lib/slibc.h"
@@ -46,7 +47,49 @@ static uintptr_t kernel_page_table[KERNEL_INIT_PT_COUNT * 0x400]
 
 extern uintptr_t _kernel_end;
 static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
+static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
 static uintptr_t heap_base_addr __attribute__((aligned(PAGE_SIZE)));
+static struct block_header *heap_base_block
+    __attribute__((aligned(PAGE_SIZE)));
+
+static uintptr_t heap_end_addr;
+
+#define BLOCK_HEADER_MAGIC_NUM 0x0BADBABA
+
+struct block_header {
+    int magic_num;
+    struct block_header *next;
+    struct block_header *prev;
+    struct block_header *next_hole;
+    size_t size;
+    uint8_t is_hole;
+};
+
+void write_header(struct block_header *head, struct block_header *next,
+                        struct block_header *prev,
+                        struct block_header *next_hole,
+                        size_t size, uint8_t is_hole) {
+    if (!head) return;
+    
+    head->next_hole = next_hole;
+    head->is_hole = is_hole;
+    head->next = next;
+    head->prev = prev;
+    head->size = size;
+}
+
+void heap_init(void *heap_base) {
+    heap_base_block= ((struct block_header *)heap_base);
+    
+    heap_base_block[0] = (struct block_header) {
+        .magic_num = BLOCK_HEADER_MAGIC_NUM,
+        .next = NULL,
+        .prev = NULL,
+        .next_hole = NULL,
+        .is_hole = true,
+        .size = heap_end_addr - (uintptr_t)heap_base,
+    };
+}
   
 void paging_init() {
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
@@ -62,10 +105,13 @@ void paging_init() {
     }
     
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
-    heap_base_addr = kernel_end_addr + 0x1000;
+    pt_base_addr = kernel_end_addr + 0x1000;
+    heap_base_addr = pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE);
 
     load_page_dir((uintptr_t)&page_dir);
     enable_paging();
+    add_isr_handler(14, &page_fault, 0);
+    heap_init((void *)heap_base_addr);
 
     klog("Paging enabled\n");
 }
@@ -93,7 +139,7 @@ int page_present(uint16_t pde, uint16_t pte) {
 }
 
 int map_pt(uint16_t pde) {
-    uintptr_t table_addr = heap_base_addr + (pde * 0x1000);
+    uintptr_t table_addr = pt_base_addr + (pde * 0x1000);
 
     for (unsigned int i = 0; i < 1024; i++) {
         map_page((uintptr_t *)table_addr, pde, i);
@@ -105,7 +151,7 @@ int map_pt(uint16_t pde) {
     return pde;
  }
 
-int page_fault_handle(uint16_t pde, uint16_t pte) {
+int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(pde)) {
         map_pt(pde);
     } else if (!page_present(pde, pte)) {
@@ -116,13 +162,100 @@ int page_fault_handle(uint16_t pde, uint16_t pte) {
 }
 
 void *kalloc(size_t siz) {
-    for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
-        unsigned int pd = i + 4;
+    if (siz == 0) return NULL;
 
-        return (void *)(pd << 22);
+    struct block_header *header;
+    
+    for (header = heap_base_block;
+         header->is_hole;
+         header = header->next_hole) {
+
+        if (header->size >= siz) {
+            uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
+            header->is_hole = false;
+            header->size = siz + sizeof(*header);
+
+            if (!header->next || header->size >= siz + 2*sizeof(*header)) {
+                struct block_header *new_block =
+                    (void *)(data_base + siz);
+
+                header->next_hole = new_block;
+                header->next = new_block;
+
+                if (!heap_base_block->next_hole
+                    || heap_base_block->next_hole == header) {
+                    heap_base_block->next_hole = new_block;
+                }
+
+                *new_block = (struct block_header) {
+                    .magic_num = BLOCK_HEADER_MAGIC_NUM,
+                    .is_hole = true,
+                    .size = heap_end_addr - data_base - siz,
+                    .prev = header,
+                    .next = header->next,
+                    .next_hole = header->next_hole,
+                };
+            }
+
+            return (void *)data_base;
+        }
     }
 
+    heap_end_addr += PAGE_SIZE;
+
+    header = (struct block_header *)(void *)
+        ((uintptr_t)header + header->size + sizeof(*header));
+        
+    uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
+        struct block_header *new_block =
+        (void *)(data_base + siz);
+
+    header->next_hole = new_block;
+    header->next = new_block;
+    header->is_hole = false;
+    header->size = siz + sizeof(*header);
+
+
+    if (!heap_base_block->next_hole
+        || heap_base_block->next_hole == header) {
+        heap_base_block->next_hole = new_block;
+    }
+
+    *new_block = (struct block_header) {
+        .magic_num = BLOCK_HEADER_MAGIC_NUM,
+        .is_hole = true,
+        .size = heap_end_addr - data_base - siz,
+        .prev = header,
+        .next = header->next,
+        .next_hole = header->next_hole,
+    };
+
     return NULL;
+}
+
+static inline void *get_block_header_addr(void *addr) {
+    return (void *)((uintptr_t)addr - sizeof(struct block_header));
+}
+
+void kfree(void *addr) {
+    if (!addr) return;
+
+    if ((uintptr_t)addr > heap_end_addr || (uintptr_t)addr < heap_base_addr) {
+        return;
+    }
+    
+    void *block_addr = get_block_header_addr(addr);
+    struct block_header *header = (struct block_header *)block_addr;
+    
+    if (header->magic_num == BLOCK_HEADER_MAGIC_NUM) {
+        header->is_hole = true;
+
+        if ((uintptr_t)(void *)heap_base_block->next_hole >
+            (uintptr_t)(void *)header) {
+            header->next_hole = heap_base_block->next_hole;
+            heap_base_block->next_hole = header;
+        }
+    }
 }
 
 void page_fault(struct isr_handler_args args) {
@@ -136,8 +269,12 @@ void page_fault(struct isr_handler_args args) {
     pde = fault_addr >> 22;
     pte = (fault_addr >> 12) & 0x3ff;
 
-    page_fault_handle(pde, pte);
-    
+    if (args.error ^ PRESENT) {
+        non_present_page_hanler(pde, pte);
+    } else if (args.error ^ R_W) {
+
+    }
+        
     fb_print_num(args.error);
 }
 

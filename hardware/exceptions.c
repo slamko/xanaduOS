@@ -32,5 +32,4 @@ void exception_handlers_init(void) {
     add_isr_handler(7, &spurious_handler, 0);
     add_isr_handler(10, &invalid_tss_handler, 0);
     add_isr_handler(13, &gp_fault, 0);
-    add_isr_handler(14, &page_fault, 0);
 }
