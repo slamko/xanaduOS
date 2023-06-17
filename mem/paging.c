@@ -203,6 +203,10 @@ void *kalloc(size_t siz) {
 
     heap_end_addr += PAGE_SIZE;
 
+    if (siz > PAGE_SIZE) {
+        heap_end_addr += (size_t)(siz / PAGE_SIZE) * PAGE_SIZE;
+    }
+
     header = (struct block_header *)(void *)
         ((uintptr_t)header + header->size + sizeof(*header));
         
@@ -214,7 +218,6 @@ void *kalloc(size_t siz) {
     header->next = new_block;
     header->is_hole = false;
     header->size = siz + sizeof(*header);
-
 
     if (!heap_base_block->next_hole
         || heap_base_block->next_hole == header) {
@@ -247,13 +250,35 @@ void kfree(void *addr) {
     void *block_addr = get_block_header_addr(addr);
     struct block_header *header = (struct block_header *)block_addr;
     
-    if (header->magic_num == BLOCK_HEADER_MAGIC_NUM) {
-        header->is_hole = true;
+    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM) return;
 
-        if ((uintptr_t)(void *)heap_base_block->next_hole >
-            (uintptr_t)(void *)header) {
-            header->next_hole = heap_base_block->next_hole;
-            heap_base_block->next_hole = header;
+    header->is_hole = true;
+
+    if ((uintptr_t)(void *)heap_base_block->next_hole >
+        (uintptr_t)(void *)header) {
+        header->next_hole = heap_base_block->next_hole;
+        heap_base_block->next_hole = header;
+    }
+
+    if (header->next && header->next->is_hole) {
+        header->next = header->next->next;
+        if (header->next->next) {
+            header->next->prev = header;
+        }
+        header->next_hole = header->next_hole;
+        header->size += header->next->size;
+        header->next->magic_num = 0;
+    }
+
+    if (header->prev && header->prev->is_hole) {
+        header->prev->next = header->next;
+        header->prev->size += header->size;
+        header->prev->next_hole = header->next_hole;
+        header->magic_num = 0;
+        header->prev = header->prev->prev;
+
+        if (header->next) {
+            header->next->prev = header->prev;
         }
     }
 }
