@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/kernel.h"
@@ -7,6 +8,8 @@
 #include "lib/slibc.h"
 
 #define BLOCK_HEADER_MAGIC_NUM 0x0BADBABA
+
+static const size_t HEAP_ALIGN_SIZE = 16;
 
 static uintptr_t heap_base_addr;
 static struct block_header *heap_base_block;
@@ -19,6 +22,9 @@ struct block_header {
     struct block_header *next_hole;
     size_t size;
     uint8_t is_hole;
+
+    int padding1;
+    int padding2;
 };
 
 #define to_header_ptr(int_addr) ((struct block_header *)((void *)(int_addr)))
@@ -60,57 +66,59 @@ void heap_init(uintptr_t heap_base) {
 
     heap_base_block = to_header_ptr(heap_base_addr);
     
-    heap_base_block[0] = (struct block_header) {
-        .magic_num = BLOCK_HEADER_MAGIC_NUM,
-        .next = NULL,
-        .prev = NULL,
-        .next_hole = NULL,
-        .is_hole = true,
-        .size = heap_end_addr - heap_base_addr,
-    };
+    memset(heap_base_block, 0, sizeof(*heap_base_block));
+
+    heap_base_block[0].magic_num = BLOCK_HEADER_MAGIC_NUM;
+    heap_base_block[0].is_hole = true;
+    heap_base_block[0].size = heap_end_addr - heap_base_addr;  
 }
 
 void *kmalloc(size_t siz) {
     if (siz == 0) return NULL;
 
     struct block_header *header;
+    size_t aligned_alloc_size = siz - (siz % HEAP_ALIGN_SIZE);
+
+    if (siz % HEAP_ALIGN_SIZE) {
+        aligned_alloc_size += HEAP_ALIGN_SIZE;
+    }
     
     for (header = heap_base_block;
          ;
          header = header->next_hole) {
 
-        if (header->is_hole && header->size >= siz) {
+        if (header->is_hole && header->size >= aligned_alloc_size) {
             uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
 
             fb_print_hex(header->size);
             if (!header->next ||
-                (header->size >= siz + (3 * sizeof(*header))
+                (header->size >= aligned_alloc_size + (3 * sizeof(*header))
                  && header->next)) {
 
                 fb_print_black("insert new\n");
                 struct block_header *new_block =
-                    (void *)(data_base + siz);
+                    (void *)(data_base + aligned_alloc_size);
                 if (!heap_base_block->next_hole
                     || heap_base_block->next_hole == header) {
 
                     heap_base_block->next_hole = new_block;
                 }
 
-                *new_block = (struct block_header) {
-                    .magic_num = BLOCK_HEADER_MAGIC_NUM,
-                    .is_hole = true,
-                    .size = heap_end_addr - data_base - siz,
-                    .prev = header,
-                    .next = header->next,
-                    .next_hole = header->next_hole,
-                };
+
+                memset(new_block, 0, sizeof(*new_block));
+                new_block->magic_num = BLOCK_HEADER_MAGIC_NUM;
+                new_block->is_hole = true;
+                new_block->size = heap_end_addr - data_base - aligned_alloc_size;
+                new_block->prev = header;
+                new_block->next = header->next;
+                new_block->next_hole = header->next_hole;
 
                 header->next_hole = new_block;
                 header->next = new_block;
             }
 
             header->is_hole = false;
-            header->size = siz + sizeof(*header);
+            header->size = aligned_alloc_size + sizeof(*header);
 
             return (void *)data_base;
         }
@@ -118,8 +126,9 @@ void *kmalloc(size_t siz) {
 
     heap_end_addr += PAGE_SIZE;
 
-    if (siz > PAGE_SIZE) {
-        heap_end_addr += ((size_t)(siz / PAGE_SIZE) * PAGE_SIZE) * 2;
+    if (aligned_alloc_size > PAGE_SIZE) {
+        heap_end_addr +=
+            (aligned_alloc_size - (aligned_alloc_size % PAGE_SIZE)) * 2;
     }
 
     header =
@@ -127,26 +136,25 @@ void *kmalloc(size_t siz) {
         
     uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
     struct block_header *new_block =
-        (void *)(data_base + siz);
+        (void *)(data_base + aligned_alloc_size);
 
     header->next_hole = new_block;
     header->next = new_block;
     header->is_hole = false;
-    header->size = siz + sizeof(*header);
+    header->size = aligned_alloc_size + sizeof(*header);
 
     if (!heap_base_block->next_hole
         || heap_base_block->next_hole == header) {
         heap_base_block->next_hole = new_block;
     }
 
-    *new_block = (struct block_header) {
-        .magic_num = BLOCK_HEADER_MAGIC_NUM,
-        .is_hole = true,
-        .size = heap_end_addr - data_base - siz,
-        .prev = header,
-        .next = header->next,
-        .next_hole = header->next_hole,
-    };
+    memset(new_block, 0, sizeof(*new_block));
+    new_block->magic_num = BLOCK_HEADER_MAGIC_NUM;
+    new_block->is_hole = true;
+    new_block->size = heap_end_addr - data_base - aligned_alloc_size;
+    new_block->prev = header;
+    new_block->next = header->next;
+    new_block->next_hole = header->next_hole;
 
     return (void *)data_base;
 }

@@ -37,6 +37,11 @@ void kernel_main(void) {
     kfree(p2);
     int *p4 = alloc_test(8);
 
+    kfree(p1);
+    kfree(p4);
+    kfree(p3);
+    int *r2 = alloc_test(16);
+
     /* jump_usermode(); */
 
     /* fb_newline(); */
