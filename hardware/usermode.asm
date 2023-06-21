@@ -98,6 +98,7 @@ global jump_usermode
 extern usermode
 extern fb_print_black    
 extern fb_print_num    
+extern fb_print_hex    
 
 jump_usermode:
     cli
@@ -115,6 +116,8 @@ jump_usermode:
     sti
     push usermode_bootstrap
     iret
+    ;; call fb_print_hex 
+    ;; ret
 
 extern kernel_int_stack_end
 global sysenter
@@ -138,7 +141,8 @@ sysenter:
     jmp _after
 
 _legacy:
-    int 0x80
+    ret
+    ;; int 0x80
     
 _after:
     pop edi

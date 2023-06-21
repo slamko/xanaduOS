@@ -228,7 +228,6 @@ char dec_to_hex(unsigned int num) {
 char *_print_hex_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     if (num >= 16) {
         uint32_t div = (uint32_t)(num / 16);
-        /* fb_print_num(div); */
         char c = dec_to_hex(num - (div * 16)); 
         str[siz - *mul - 1] = c;
         *mul += 1;
@@ -236,6 +235,9 @@ char *_print_hex_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     } else {
         char c = dec_to_hex(num);
         str[siz - *mul - 1] = c;
+        str[siz - *mul - 2] = 'x';
+        str[siz - *mul - 3] = '0';
+        *mul += 2;
         return str + siz - *mul - 1;
     }
 

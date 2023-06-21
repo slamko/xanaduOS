@@ -55,11 +55,15 @@ void paging_init() {
     }
 
     for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
-        kernel_page_table[i] = (i * 0x1000) | PRESENT | USER_SUPERVISOR;
+        kernel_page_table[i] = (i * 0x1000) | PRESENT | R_W | USER_SUPERVISOR;
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
-        page_dir[i] = (uintptr_t)&kernel_page_table[PT_SIZE * i] | 0x3;
+        page_dir[i] = (uintptr_t)&kernel_page_table[PT_SIZE * i]
+            | PRESENT
+            | R_W
+            | USER_SUPERVISOR
+            ;
     }
     
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));

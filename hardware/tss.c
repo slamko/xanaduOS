@@ -3,6 +3,7 @@
 #include "drivers/fb.h"
 #include "bin/shell.h"
 #include <stdint.h>
+#include <string.h>
 
 extern void *kernel_stack_start;
 extern void *kernel_stack_end;
@@ -13,7 +14,8 @@ void ltr(void);
 struct tss_entry tss __attribute__((aligned(4096)));
 
 void load_tss(void) {
-    tss = (struct tss_entry){0};
+    /* tss = (struct tss_entry){0}; */
+    memset(&tss, 0, sizeof(tss));
     tss.ss0 = 0x10;
     tss.esp0 = (uint32_t)kernel_int_stack_end;
 

@@ -30,19 +30,7 @@ void kernel_main(void) {
     paging_init();
 
     klog("Hello paging!\n");
-
-    int *p1 = alloc_test(8);
-    int *p2 = alloc_test(16);
-    int *p3 = alloc_test(8);
-    kfree(p2);
-    int *p4 = alloc_test(8);
-
-    kfree(p1);
-    kfree(p4);
-    kfree(p3);
-    int *r2 = alloc_test(16);
-
-    /* jump_usermode(); */
+    jump_usermode();
 
     /* fb_newline(); */
     /* sleep_ms(500); */

@@ -60,6 +60,19 @@ void *alloc_test(size_t size) {
     return t;
 }
 
+void allocator_test(void) {
+    int *p1 = alloc_test(8);
+    int *p2 = alloc_test(16);
+    int *p3 = alloc_test(8);
+    kfree(p2);
+    int *p4 = alloc_test(8);
+
+    kfree(p1);
+    kfree(p4);
+    kfree(p3);
+    int *r2 = alloc_test(16);
+}
+
 void heap_init(uintptr_t heap_base) {
     heap_base_addr = heap_base;
     heap_end_addr = heap_base_addr + INIT_HEAP_SIZE;
