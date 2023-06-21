@@ -1,4 +1,5 @@
 #include "mem/paging.h"
+#include "mem/allocator.h"
 #include "drivers/fb.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -33,12 +34,11 @@ struct virt_addr {
 } __attribute__((packed));
 
 void load_page_dir(uintptr_t dir);
+void page_fault(struct isr_handler_args args);
 void enable_paging(void);
 void print_cr0(void);
 
 #define KERNEL_INIT_PT_COUNT 4
-#define PT_SIZE 1024
-#define PAGE_SIZE 4096
 
 static uintptr_t page_dir[1024] __attribute__((aligned(PAGE_SIZE)));
 
@@ -48,49 +48,7 @@ static uintptr_t kernel_page_table[KERNEL_INIT_PT_COUNT * 0x400]
 extern uintptr_t _kernel_end;
 static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
-static uintptr_t heap_base_addr __attribute__((aligned(PAGE_SIZE)));
-static struct block_header *heap_base_block
-    __attribute__((aligned(PAGE_SIZE)));
 
-static uintptr_t heap_end_addr;
-
-#define BLOCK_HEADER_MAGIC_NUM 0x0BADBABA
-
-struct block_header {
-    int magic_num;
-    struct block_header *next;
-    struct block_header *prev;
-    struct block_header *next_hole;
-    size_t size;
-    uint8_t is_hole;
-};
-
-void write_header(struct block_header *head, struct block_header *next,
-                        struct block_header *prev,
-                        struct block_header *next_hole,
-                        size_t size, uint8_t is_hole) {
-    if (!head) return;
-    
-    head->next_hole = next_hole;
-    head->is_hole = is_hole;
-    head->next = next;
-    head->prev = prev;
-    head->size = size;
-}
-
-void heap_init(void *heap_base) {
-    heap_base_block= ((struct block_header *)heap_base);
-    
-    heap_base_block[0] = (struct block_header) {
-        .magic_num = BLOCK_HEADER_MAGIC_NUM,
-        .next = NULL,
-        .prev = NULL,
-        .next_hole = NULL,
-        .is_hole = true,
-        .size = heap_end_addr - (uintptr_t)heap_base,
-    };
-}
-  
 void paging_init() {
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
         page_dir[i] |= R_W;
@@ -105,13 +63,12 @@ void paging_init() {
     }
     
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
-    pt_base_addr = kernel_end_addr + 0x1000;
-    heap_base_addr = pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE);
+    pt_base_addr = kernel_end_addr + PAGE_SIZE;
+    add_isr_handler(14, &page_fault, 0);
+    heap_init(pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE));
 
     load_page_dir((uintptr_t)&page_dir);
     enable_paging();
-    add_isr_handler(14, &page_fault, 0);
-    heap_init((void *)heap_base_addr);
 
     klog("Paging enabled\n");
 }
@@ -145,7 +102,7 @@ int map_pt(uint16_t pde) {
         map_page((uintptr_t *)table_addr, pde, i);
     }
 
-    klog("Alloc page table\n"); 
+    klog("Alloc page table\n");
     page_dir[pde] = table_addr | 0x3;
 
     return pde;
@@ -161,134 +118,12 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     return 1;
 }
 
-void *kalloc(size_t siz) {
-    if (siz == 0) return NULL;
-
-    struct block_header *header;
-    
-    for (header = heap_base_block;
-         header->is_hole;
-         header = header->next_hole) {
-
-        if (header->size >= siz) {
-            uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
-            header->is_hole = false;
-            header->size = siz + sizeof(*header);
-
-            if (!header->next || header->size >= siz + 2*sizeof(*header)) {
-                struct block_header *new_block =
-                    (void *)(data_base + siz);
-
-                header->next_hole = new_block;
-                header->next = new_block;
-
-                if (!heap_base_block->next_hole
-                    || heap_base_block->next_hole == header) {
-                    heap_base_block->next_hole = new_block;
-                }
-
-                *new_block = (struct block_header) {
-                    .magic_num = BLOCK_HEADER_MAGIC_NUM,
-                    .is_hole = true,
-                    .size = heap_end_addr - data_base - siz,
-                    .prev = header,
-                    .next = header->next,
-                    .next_hole = header->next_hole,
-                };
-            }
-
-            return (void *)data_base;
-        }
-    }
-
-    heap_end_addr += PAGE_SIZE;
-
-    if (siz > PAGE_SIZE) {
-        heap_end_addr += (size_t)(siz / PAGE_SIZE) * PAGE_SIZE;
-    }
-
-    header = (struct block_header *)(void *)
-        ((uintptr_t)header + header->size + sizeof(*header));
-        
-    uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
-        struct block_header *new_block =
-        (void *)(data_base + siz);
-
-    header->next_hole = new_block;
-    header->next = new_block;
-    header->is_hole = false;
-    header->size = siz + sizeof(*header);
-
-    if (!heap_base_block->next_hole
-        || heap_base_block->next_hole == header) {
-        heap_base_block->next_hole = new_block;
-    }
-
-    *new_block = (struct block_header) {
-        .magic_num = BLOCK_HEADER_MAGIC_NUM,
-        .is_hole = true,
-        .size = heap_end_addr - data_base - siz,
-        .prev = header,
-        .next = header->next,
-        .next_hole = header->next_hole,
-    };
-
-    return NULL;
-}
-
-static inline void *get_block_header_addr(void *addr) {
-    return (void *)((uintptr_t)addr - sizeof(struct block_header));
-}
-
-void kfree(void *addr) {
-    if (!addr) return;
-
-    if ((uintptr_t)addr > heap_end_addr || (uintptr_t)addr < heap_base_addr) {
-        return;
-    }
-    
-    void *block_addr = get_block_header_addr(addr);
-    struct block_header *header = (struct block_header *)block_addr;
-    
-    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM) return;
-
-    header->is_hole = true;
-
-    if ((uintptr_t)(void *)heap_base_block->next_hole >
-        (uintptr_t)(void *)header) {
-        header->next_hole = heap_base_block->next_hole;
-        heap_base_block->next_hole = header;
-    }
-
-    if (header->next && header->next->is_hole) {
-        header->next = header->next->next;
-        if (header->next->next) {
-            header->next->prev = header;
-        }
-        header->next_hole = header->next_hole;
-        header->size += header->next->size;
-        header->next->magic_num = 0;
-    }
-
-    if (header->prev && header->prev->is_hole) {
-        header->prev->next = header->next;
-        header->prev->size += header->size;
-        header->prev->next_hole = header->next_hole;
-        header->magic_num = 0;
-        header->prev = header->prev->prev;
-
-        if (header->next) {
-            header->next->prev = header->prev;
-        }
-    }
-}
-
 void page_fault(struct isr_handler_args args) {
     uintptr_t fault_addr;
     uint16_t pde;
     uint16_t pte;
 
-    klog_warn("Page fault\n");
+    klog_error("Page fault\n");
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
     pde = fault_addr >> 22;

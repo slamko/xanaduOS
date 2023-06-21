@@ -5,6 +5,7 @@
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
 #include "mem/paging.h"
+#include "mem/allocator.h"
 #include "drivers/pit.h"
 #include "lib/slibc.h"
 #include "mem/flat.h"
@@ -29,7 +30,22 @@ void kernel_main(void) {
   paging_init();
 
   klog("Hello paging!\n");
+  int *ptr = kmalloc(256);
 
+  *ptr = 5;
+  
+  klog("Alloc 256 bytes: ");
+  fb_print_hex((uintptr_t)ptr);
+  fb_print_hex(ptr[0]);
+
+  int *p = kmalloc(16);
+  *p = 4;
+  klog("alloc 16: ");
+  fb_print_hex((uintptr_t)p);
+  fb_print_hex(p[0]);
+  
+  
+  
   /* jump_usermode(); */
 
   /* fb_newline(); */
