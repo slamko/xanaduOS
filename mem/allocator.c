@@ -1,11 +1,12 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include "lib/kernel.h"
+#include "mem/allocator.h"
 #include "drivers/fb.h"
 #include "mem/paging.h"
 #include "lib/slibc.h"
 
 #define BLOCK_HEADER_MAGIC_NUM 0x0BADBABA
-#define INIT_HEAP_SIZE (PAGE_SIZE * PT_SIZE)
 
 static uintptr_t heap_base_addr;
 static struct block_header *heap_base_block;
@@ -20,6 +21,8 @@ struct block_header {
     uint8_t is_hole;
 };
 
+#define to_header_ptr(int_addr) ((struct block_header *)((void *)(int_addr)))
+
 void write_header(struct block_header *head, struct block_header *next,
                         struct block_header *prev,
                         struct block_header *next_hole,
@@ -33,11 +36,29 @@ void write_header(struct block_header *head, struct block_header *next,
     head->size = size;
 }
 
+void *alloc_test(size_t size) {
+    int *t = kmalloc(size);
+
+    if (!t) {
+        klog("null\n");
+    }
+    
+    *t = size * 3;
+    klog("alloc bytes: ");
+    fb_print_num(size);
+    klog("at address: ");
+    fb_print_hex((uintptr_t)t);
+    klog("val: ");
+    fb_print_hex(t[0]);
+
+    return t;
+}
+
 void heap_init(uintptr_t heap_base) {
     heap_base_addr = heap_base;
     heap_end_addr = heap_base_addr + INIT_HEAP_SIZE;
 
-    heap_base_block = ((struct block_header *)(void *)heap_base_addr);
+    heap_base_block = to_header_ptr(heap_base_addr);
     
     heap_base_block[0] = (struct block_header) {
         .magic_num = BLOCK_HEADER_MAGIC_NUM,
@@ -60,18 +81,18 @@ void *kmalloc(size_t siz) {
 
         if (header->is_hole && header->size >= siz) {
             uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
-            header->is_hole = false;
-            header->size = siz + sizeof(*header);
 
-            if (!header->next || header->size >= siz + 2*sizeof(*header)) {
+            fb_print_hex(header->size);
+            if (!header->next ||
+                (header->size >= siz + (3 * sizeof(*header))
+                 && header->next)) {
+
+                fb_print_black("insert new\n");
                 struct block_header *new_block =
                     (void *)(data_base + siz);
-
-                header->next_hole = new_block;
-                header->next = new_block;
-
                 if (!heap_base_block->next_hole
                     || heap_base_block->next_hole == header) {
+
                     heap_base_block->next_hole = new_block;
                 }
 
@@ -83,23 +104,29 @@ void *kmalloc(size_t siz) {
                     .next = header->next,
                     .next_hole = header->next_hole,
                 };
+
+                header->next_hole = new_block;
+                header->next = new_block;
             }
+
+            header->is_hole = false;
+            header->size = siz + sizeof(*header);
 
             return (void *)data_base;
         }
     }
-/*
+
     heap_end_addr += PAGE_SIZE;
 
     if (siz > PAGE_SIZE) {
-        heap_end_addr += (size_t)(siz / PAGE_SIZE) * PAGE_SIZE;
+        heap_end_addr += ((size_t)(siz / PAGE_SIZE) * PAGE_SIZE) * 2;
     }
 
-    header = (struct block_header *)(void *)
-        ((uintptr_t)header + header->size + sizeof(*header));
+    header =
+        to_header_ptr((uintptr_t)header + header->size + sizeof(*header));
         
     uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
-        struct block_header *new_block =
+    struct block_header *new_block =
         (void *)(data_base + siz);
 
     header->next_hole = new_block;
@@ -120,8 +147,8 @@ void *kmalloc(size_t siz) {
         .next = header->next,
         .next_hole = header->next_hole,
     };
-*/
-    return NULL;
+
+    return (void *)data_base;
 }
 
 static inline void *get_block_header_addr(void *addr) {
