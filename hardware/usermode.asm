@@ -7,7 +7,6 @@ section .bss
     
 section .text
 
-    
 extern SYSCALL_MAX_ARGS_NUM
 extern fb_newline
 extern fb_print_num

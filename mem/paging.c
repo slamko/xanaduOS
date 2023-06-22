@@ -55,7 +55,11 @@ void paging_init() {
     }
 
     for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
-        kernel_page_table[i] = (i * 0x1000) | PRESENT | R_W | USER_SUPERVISOR;
+        kernel_page_table[i] = (i * 0x1000)
+            | PRESENT
+            | R_W
+            | USER_SUPERVISOR
+            ;
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -86,7 +90,7 @@ static inline uintptr_t get_page_addr(uint16_t pde, uint16_t pte) {
 }
 
 int map_page(uintptr_t *pt_addr, uint16_t pde, uint16_t pte) {
-    pt_addr[pte] = get_page_addr(pde, pte) | 0x3;
+    pt_addr[pte] = get_page_addr(pde, pte) | PRESENT | R_W;
 
     return pte;
 }
@@ -107,7 +111,7 @@ int map_pt(uint16_t pde) {
     }
 
     klog("Alloc page table\n");
-    page_dir[pde] = table_addr | 0x3;
+    page_dir[pde] = table_addr | PRESENT | R_W;
 
     return pde;
  }
