@@ -22,7 +22,6 @@ void get_frame_meta(uintptr_t addr,
     *frame = (addr - (*frame_map * PAGE_SIZE * sizeof(*frames))) / PAGE_SIZE;
 }
 
-
 uintptr_t alloc_frame(uintptr_t addr, unsigned int flags) {
     if (addr) {
         unsigned int frame_map, frame;
@@ -58,6 +57,9 @@ uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     memset(*new_pt, 0, PAGE_SIZE);
 
     return phys_addr | flags;
+}
+
+int map_pt(struct page_dir pd) {
 }
 
 void map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {

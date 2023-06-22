@@ -10,7 +10,7 @@
 
 #define to_uintptr(ptr) ((uintptr_t)(void *)(ptr))
 
-enum {
+enum PAGING_STRUCT_FLAGS {
     PRESENT              = (1 << 0),
     R_W                  = (1 << 1),
     USER                 = (1 << 2),
@@ -22,7 +22,14 @@ enum {
 };
 
 typedef uintptr_t * page_table_t;
-typedef uintptr_t ** page_dir_t;
+
+struct page_dir {
+    uintptr_t *page_tables;
+
+    uintptr_t *page_tables_virt;
+
+    uintptr_t pd_phys_addr;
+};
 
 uintptr_t to_phys_addr(void *virt_addr);
 
@@ -30,7 +37,7 @@ void paging_init(void);
 
 void page_fault(struct isr_handler_args args);
 
-uintptr_t *clone_page_dir(uintptr_t *pd);
+int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd);
 
 uintptr_t *clone_page_table(uintptr_t *pt);
 
