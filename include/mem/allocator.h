@@ -10,6 +10,8 @@ void *alloc_test(size_t size);
 
 void heap_init(uintptr_t heap_base);
 
+void *kmalloc_align(size_t siz, size_t alignment);
+
 void *kmalloc(size_t siz);
 
 void kfree(void *addr);

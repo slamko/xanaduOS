@@ -14,7 +14,7 @@
 enum {
     PRESENT              = (1 << 0),
     R_W                  = (1 << 1),
-    USER_SUPERVISOR      = (1 << 2),
+    USER                 = (1 << 2),
     PWT                  = (1 << 3),
     PCD                  = (1 << 4),
     ACCESSED             = (1 << 5),
@@ -47,7 +47,7 @@ static uintptr_t virt_kernel_addr;
 static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
 
-static inline uintptr_t to_phys_addr(void *virt_addr) {
+uintptr_t to_phys_addr(void *virt_addr) {
     return ((uintptr_t)virt_addr -
             (virt_kernel_addr ? virt_kernel_addr : VADDR));
 }
@@ -64,7 +64,7 @@ void paging_init() {
         kernel_page_table[i] = (i * 0x1000)
             | PRESENT
             | R_W
-            | USER_SUPERVISOR
+            | USER
             ;
     }
 
@@ -73,7 +73,7 @@ void paging_init() {
             to_phys_addr(&kernel_page_table[PT_SIZE * i])
             | PRESENT
             | R_W
-            | USER_SUPERVISOR
+            | USER
             ;
     }
 
@@ -91,16 +91,47 @@ static inline int tab_present(uintptr_t descriptor) {
     return descriptor & PRESENT;
 }
 
-static inline uintptr_t get_page_addr(uint16_t pde, uint16_t pte) {
+static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
     return (pde * 0x400000) + (pte * 0x1000);
 }
 
-int map_page(uintptr_t *pt_addr, uint16_t pde, uint16_t pte) {
-    pt_addr[pte] = get_page_addr(pde, pte) | PRESENT | R_W;
+int copy_page_data(uintptr_t page_addr);
 
-    return pte;
+uintptr_t *clone_page_table(uintptr_t *pt) {
+    uintptr_t *new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
+
+    if (!new_pt) {
+        return NULL;
+    }
+
+    for (unsigned int i = 0; i < PAGE_SIZE; i++) {
+        new_pt[i] = pt[i];
+
+        if (pt[i] & (USER | PRESENT)) {
+            copy_page_data(pt[i]);
+        }
+    }
+
+    return new_pt;
 }
 
+uintptr_t *clone_page_dir(uintptr_t *pd) {
+    uintptr_t *new_pd = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
+
+    if (!new_pd) {
+        return NULL;
+    }
+
+    for (unsigned int i = 0; i < PAGE_SIZE; i++) {
+        new_pd[i] = page_dir[i];
+
+        if (page_dir[i] & (USER | PRESENT)) {
+            /* clone_page_table((uintptr_t *)(void *)page_dir[i]); */
+        }
+    }
+
+    return new_pd;
+}
 int pt_present(uint16_t pde) {
     return tab_present(page_dir[pde]);
 }
@@ -109,11 +140,23 @@ int page_present(uint16_t pde, uint16_t pte) {
     return tab_present(((uintptr_t *)page_dir[pde])[pte]);
 }
 
-int map_pt(uint16_t pde) {
+int map_page(page_table_t pt, uint16_t pte, uintptr_t map_addr) {
+    pt[pte] = map_addr | PRESENT | R_W;
+
+    return pte;
+}
+
+int map_page_ident(page_table_t pt, uint16_t pde, uint16_t pte) {
+    map_page(pt, pte, get_ident_phys_page_addr(pde, pte));
+
+    return pte;
+}
+
+int map_pt_ident(uint16_t pde) {
     uintptr_t table_addr = pt_base_addr + (pde * 0x1000);
 
     for (unsigned int i = 0; i < 1024; i++) {
-        map_page((uintptr_t *)table_addr, pde, i);
+        map_page_ident((page_table_t)table_addr, pde, i);
     }
 
     klog("Alloc page table\n");
@@ -124,9 +167,9 @@ int map_pt(uint16_t pde) {
 
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(pde)) {
-        map_pt(pde);
+        map_pt_ident(pde);
     } else if (!page_present(pde, pte)) {
-        map_page((uintptr_t *)page_dir[pde], pde, pte);
+        map_page_ident((page_table_t)page_dir[pde], pde, pte);
     }
 
     return 1;

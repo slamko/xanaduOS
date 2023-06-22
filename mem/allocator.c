@@ -9,7 +9,7 @@
 
 #define BLOCK_HEADER_MAGIC_NUM 0x0BADBABA
 
-static const size_t HEAP_ALIGN_SIZE = 16;
+static const size_t HEAP_ALIGN = 16;
 
 static uintptr_t heap_base_addr;
 static struct block_header *heap_base_block;
@@ -86,22 +86,31 @@ void heap_init(uintptr_t heap_base) {
     heap_base_block[0].size = heap_end_addr - heap_base_addr;  
 }
 
-void *kmalloc(size_t siz) {
+void *kmalloc_align(size_t siz, size_t alignment) {
     if (siz == 0) return NULL;
 
-    struct block_header *header;
-    size_t aligned_alloc_size = siz - (siz % HEAP_ALIGN_SIZE);
+    if (alignment == 0) {
+        alignment = 1;
+    }
 
-    if (siz % HEAP_ALIGN_SIZE) {
-        aligned_alloc_size += HEAP_ALIGN_SIZE;
+    struct block_header *header;
+    size_t aligned_alloc_size = siz - (siz % alignment);
+
+    if (siz % alignment) {
+        aligned_alloc_size += alignment;
     }
     
     for (header = heap_base_block;
          ;
          header = header->next_hole) {
+        uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
+        if (data_base % alignment) {
+            data_base += (alignment - (data_base % alignment));
+        }
 
-        if (header->is_hole && header->size >= aligned_alloc_size) {
-            uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
+        if (header->is_hole
+            && header->size >=
+                (aligned_alloc_size + (data_base - (uintptr_t)header))) {
 
             fb_print_hex(header->size);
             if (!header->next ||
@@ -170,6 +179,10 @@ void *kmalloc(size_t siz) {
     new_block->next_hole = header->next_hole;
 
     return (void *)data_base;
+}
+
+void *kmalloc(size_t siz) {
+    return kmalloc_align(siz, HEAP_ALIGN);
 }
 
 static inline void *get_block_header_addr(void *addr) {

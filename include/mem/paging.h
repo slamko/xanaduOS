@@ -7,12 +7,23 @@
 
 #define to_uintptr(ptr) ((uintptr_t)(void *)(ptr))
 
+typedef uintptr_t * page_table_t;
+typedef uintptr_t ** page_dir_t;
+
+uintptr_t to_phys_addr(void *virt_addr);
+
 void paging_init(void);
 
 void page_fault(struct isr_handler_args args);
 
-void *kalloc(size_t siz);
+int map_page(uintptr_t *pt_addr, uint16_t pte, uintptr_t map_addr);
 
-void kfree(void *addr);
+int map_page_ident(uintptr_t *pt_addr, uint16_t pde, uint16_t pte);
+
+int map_pt_ident(uint16_t pde);
+
+uintptr_t *clone_page_dir(uintptr_t *pd);
+
+uintptr_t *clone_page_table(uintptr_t *pt);
 
 extern void *vga_buf;
