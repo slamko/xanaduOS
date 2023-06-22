@@ -23,6 +23,7 @@ void kernel_main(void) {
     init_gdt();
     init_idt();
     paging_init();
+    /* alloc_test(); */
 
     serial_init();
 

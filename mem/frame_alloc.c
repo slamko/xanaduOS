@@ -1,6 +1,11 @@
+#include "drivers/fb.h"
 #include "mem/allocator.h"
+#include "mem/frame_allocator.h"
+#include "lib/kernel.h"
+#include "mem/paging.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 uint32_t *frames;
 uint32_t frames_num;
@@ -42,9 +47,20 @@ uintptr_t alloc_frame(uintptr_t addr, unsigned int flags) {
 }
 
 uintptr_t find_alloc_frame(unsigned int flags) {
-    alloc_frame(0, flags);
-    
-    return 0;
+    return alloc_frame(0, flags);
+}
+
+uintptr_t alloc_pt(unsigned int pde, unsigned int pte, uint16_t flags) {
+    uintptr_t phys_addr = 0;
+    uintptr_t *new_pt = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &phys_addr);
+    memset(new_pt, 0, PAGE_SIZE);
+    /* klog("kmalloc"); */
+
+    new_pt[pte] = find_alloc_frame(flags);
+    klog("pte: ");
+    fb_print_hex((uintptr_t)new_pt[pte]);
+    fb_print_hex((uintptr_t)phys_addr);
+    return phys_addr | flags;
 }
 
 int dealloc_frame(uintptr_t addr) {

@@ -1,8 +1,8 @@
+#include "mem/allocator.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/kernel.h"
-#include "mem/allocator.h"
 #include "drivers/fb.h"
 #include "mem/paging.h"
 #include "lib/slibc.h"
@@ -112,7 +112,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
             && header->size >=
                 (aligned_alloc_size + (data_base - (uintptr_t)header))) {
 
-            fb_print_hex(header->size);
+            /* fb_print_hex(header->size); */
             if (!header->next ||
                 (header->size >= aligned_alloc_size + (3 * sizeof(*header))
                  && header->next)) {
@@ -145,6 +145,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
             return (void *)data_base;
         }
     }
+    klog("not enough");
 
     heap_end_addr += PAGE_SIZE;
 
@@ -183,6 +184,20 @@ void *kmalloc_align(size_t siz, size_t alignment) {
 
 void *kmalloc(size_t siz) {
     return kmalloc_align(siz, HEAP_ALIGN);
+}
+
+void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys) {
+    void *virt = kmalloc_align(siz, align);
+    *phys = to_phys_addr(virt);
+
+    return virt;
+}
+
+void *kmalloc_phys(size_t siz, uintptr_t *phys) {
+    void *virt = kmalloc(siz);
+    *phys = to_phys_addr(virt);
+
+    return virt;
 }
 
 static inline void *get_block_header_addr(void *addr) {

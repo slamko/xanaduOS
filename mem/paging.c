@@ -12,17 +12,6 @@
 
 #define VADDR 0xC0000000
 
-enum {
-    PRESENT              = (1 << 0),
-    R_W                  = (1 << 1),
-    USER                 = (1 << 2),
-    PWT                  = (1 << 3),
-    PCD                  = (1 << 4),
-    ACCESSED             = (1 << 5),
-    DIRTY                = (1 << 6),
-    PS                   = (1 << 7),
-};
-
 struct virt_addr {
     uintptr_t pde : 10;
     uintptr_t pte : 10;
@@ -157,7 +146,7 @@ int map_pt_ident(uint16_t pde) {
         map_page_ident((page_table_t)table_addr, pde, i);
     }
 
-    klog("Alloc page table\n");
+    /* klog("Alloc page table\n"); */
     page_dir[pde] = to_phys_addr((void *)table_addr) | PRESENT | R_W;
 
     return pde;
@@ -165,9 +154,12 @@ int map_pt_ident(uint16_t pde) {
 
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(pde)) {
-        map_pt_ident(pde);
+        /* map_pt_ident(pde); */
+        page_dir[pde] = alloc_pt(pde, pte, R_W | PRESENT);
     } else if (!page_present(pde, pte)) {
-        map_page_ident((page_table_t)page_dir[pde], pde, pte);
+        /* map_page_ident((uintptr_t *)(void *)page_dir[pde], pde, pte); */
+        /* klog("no page"); */
+        page_dir[pde] = find_alloc_frame(R_W | PRESENT);
     }
 
     return 1;
@@ -178,12 +170,13 @@ void page_fault(struct isr_handler_args args) {
     uint16_t pde;
     uint16_t pte;
 
-    klog("Page fault\n");
+    /* klog("Page fault\n"); */
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
     pde = fault_addr >> 22;
-    fb_print_hex(pde);
+    /* fb_print_hex(pde); */
     pte = (fault_addr >> 12) & 0x3ff;
+    /* fb_print_hex(pte); */
 
     if (args.error ^ PRESENT) {
         non_present_page_hanler(pde, pte);

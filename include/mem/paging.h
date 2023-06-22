@@ -7,6 +7,17 @@
 
 #define to_uintptr(ptr) ((uintptr_t)(void *)(ptr))
 
+enum {
+    PRESENT              = (1 << 0),
+    R_W                  = (1 << 1),
+    USER                 = (1 << 2),
+    PWT                  = (1 << 3),
+    PCD                  = (1 << 4),
+    ACCESSED             = (1 << 5),
+    DIRTY                = (1 << 6),
+    PS                   = (1 << 7),
+};
+
 typedef uintptr_t * page_table_t;
 typedef uintptr_t ** page_dir_t;
 
