@@ -1,8 +1,8 @@
 #include "drivers/fb.h"
 #include "mem/allocator.h"
 #include "mem/frame_allocator.h"
-#include "lib/kernel.h"
 #include "mem/paging.h"
+#include "lib/kernel.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -18,8 +18,8 @@ bool is_free_frame(uint32_t frame_map, uint32_t frame) {
 void get_frame_meta(uintptr_t addr,
                     unsigned int *frame_map, unsigned int *frame) {
 
-    *frame_map = addr / (0x1000 * sizeof(*frames));
-    *frame = (addr - (*frame_map * 0x1000 * sizeof(*frames))) / 0x1000;
+    *frame_map = addr / (PAGE_SIZE * sizeof(*frames));
+    *frame = (addr - (*frame_map * PAGE_SIZE * sizeof(*frames))) / PAGE_SIZE;
 }
 
 
@@ -38,7 +38,9 @@ uintptr_t alloc_frame(uintptr_t addr, unsigned int flags) {
         for (unsigned int j = 0; j < sizeof(*frames); j++) {
             if (is_free_frame(i, j)) {
                 frames[i] |= (1 << j);
-                return ((i * 0x1000 * sizeof(*frames)) + (j * 0x1000)) | flags;
+                uintptr_t frame_addr =
+                    ((i * PAGE_SIZE * sizeof(*frames)) + (j * PAGE_SIZE));
+                return  frame_addr| flags;
             }
         }
     }
@@ -50,18 +52,28 @@ uintptr_t find_alloc_frame(unsigned int flags) {
     return alloc_frame(0, flags);
 }
 
-uintptr_t alloc_pt(unsigned int pde, unsigned int pte, uint16_t flags) {
+uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     uintptr_t phys_addr = 0;
-    uintptr_t *new_pt = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &phys_addr);
-    memset(new_pt, 0, PAGE_SIZE);
-    /* klog("kmalloc"); */
+    *new_pt = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &phys_addr);
+    memset(*new_pt, 0, PAGE_SIZE);
 
-    new_pt[pte] = find_alloc_frame(flags);
-    klog("pte: ");
-    fb_print_hex((uintptr_t)new_pt[pte]);
-    fb_print_hex((uintptr_t)phys_addr);
     return phys_addr | flags;
 }
+
+void map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
+    pt[pte] = find_alloc_frame(flags);
+}
+
+int map_pt_ident(uintptr_t *page_dir, uint16_t pde, uint16_t flags) {
+    page_table_t pt;
+    page_dir[pde] = alloc_pt(&pt, flags);
+    
+    for (unsigned int i = 0; i < PT_SIZE; i++) {
+        map_frame(pt, i, flags);
+    }
+
+    return pde;
+} 
 
 int dealloc_frame(uintptr_t addr) {
     if (!addr) {
@@ -79,6 +91,6 @@ int dealloc_frame(uintptr_t addr) {
 
 void frame_alloc_init(void) {
     mem_limit = 128 * 1024 * 1024;
-    frames_num = mem_limit / 0x1000;
+    frames_num = mem_limit / PAGE_SIZE;
     frames = kmalloc(frames_num / sizeof(*frames));
 }

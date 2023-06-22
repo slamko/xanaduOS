@@ -24,6 +24,7 @@ void enable_paging(void);
 void print_cr0(void);
 
 #define KERNEL_INIT_PT_COUNT 4
+#define DEFAULT_FLAGS (R_W | PRESENT)
 
 static uintptr_t page_dir[PT_SIZE] __attribute__((aligned(PAGE_SIZE)));
 
@@ -46,7 +47,7 @@ void paging_init() {
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     asm volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
-    heap_init(pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE));
+    heap_init(pt_base_addr);
     frame_alloc_init();
 
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
@@ -127,38 +128,12 @@ int page_present(uint16_t pde, uint16_t pte) {
     return tab_present(((uintptr_t *)page_dir[pde])[pte]);
 }
 
-int map_page(page_table_t pt, uint16_t pte, uintptr_t map_addr) {
-    pt[pte] = map_addr | PRESENT | R_W;
-
-    return pte;
-}
-
-int map_page_ident(page_table_t pt, uint16_t pde, uint16_t pte) {
-    map_page(pt, pte, get_ident_phys_page_addr(pde, pte));
-
-    return pte;
-}
-
-int map_pt_ident(uint16_t pde) {
-    uintptr_t table_addr = pt_base_addr + (pde * 0x1000);
-
-    for (unsigned int i = 0; i < 1024; i++) {
-        map_page_ident((page_table_t)table_addr, pde, i);
-    }
-
-    /* klog("Alloc page table\n"); */
-    page_dir[pde] = to_phys_addr((void *)table_addr) | PRESENT | R_W;
-
-    return pde;
- }
-
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(pde)) {
-        /* map_pt_ident(pde); */
-        page_dir[pde] = alloc_pt(pde, pte, R_W | PRESENT);
+        page_table_t pt;
+        page_dir[pde] = alloc_pt(&pt, R_W | PRESENT);
+        map_frame(pt, pte, R_W | PRESENT);
     } else if (!page_present(pde, pte)) {
-        /* map_page_ident((uintptr_t *)(void *)page_dir[pde], pde, pte); */
-        /* klog("no page"); */
         page_dir[pde] = find_alloc_frame(R_W | PRESENT);
     }
 

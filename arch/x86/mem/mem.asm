@@ -7,6 +7,9 @@ global load_page_dir
 extern fb_print_num
 global print_cr0
 
+copy_page_data:
+    ret
+
 print_cr0:
     mov eax, cr0
     push eax

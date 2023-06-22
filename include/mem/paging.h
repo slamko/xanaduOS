@@ -1,3 +1,6 @@
+#ifndef PAGING_H
+#define PAGING_H
+
 #include <stdint.h>
 #include <stdlib.h>
 #include "drivers/int.h"
@@ -27,14 +30,10 @@ void paging_init(void);
 
 void page_fault(struct isr_handler_args args);
 
-int map_page(uintptr_t *pt_addr, uint16_t pte, uintptr_t map_addr);
-
-int map_page_ident(uintptr_t *pt_addr, uint16_t pde, uint16_t pte);
-
-int map_pt_ident(uint16_t pde);
-
 uintptr_t *clone_page_dir(uintptr_t *pd);
 
 uintptr_t *clone_page_table(uintptr_t *pt);
 
 extern void *vga_buf;
+
+#endif
