@@ -49,6 +49,10 @@ extern uintptr_t _kernel_end;
 static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
 
+static inline uintptr_t to_phys_addr(void *virt_addr) {
+    /* return ((uintptr_t)virt_addr - ); */
+}
+
 void paging_init() {
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
         page_dir[i] |= R_W;
@@ -63,7 +67,8 @@ void paging_init() {
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
-        page_dir[i] = (uintptr_t)&kernel_page_table[PT_SIZE * i]
+        page_dir[768 + i] =
+            ((uintptr_t)&kernel_page_table[PT_SIZE * i]-0xC0000000)
             | PRESENT
             | R_W
             | USER_SUPERVISOR
@@ -73,9 +78,9 @@ void paging_init() {
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
     add_isr_handler(14, &page_fault, 0);
-    heap_init(pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE));
+    /* heap_init(pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE)); */
 
-    load_page_dir((uintptr_t)&page_dir);
+    load_page_dir((uintptr_t)&page_dir - 0xC0000000);
     enable_paging();
 
     klog("Paging enabled\n");
@@ -111,7 +116,7 @@ int map_pt(uint16_t pde) {
     }
 
     klog("Alloc page table\n");
-    page_dir[pde] = table_addr | PRESENT | R_W;
+    page_dir[pde] = (table_addr - 0xC0000000) | PRESENT | R_W;
 
     return pde;
  }
@@ -131,10 +136,11 @@ void page_fault(struct isr_handler_args args) {
     uint16_t pde;
     uint16_t pte;
 
-    klog_error("Page fault\n");
+    /* klog_error("Page fault\n"); */
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
     pde = fault_addr >> 22;
+    fb_print_hex(pde);
     pte = (fault_addr >> 12) & 0x3ff;
 
     if (args.error ^ PRESENT) {

@@ -20,18 +20,19 @@ void jump_usermode(void);
 void kernel_main(void) {
     fb_clear();
 
-    /* init_gdt(); */
-    /* init_idt(); */
-    /* serial_init(); */
+    init_gdt();
+    init_idt();
+    paging_init();
 
-    /* kbd_init(); */
-    /* ps2_init(); */
-    /* pit_init(0); */
-    /* syscall_init(); */
-    /* paging_init(); */
+    serial_init();
 
-    /* klog("Hello paging!\n"); */
-    /* jump_usermode(); */
+    kbd_init();
+    ps2_init();
+    pit_init(0);
+    syscall_init();
+
+    klog("Hello paging!\n");
+    jump_usermode();
 
     /* fb_newline(); */
     /* sleep_ms(500); */
