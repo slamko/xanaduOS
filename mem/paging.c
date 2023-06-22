@@ -1,5 +1,6 @@
 #include "mem/paging.h"
 #include "mem/allocator.h"
+#include "mem/frame_allocator.h"
 #include "drivers/fb.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -55,17 +56,16 @@ uintptr_t to_phys_addr(void *virt_addr) {
 void paging_init() {
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     asm volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
+    pt_base_addr = kernel_end_addr + PAGE_SIZE;
+    heap_init(pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE));
+    frame_alloc_init();
 
     for (unsigned int i = 0; i < ARR_SIZE(page_dir); i++) {
         page_dir[i] |= R_W;
     }
 
     for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
-        kernel_page_table[i] = (i * 0x1000)
-            | PRESENT
-            | R_W
-            | USER
-            ;
+        kernel_page_table[i] = alloc_frame(i * 0x1000, USER | R_W | PRESENT);
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -77,9 +77,7 @@ void paging_init() {
             ;
     }
 
-    pt_base_addr = kernel_end_addr + PAGE_SIZE;
     add_isr_handler(14, &page_fault, 0);
-    heap_init(pt_base_addr + (ARR_SIZE(page_dir)*PT_SIZE*PAGE_SIZE));
 
     load_page_dir(to_phys_addr(&page_dir));
     enable_paging();
@@ -108,7 +106,7 @@ uintptr_t *clone_page_table(uintptr_t *pt) {
         new_pt[i] = pt[i];
 
         if (pt[i] & (USER | PRESENT)) {
-            copy_page_data(pt[i]);
+            /* copy_page_data(pt[i]); */
         }
     }
 
