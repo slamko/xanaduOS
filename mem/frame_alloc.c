@@ -59,16 +59,28 @@ uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     return phys_addr | flags;
 }
 
-int map_pt(struct page_dir pd) {
+int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
+    if (!pd) {
+        return 1;
+    }
+
+    pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
+    if (!pd->page_tables[pde]) {
+        return 1;
+    }
+    
+    pd->page_tables_virt[pde] = to_uintptr(pt);
+    return 0;
 }
 
 void map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
     pt[pte] = find_alloc_frame(flags);
 }
 
-int map_pt_ident(uintptr_t *page_dir, uint16_t pde, uint16_t flags) {
+int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
     page_table_t pt;
-    page_dir[pde] = alloc_pt(&pt, flags);
+    page_dir->page_tables[pde] = alloc_pt(&pt, flags);
+    page_dir->page_tables_virt[pde] = to_uintptr(pt);
     
     for (unsigned int i = 0; i < PT_SIZE; i++) {
         map_frame(pt, i, flags);

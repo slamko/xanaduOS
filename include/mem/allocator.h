@@ -16,6 +16,10 @@ void *kmalloc(size_t siz);
 
 void *kmalloc_phys(size_t siz, uintptr_t *phys);
 
+void *kcalloc_align(size_t val, size_t align, size_t size);
+
+void *kcalloc(size_t val, size_t size);
+
 void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys);
 
 void kfree(void *addr);

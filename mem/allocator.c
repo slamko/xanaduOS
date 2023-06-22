@@ -200,6 +200,18 @@ void *kmalloc_phys(size_t siz, uintptr_t *phys) {
     return virt;
 }
 
+void *kcalloc_align(size_t val, size_t align, size_t size) {
+    void *ret = kmalloc_align(size, align);
+    memset(ret, val, size);
+    return ret;
+}
+
+void *kcalloc(size_t val, size_t size) {
+    void *ret = kmalloc(size);
+    memset(ret, val, size);
+    return ret;
+}
+
 static inline void *get_block_header_addr(void *addr) {
     return (void *)((uintptr_t)addr - sizeof(struct block_header));
 }

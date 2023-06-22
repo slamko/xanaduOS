@@ -156,8 +156,7 @@ int page_present(struct page_dir *pd, uint16_t pde, uint16_t pte) {
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(cur_pd, pde)) {
         page_table_t pt;
-        cur_pd->page_tables[pde] = alloc_pt(&pt, R_W | PRESENT);
-        cur_pd->page_tables_virt[pde] = to_uintptr(pt);
+        map_alloc_pt(cur_pd, &pt, pde);
         map_frame(pt, pte, R_W | PRESENT);
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
