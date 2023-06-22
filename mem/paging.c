@@ -93,14 +93,10 @@ static inline int tab_present(uintptr_t descriptor) {
     return descriptor & PRESENT;
 }
 
-static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
-    return (pde * 0x400000) + (pte * 0x1000);
-}
+int copy_page_data(uintptr_t src, uintptr_t dest);
 
-int copy_page_data(uintptr_t page_addr);
-
-uintptr_t *clone_page_table(uintptr_t *pt) {
-    uintptr_t *new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
+uintptr_t *clone_page_table(page_table_t pt) {
+    page_table_t new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
 
     if (!new_pt) {
         return NULL;
@@ -110,7 +106,7 @@ uintptr_t *clone_page_table(uintptr_t *pt) {
         new_pt[i] = pt[i];
 
         if (pt[i] & (USER | PRESENT)) {
-            /* copy_page_data(pt[i]); */
+            copy_page_data(pt[i], new_pt[i]);
         }
     }
 
@@ -134,7 +130,7 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
         new_pd->page_tables[i] = pd->page_tables[i];
 
         if (pd->page_tables[i] & (USER | PRESENT)) {
-            /* clone_page_table((uintptr_t *)(void *)page_dir[i]); */
+            /* clone_page_table((uintptr_t *)(void *)pd->page_tables[i]); */
         }
     }
 

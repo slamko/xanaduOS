@@ -39,6 +39,10 @@ void page_fault(struct isr_handler_args args);
 
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd);
 
+static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
+    return (pde * 0x400000) + (pte * PAGE_SIZE);
+}
+
 uintptr_t *clone_page_table(uintptr_t *pt);
 
 extern void *vga_buf;

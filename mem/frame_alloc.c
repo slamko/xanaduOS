@@ -32,7 +32,12 @@ uintptr_t alloc_frame(uintptr_t addr, unsigned int flags) {
     }
     
     for (unsigned int i = 0; i < frames_num; i++) {
-        if (frames[i] & 0xFFFFFFFF) continue;
+        if (frames[i] & 0xFFFFFFFF) break;
+
+        if (frames[i] & (0xFF << i)) {
+            i+= 7;
+            continue;
+        }
         
         for (unsigned int j = 0; j < sizeof(*frames); j++) {
             if (is_free_frame(i, j)) {
