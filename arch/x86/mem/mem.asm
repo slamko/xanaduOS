@@ -2,8 +2,8 @@ section .text
 global enable_paging
 global load_page_dir
 
-CR_PG equ 0x80000000
-
+%include "mem/mem.inc"
+    
 extern fb_print_num
 global print_cr0
 
@@ -22,8 +22,6 @@ load_page_dir:
 extern _kernel_end
 enable_paging:
     mov ebx, cr0
-    mov eax, 1
-    shl eax, 31
-    or ebx, eax
+    or ebx, CR_PG | CR_WP
     mov cr0, ebx
     ret

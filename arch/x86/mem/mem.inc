@@ -1,0 +1,4 @@
+
+CR_PG equ 0x80000000
+CR_WP equ 0x10000
+
