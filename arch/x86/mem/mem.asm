@@ -7,18 +7,23 @@ global load_page_dir
 extern fb_print_num
 global print_cr0
 
+global disable_paging
 disable_paging
-    push ebp
+    push ebx
     mov ebx, cr0
     and ebx, ~CR_PG
     mov cr0, ebx
-    pop ebp
+    pop ebx
     ret
 
 global copy_page_data
 copy_page_data:
     push ebp
     mov ebp, esp
+
+    push ebx
+    pushfd
+    cli
 
     mov esi, [ebp - 8]
     mov edi, [ebp - 12]
@@ -34,7 +39,9 @@ _copy
     jl _copy
 
     call enable_paging
-    
+
+    popfd
+    pop ebx
     pop ebp
     ret
 
@@ -53,11 +60,11 @@ load_page_dir:
 extern _kernel_end
 extern fb_print_hex
 enable_paging:
-    push ebp
+    push ebx
     
     mov ebx, cr0
     or ebx, CR_PG | CR_WP | 1
     mov cr0, ebx
 
-    pop ebp
+    pop ebx
     ret

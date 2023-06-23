@@ -13,6 +13,7 @@
 #include "mem/allocator.h"
 #include "mem/flat.h"
 #include "mem/paging.h"
+#include "proc/proc.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -33,6 +34,7 @@ void kernel_main(void) {
     pit_init(0);
     syscall_init();
 
+    exec_init();
     klog("Hello paging!\n");
     /* jump_usermode(); */
 

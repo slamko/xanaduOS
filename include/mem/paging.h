@@ -43,8 +43,13 @@ static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
     return (pde * 0x400000) + (pte * PAGE_SIZE);
 }
 
-uintptr_t *clone_page_table(uintptr_t *pt);
+int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
+                     uintptr_t *pt_phys_addr);
 
-extern void *vga_buf;
+int clone_cur_page_dir(struct page_dir *new_pd);
+
+int switch_page_dir(struct page_dir *pd);
+
+extern struct page_dir *cur_pd;
 
 #endif

@@ -2,7 +2,7 @@ include define.mk
 
 ELF_F=$(ARCH)
 OBJS = $(shell find ./build -name '*.o')
-MODULES = arch drivers hardware lib bin mem kernel usermode
+MODULES = arch drivers hardware lib bin mem kernel usermode proc
 MODE=
 QEMU_ARGS= -enable-kvm -cdrom $(OS_NAME).iso -boot menu=on -drive file=Image.img -m 1G
 
