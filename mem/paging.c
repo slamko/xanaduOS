@@ -88,6 +88,8 @@ void paging_init() {
     asm volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
     asm volatile ("mov $_rodata_start, %0" : "=r" (rodata_start));
     asm volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
+    rodata_start = to_phys_addr((void *)rodata_start);
+    rodata_end = to_phys_addr((void *)rodata_end);
 
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
 
@@ -140,7 +142,7 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
             new_pt[i] = find_alloc_frame(flags);
             
             if (!new_pt[i]) {
-                return 1;
+                /* return 1; */
             }
             
             uintptr_t paddr_pt = get_tab_pure_addr(pt[i]);
@@ -156,24 +158,24 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
 
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     uintptr_t ptables_phys;
-    uintptr_t *new_pd_tables;
 
     if (!new_pd) {
         return 1;
     }
 
-    new_pd_tables = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &ptables_phys);
+    new_pd->page_tables = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &ptables_phys);
+    new_pd->page_tables_virt = kmalloc(PAGE_SIZE);
     
-    if (!new_pd_tables) {
+    if (!new_pd->page_tables || !new_pd->page_tables_virt) {
         return 1;
     }
 
-    new_pd->page_tables_virt = new_pd_tables;
-    new_pd->page_tables = new_pd_tables;
     new_pd->pd_phys_addr = ptables_phys;
 
     for (unsigned int i = 0; i < PT_SIZE; i++) {
-        if (pd->page_tables[i] & (USER | PRESENT)) {
+        if (pd->page_tables[i] & USER && pd->page_tables[i] & PRESENT) {
+            klog("user");
+            fb_print_hex(pd->page_tables[i]);
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
             page_table_t pt = (uintptr_t *)(void *)pd->page_tables_virt[i];
@@ -194,10 +196,11 @@ int clone_cur_page_dir(struct page_dir *new_pd) {
     return clone_page_dir(cur_pd, new_pd);
 }
 
+int switch_page_dir_asm(uintptr_t pd);
+
 int switch_page_dir(struct page_dir *pd) {
-    load_page_dir(pd->pd_phys_addr);
-    disable_paging();
-    enable_paging();
+    fb_print_hex(pd->pd_phys_addr);
+    switch_page_dir_asm(pd->pd_phys_addr);
     return 0;
 }
 
@@ -211,6 +214,16 @@ int pt_present(struct page_dir *pd, uint16_t pde) {
 
 int page_present(struct page_dir *pd, uint16_t pde, uint16_t pte) {
     return tab_present(*get_pd_page(pd, pde, pte));
+}
+
+int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p) {
+    if (!pde_p || !pte_p) {
+        return 1;
+    }
+    
+    *pde_p = addr >> 22;
+    *pte_p = (addr >> 12) & 0x3ff;
+    return 0;
 }
 
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {

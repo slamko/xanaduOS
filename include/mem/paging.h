@@ -50,6 +50,8 @@ int clone_cur_page_dir(struct page_dir *new_pd);
 
 int switch_page_dir(struct page_dir *pd);
 
+int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p);
+
 extern struct page_dir *cur_pd;
 
 #endif

@@ -4,6 +4,61 @@ section .data
 
 section .bss
     _sysenter_avl resb 1
+
+section .usermode.data
+    usermsg db "Hello", 10, 0
+    
+section .usermode.text
+extern kernel_int_stack_end
+global sysenter
+sysenter:
+    test byte [_sysenter_avl], 0
+    jnz _legacy
+
+    push ebx
+    push esp
+    push ebp
+    push esi
+    push edi
+
+    mov ecx, esp
+    mov edx, _after
+    sysenter
+
+    push legacy_msg
+    call fb_print_black
+    
+    jmp _after
+
+_legacy:
+    ret
+    ;; int 0x80
+    
+_after:
+    pop edi
+    pop esi
+    pop ebp
+    pop esp
+    pop ebx
+    ret
+
+global usermode_main
+extern sysenter
+extern sys_write
+    
+usermode_main:
+    push 0
+    push 0
+    push 0
+    push 6
+    push usermsg
+    push sys_write
+    push 2
+    call sysenter
+    
+userloop:
+    jmp userloop
+    
     
 section .text
 
@@ -117,39 +172,6 @@ jump_usermode:
     iret
     ;; call fb_print_hex 
     ;; ret
-
-extern kernel_int_stack_end
-global sysenter
-sysenter:
-    test byte [_sysenter_avl], 0
-    jnz _legacy
-
-    push ebx
-    push esp
-    push ebp
-    push esi
-    push edi
-
-    mov ecx, esp
-    mov edx, _after
-    sysenter
-
-    push legacy_msg
-    call fb_print_black
-    
-    jmp _after
-
-_legacy:
-    ret
-    ;; int 0x80
-    
-_after:
-    pop edi
-    pop esi
-    pop ebp
-    pop esp
-    pop ebx
-    ret
 
 global ltr
 ltr:

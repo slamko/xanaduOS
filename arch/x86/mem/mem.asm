@@ -68,3 +68,23 @@ enable_paging:
 
     pop ebx
     ret
+
+global switch_page_dir_asm
+switch_page_dir_asm:
+    push ebx
+
+    mov eax, [esp + 4]
+
+    mov ebx, 0
+    ;; and ebx, 0
+    mov cr0, ebx
+
+    mov cr3, eax
+
+    mov ebx, cr0
+    or ebx, CR_PG | CR_WP | 3
+    mov cr0, ebx
+
+    pop ebx
+    ret
+    

@@ -18,12 +18,22 @@ SECTIONS {
         *(.multiboot.bss)
     }
 
+    .usermode.text ALIGN (0x1000) :
+    {
+        _usermode_text_start = .;
+        *(.usermode.text)
+    }
+    .usermode.data ALIGN (0x1000) :
+    {
+        *(.usermode.text)
+        _usermode_text_end = .;
+    }
+
     _virt_kernel_addr = 0xC0000000;
     . += _virt_kernel_addr;
-
-    _rodata_start = .;
     .text ALIGN (0x1000) : AT(ADDR(.text) - 0xC0000000)
     {
+        _rodata_start = .;
         *(.text)
     }
      .rodata ALIGN (0x1000) : AT(ADDR(.rodata) - 0xC0000000)

@@ -34,8 +34,8 @@ void kernel_main(void) {
     pit_init(0);
     syscall_init();
 
-    exec_init();
     klog("Hello paging!\n");
+    exec_init();
     /* jump_usermode(); */
 
     while (1)
