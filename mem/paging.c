@@ -35,11 +35,11 @@ static uintptr_t init_page_tables_virt[PT_SIZE];
 static uintptr_t kernel_page_table[KERNEL_INIT_PT_COUNT * PT_SIZE]
     __attribute__((aligned(PAGE_SIZE)));
 
-extern uintptr_t _kernel_end;
-extern uintptr_t _virt_kernel_addr;
-
 static uintptr_t virt_kernel_addr;
+static uintptr_t rodata_start;
+static uintptr_t rodata_end;
 static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
+
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
 
 uintptr_t to_phys_addr(void *virt_addr) {
@@ -47,9 +47,44 @@ uintptr_t to_phys_addr(void *virt_addr) {
             (virt_kernel_addr ? virt_kernel_addr : VADDR));
 }
 
+void page_tables_init(void) {
+    for (unsigned int i = 0; i < ARR_SIZE(init_page_tables); i++) {
+        init_pd.page_tables[i] |= R_W;
+    }
+
+    for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
+        uint16_t flags = PRESENT;
+        uintptr_t paddr = i * 0x1000;
+
+        if (paddr >= rodata_end || paddr < rodata_start) {
+            flags |= R_W;
+        }
+        
+        kernel_page_table[i] = alloc_frame(i * 0x1000, flags);
+    }
+
+    for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
+        init_pd.page_tables[768 + i] =
+            to_phys_addr(&kernel_page_table[PT_SIZE * i])
+            | PRESENT
+            | R_W
+            ;
+
+        init_pd.page_tables_virt[768 + i] =
+            (uintptr_t)&kernel_page_table[PT_SIZE * i];
+    }
+
+    add_isr_handler(14, &page_fault, 0);
+
+    load_page_dir(init_pd.pd_phys_addr);
+    enable_paging();
+}
+
 void paging_init() {
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     asm volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
+    asm volatile ("mov $_rodata_start, %0" : "=r" (rodata_start));
+    asm volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
 
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
 
@@ -61,31 +96,8 @@ void paging_init() {
     init_pd.pd_phys_addr = to_phys_addr(&init_page_tables);
     cur_pd = &init_pd;
 
-    for (unsigned int i = 0; i < ARR_SIZE(init_page_tables); i++) {
-        init_pd.page_tables[i] |= R_W;
-    }
-
-    for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
-        kernel_page_table[i] = alloc_frame(i * 0x1000, USER | R_W | PRESENT);
-    }
-
-    for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
-        init_pd.page_tables[768 + i] =
-            to_phys_addr(&kernel_page_table[PT_SIZE * i])
-            | PRESENT
-            | R_W
-            | USER
-            ;
-
-        init_pd.page_tables_virt[768 + i] =
-            (uintptr_t)&kernel_page_table[PT_SIZE * i];
-    }
-
-    add_isr_handler(14, &page_fault, 0);
-
-    load_page_dir(init_pd.pd_phys_addr);
-    enable_paging();
-
+    page_tables_init();
+    
     klog("Paging enabled\n");
 }
 
@@ -171,7 +183,7 @@ void page_fault(struct isr_handler_args args) {
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
     pde = fault_addr >> 22;
-    /* fb_print_hex(pde); */
+    fb_print_hex(pde);
     pte = (fault_addr >> 12) & 0x3ff;
     /* fb_print_hex(pte); */
 
@@ -181,6 +193,6 @@ void page_fault(struct isr_handler_args args) {
 
     }
         
-    fb_print_num(args.error);
+    /* fb_print_num(args.error); */
 }
 

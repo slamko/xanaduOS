@@ -12,6 +12,7 @@ global kernel_stack_end
 global kernel_stack_start
 global kernel_int_stack_end
 
+    
 section .multiboot.data
 align 4
     dd MAGIC_NUMBER
@@ -25,15 +26,33 @@ lh_page_table:
     times 1024 dd 0
 hh_page_table:
     times 1024 dd 0
-
+    
 section .multiboot.text
+
+extern _rodata_start
+extern _rodata_end    
 
 _start:
     xor ecx, ecx
+
 _map_lh_pt: 
     mov eax, 0x1000
     mul ecx
+
+    cmp eax, _rodata_start
+    jl _rw_page
+
+    cmp eax, _rodata_end
+    jl _ro_page
+    
+_rw_page:   
     or eax, 0x3
+    jmp _load_page
+
+_ro_page:
+    or eax, 0x1
+
+_load_page
     mov dword [lh_page_table + ecx*4], eax 
     inc ecx
     cmp ecx, 1024

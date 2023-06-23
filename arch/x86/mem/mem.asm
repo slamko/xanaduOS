@@ -51,6 +51,7 @@ load_page_dir:
     ret
 
 extern _kernel_end
+extern fb_print_hex
 enable_paging:
     push ebp
     

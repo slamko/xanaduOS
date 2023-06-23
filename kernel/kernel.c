@@ -23,6 +23,7 @@ void kernel_main(void) {
     init_gdt();
     init_idt();
     paging_init();
+    /* klog("Paging enabled!"); */
     /* alloc_test(); */
 
     serial_init();
@@ -33,12 +34,7 @@ void kernel_main(void) {
     syscall_init();
 
     klog("Hello paging!\n");
-    jump_usermode();
-
-    /* fb_newline(); */
-    /* sleep_ms(500); */
-    /* shell_start(); */
-    /* fb_print_black("rello"); */
+    /* jump_usermode(); */
 
     while (1)
         ;

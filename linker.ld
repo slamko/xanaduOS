@@ -21,6 +21,7 @@ SECTIONS {
     _virt_kernel_addr = 0xC0000000;
     . += _virt_kernel_addr;
 
+    _rodata_start = .;
     .text ALIGN (0x1000) : AT(ADDR(.text) - 0xC0000000)
     {
         *(.text)
@@ -28,6 +29,7 @@ SECTIONS {
      .rodata ALIGN (0x1000) : AT(ADDR(.rodata) - 0xC0000000)
     {
         *(.rodata)
+        _rodata_end = .;
     }
      .data ALIGN (0x1000) : AT(ADDR(.data) - 0xC0000000)
     {
