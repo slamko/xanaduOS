@@ -56,6 +56,7 @@ int exec_init(void) {
     /* asm volatile ("mov %%esp, %0" : "=r" (esp)); */
     klog("kello");
     usermode_main();
+    /* usermode_main(); */
     fb_print_hex((uintptr_t)&usermode_main);
     /* jump_usermode(); */
 

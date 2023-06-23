@@ -1,6 +1,7 @@
 MAGIC_NUMBER equ 0x1BADB002
-FLAGS equ 0x0
-CHECKSUM equ -MAGIC_NUMBER
+FLAGS equ 0x7
+CHECKSUM equ -(MAGIC_NUMBER + FLAGS)
+
 KERNEL_STACK_SIZE equ 0x4000
 KERNEL_INT_STACK_SIZE equ 0x1000
 
@@ -12,12 +13,8 @@ global kernel_stack_end
 global kernel_stack_start
 global kernel_int_stack_end
 
-    
+extern flags
 section .multiboot.data
-align 4
-    dd MAGIC_NUMBER
-    dd FLAGS
-    dd CHECKSUM
 
 section .multiboot.bss
 boot_page_dir:
@@ -52,7 +49,7 @@ _rw_page:
 _ro_page:
     or eax, 0x1
 
-_load_page
+_load_page: 
     mov dword [lh_page_table + ecx*4], eax 
     inc ecx
     cmp ecx, 1024
@@ -85,12 +82,12 @@ kernel_stack_start:
 kernel_stack_end:   
 
 section .text
-
-mmain:
-    ret
-
+extern _virt_kernel_addr
+    
 _hh_start:
     mov esp, kernel_stack_end
+    add ebx, 0xC0000000
+    push ebx
     
     call kernel_main
 

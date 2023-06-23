@@ -11,43 +11,13 @@ section .usermode.data
 section .usermode.text
 extern kernel_int_stack_end
 global sysenter
-sysenter:
-    test byte [_sysenter_avl], 0
-    jnz _legacy
-
-    push ebx
-    push esp
-    push ebp
-    push esi
-    push edi
-
-    mov ecx, esp
-    mov edx, _after
-    sysenter
-
-    push legacy_msg
-    call fb_print_black
-    
-    jmp _after
-
-_legacy:
-    ret
-    ;; int 0x80
-    
-_after:
-    pop edi
-    pop esi
-    pop ebp
-    pop esp
-    pop ebx
-    ret
-
 global usermode_main
 extern sysenter
 extern sys_write
     
 usermode_main:
     ret
+    jmp userloop
     push 0
     push 0
     push 0
@@ -149,6 +119,37 @@ _sysenter_setup:
 _legacy_setup:
     ret
 
+sysenter:
+    test byte [_sysenter_avl], 0
+    jnz _legacy
+
+    push ebx
+    push esp
+    push ebp
+    push esi
+    push edi
+
+    mov ecx, esp
+    mov edx, _after
+    sysenter
+
+    push legacy_msg
+    call fb_print_black
+    
+    jmp _after
+
+_legacy:
+    ret
+    ;; int 0x80
+    
+_after:
+    pop edi
+    pop esi
+    pop ebp
+    pop esp
+    pop ebx
+    ret
+
 global jump_usermode
 extern usermode
 extern fb_print_black    
@@ -164,16 +165,16 @@ jump_usermode:
     mov fs, ax
     mov gs, ax
 
-    mov eax, [proc_esp]
+    mov eax, esp
     push dword 0x23
     push eax
     pushfd
     push 0x1B
     sti
-    push usermode_main
-    ;; iret
+    push usermode_bootstrap
+    iret
     ;; call fb_print_hex 
-    ret
+    ;; ret
 
 global ltr
 ltr:

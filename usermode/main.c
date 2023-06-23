@@ -2,6 +2,7 @@
 
 void usermode(void) {
     int res = syscall(1, "Hello\n", 6);
+    asm volatile ("int $0x80");
     /* char some[] = {res + '0'}; */
     /* syscall(1, some, 1); */
     /* asm volatile ("mov $0x9E, %ecx;"); */

@@ -56,7 +56,7 @@ void page_tables_init(void) {
     }
 
     for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
-        uint16_t flags = PRESENT;
+        uint16_t flags = USER | PRESENT;
         uintptr_t paddr = i * 0x1000;
 
         if (paddr >= rodata_end || paddr < rodata_start) {
@@ -71,6 +71,7 @@ void page_tables_init(void) {
             to_phys_addr(&kernel_page_table[PT_SIZE * i])
             | PRESENT
             | R_W
+            | USER
             ;
 
         init_pd.page_tables_virt[768 + i] =

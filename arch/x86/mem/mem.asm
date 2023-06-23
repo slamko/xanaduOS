@@ -8,7 +8,7 @@ extern fb_print_num
 global print_cr0
 
 global disable_paging
-disable_paging
+disable_paging: 
     push ebx
     mov ebx, cr0
     and ebx, ~CR_PG
