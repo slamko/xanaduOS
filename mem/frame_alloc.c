@@ -32,9 +32,9 @@ uintptr_t alloc_frame(uintptr_t addr, unsigned int flags) {
     }
     
     for (unsigned int i = 0; i < frames_num; i++) {
-        if (frames[i] & 0xFFFFFFFF) break;
+        if ((frames[i] & 0xFFFFFFFF) == 0xFFFFFFFF) break;
 
-        if (frames[i] & (0xFF << i)) {
+        if ((frames[i] & (0xFFu << i)) == (0xFFu << i)) {
             i+= 7;
             continue;
         }

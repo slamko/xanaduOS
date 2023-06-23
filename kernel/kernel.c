@@ -17,6 +17,7 @@
 #include <stdint.h>
 
 void jump_usermode(void);
+void usermode_main(void);
 
 void kernel_main(void) {
     fb_clear();
@@ -26,6 +27,7 @@ void kernel_main(void) {
     paging_init();
     /* klog("Paging enabled!"); */
     /* alloc_test(); */
+    /* usermode_main(); */
 
     serial_init();
 
@@ -35,7 +37,7 @@ void kernel_main(void) {
     syscall_init();
 
     klog("Hello paging!\n");
-    exec_init();
+    /* exec_init(); */
     /* jump_usermode(); */
 
     while (1)

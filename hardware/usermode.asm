@@ -47,6 +47,7 @@ extern sysenter
 extern sys_write
     
 usermode_main:
+    ret
     push 0
     push 0
     push 0
@@ -153,6 +154,7 @@ extern usermode
 extern fb_print_black    
 extern fb_print_num    
 extern fb_print_hex    
+extern proc_esp
 
 jump_usermode:
     cli
@@ -162,16 +164,16 @@ jump_usermode:
     mov fs, ax
     mov gs, ax
 
-    mov eax, esp
+    mov eax, [proc_esp]
     push dword 0x23
     push eax
     pushfd
     push 0x1B
     sti
-    push usermode_bootstrap
-    iret
+    push usermode_main
+    ;; iret
     ;; call fb_print_hex 
-    ;; ret
+    ret
 
 global ltr
 ltr:

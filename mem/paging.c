@@ -138,7 +138,7 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
     for (unsigned int i = 0; i < PT_SIZE; i++) {
         uint16_t flags = get_tab_flags(new_pt[i]);
 
-        if (pt[i] & (USER | PRESENT)) {
+        if (pt[i] & USER && pt[i] & PRESENT) {
             new_pt[i] = find_alloc_frame(flags);
             
             if (!new_pt[i]) {
@@ -175,7 +175,6 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     for (unsigned int i = 0; i < PT_SIZE; i++) {
         if (pd->page_tables[i] & USER && pd->page_tables[i] & PRESENT) {
             klog("user");
-            fb_print_hex(pd->page_tables[i]);
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
             page_table_t pt = (uintptr_t *)(void *)pd->page_tables_virt[i];
@@ -183,9 +182,12 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
             if (clone_page_table(pt, &new_pt, &new_pt_paddr)) {
                 return 1;
             }
+            new_pd->page_tables[i] = new_pt_paddr;
+            new_pd->page_tables_virt[i] = to_uintptr(new_pt);
         } else {
             new_pd->page_tables_virt[i] = pd->page_tables_virt[i];
             new_pd->page_tables[i] = pd->page_tables[i];
+            /* fb_print_hex(new_pd->page_tables[i]); */
         }
     }
 
@@ -200,6 +202,7 @@ int switch_page_dir_asm(uintptr_t pd);
 
 int switch_page_dir(struct page_dir *pd) {
     fb_print_hex(pd->pd_phys_addr);
+    cur_pd = pd;
     switch_page_dir_asm(pd->pd_phys_addr);
     return 0;
 }

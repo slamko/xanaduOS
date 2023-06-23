@@ -11,6 +11,10 @@ void usermode_main(void);
 static uintptr_t usermode_text_start;
 static uintptr_t usermode_text_end;
 
+void jump_usermode(void);
+
+uintptr_t proc_esp;
+
 int exec_init(void) {
     int ret = 0;
     struct page_dir new_pd;
@@ -31,21 +35,32 @@ int exec_init(void) {
     get_pde_pte(usermode_text_start, &pde, &pte);
     get_pde_pte(usermode_text_end, &end_pde, &end_pte);
 
-    fb_print_hex(usermode_text_start);
-    fb_print_hex(usermode_text_end);
+    fb_print_hex(pde);
+    fb_print_hex(pte);
     
     page_table_t user_pt;
     new_pd.page_tables[pde] = alloc_pt(&user_pt, USER | R_W | PRESENT);
 
     for (unsigned int i = pte; i <= end_pte + 1; i++) {
-        user_pt[pte] = alloc_frame(((uintptr_t)pde << 22) & ((uintptr_t)pte << 12), USER | R_W | PRESENT);
+        uintptr_t frame_addr = get_ident_phys_page_addr(pde, i);
+        user_pt[pte] = alloc_frame(frame_addr, USER | R_W | PRESENT);
+        fb_print_hex(user_pt[pte]);
     }
 
-    asm volatile ("mov %0, %%esp"
-                  :
-                  : "r" (((uintptr_t)pde << 22) & ((uintptr_t)(end_pde + 1) << 12)));
+    
+    proc_esp = get_ident_phys_page_addr(pde, end_pte + 1);
+    /* asm volatile ("mov %0, %%esp" */
+                  /* : */
+                  /* : "r" (proc_esp)); */
 
+    /* asm volatile ("mov %%esp, %0" : "=r" (esp)); */
+    klog("kello");
     usermode_main();
+    fb_print_hex((uintptr_t)&usermode_main);
+    /* jump_usermode(); */
+
+    /* return 0; */
+    /* usermode_main(); */
     
     return ret;
 }

@@ -25,7 +25,7 @@ SECTIONS {
     }
     .usermode.data ALIGN (0x1000) :
     {
-        *(.usermode.text)
+        *(.usermode.data)
         _usermode_text_end = .;
     }
 
