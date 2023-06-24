@@ -63,7 +63,7 @@ void page_tables_init(void) {
             flags |= R_W;
         }
         
-        kernel_page_table[i] = alloc_frame(i * 0x1000, flags);
+        alloc_frame(i * 0x1000, &kernel_page_table[i], flags);
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -140,10 +140,8 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
         uint16_t flags = get_tab_flags(new_pt[i]);
 
         if (pt[i] & USER && pt[i] & PRESENT) {
-            new_pt[i] = find_alloc_frame(flags);
-            
-            if (!new_pt[i]) {
-                /* return 1; */
+            if (find_alloc_frame(&new_pt[i], flags)) {
+                return 1;
             }
             
             uintptr_t paddr_pt = get_tab_pure_addr(pt[i]);
@@ -237,7 +235,10 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         map_frame(pt, pte, R_W | PRESENT);
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
-        *pt_entry = find_alloc_frame(R_W | PRESENT);
+
+        if (find_alloc_frame(pt_entry, R_W | PRESENT)) {
+            return 1;
+        }
     }
 
     return 1;

@@ -60,7 +60,12 @@ void get_frame_meta(uintptr_t addr,
     *frame = (addr - (*frame_map * PAGE_SIZE * sizeof(*frames))) / PAGE_SIZE;
 }
 
-uintptr_t alloc_nframes(size_t nframes, uintptr_t addr, uintptr_t *alloc_addrs, uint16_t flags) {
+static inline uintptr_t frame_map_to_addr(uint32_t fm, uint32_t frame) {
+    return ((fm * PAGE_SIZE * sizeof(*frames)) + (frame * PAGE_SIZE));
+}
+
+uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
+                        uintptr_t *alloc_addrs, uint16_t flags) {
     if (!alloc_addrs) {
         return 1;
     }
@@ -71,19 +76,17 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr, uintptr_t *alloc_addrs, 
 
         for (unsigned int i = 0; i < nframes; i++) {
             if (frame + i >= sizeof(*frames)) {
-                frame = 0;
-                i = 0;
+                frame = i = 0;
                 frame_map ++;
             }
 
-            if (frames[frame_map] & (1 << (frame + i))) {
+            if (set_frame_used(frame_map, frame + i)) {
                 return 1;
             }
 
             alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
         }
         
-        frames[frame_map] |= (1 << frame);
 
         return 0;
     }
@@ -92,13 +95,14 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr, uintptr_t *alloc_addrs, 
 
 }
 
-int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr, unsigned int flags) {
+int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr,
+                unsigned int flags) {
     return alloc_nframes(1, addr, alloc_addr, flags);
 }
 
 static inline uint32_t get_frame_submap_mask(uint32_t nframes) {
     for (unsigned int i = 0; i < MAX_BUDDY_SIZE; i++) {
-        if (nframes <= (1 << i)) {
+        if (nframes <= (1u << i)) {
             return (0xFFu << i);
         }
     }
@@ -107,7 +111,7 @@ static inline uint32_t get_frame_submap_mask(uint32_t nframes) {
 }
 
 int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
-                      size_t nframes, unsigned int *map_frames) {
+                      size_t nframes, unsigned int *map_frames, uint16_t flags) {
     uint32_t sub_frame_bitmap = get_frame_submap_mask(nframes);
 
     if ((frames[frame_map] & sub_frame_bitmap) == sub_frame_bitmap) {
@@ -117,8 +121,7 @@ int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
     for (unsigned int j = 8 * (nframes - 1); j < 8 * nframes; j += nframes) {
         if (is_free_nframes(nframes, frame_map, j)) {
             set_nframes_used(nframes, frame_map, j);
-            *alloc_addr =
-                ((frame_map * PAGE_SIZE * sizeof(*frames)) + (j * PAGE_SIZE));
+            *alloc_addr = frame_map_to_addr(frame_map, j) | flags;
 
             (*map_frames)++;
 
@@ -131,7 +134,8 @@ int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
     return 1;
 }
 
-int find_alloc_nframes(size_t nframes, uintptr_t *alloc_addrs, uint16_t flags) {
+int find_alloc_nframes(size_t nframes,
+                       uintptr_t *alloc_addrs, uint16_t flags) {
     uint16_t max_nf = (nframes / 8);
     size_t mapped_nof = 0;
 
@@ -142,15 +146,16 @@ int find_alloc_nframes(size_t nframes, uintptr_t *alloc_addrs, uint16_t flags) {
     for (unsigned int f = 0; f < max_nf; f++) {
         uint16_t cur_nof = (nframes % 8);
 
-        if (nframes > (f + 1) * 8) {
+        if (nframes >= (f + 1) * 8) {
             cur_nof = 8;
         }
 
         for (unsigned int i = 0; i < frames_num; i++) {
             if ((frames[i] & 0xFFFFFFFFu) == 0xFFFFFFFFu) continue;
 
-            if (!find_frame_in_map(i, alloc_addrs+(i * 4), cur_nof, &mapped_nof)) {
-                break;
+            if (!find_frame_in_map(i, alloc_addrs+(i * 4),
+                                   cur_nof, &mapped_nof, flags)) {
+                return 0;
             }
         }
     }
@@ -184,8 +189,8 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     return 0;
 }
 
-void map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
-    find_alloc_frame(&pt[pte], flags);
+int map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
+    return find_alloc_frame(&pt[pte], flags);
 }
 
 int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {

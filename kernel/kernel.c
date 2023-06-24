@@ -124,6 +124,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     syscall_init();
 
     klog("Hello paging!\n");
+    /* shell_start(); */
    /* exec_init(); */
     /* jump_usermode(); */
 
