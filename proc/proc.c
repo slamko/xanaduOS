@@ -53,11 +53,5 @@ int exec_init(void) {
     }
     proc_esp = get_ident_phys_page_addr(pde, end_pte + 1);
     
-    uintptr_t af[8];
-    find_alloc_nframes(8, af, R_W | PRESENT);
-    for (unsigned int i = 0; i <= 8; i++) {
-        fb_print_hex(af[i]);
-    }
-    
     return ret;
 }

@@ -15,6 +15,23 @@ uint32_t mem_limit;
 #define BIT_FRAME_SIZE 32
 #define MAX_BUDDY_SIZE 8
 
+void fa_test(size_t siz) {
+    uintptr_t af[8];
+    memset(af, 0, sizeof(af));
+
+    klog("Allocating frames: ");
+    fb_print_num(siz);
+
+    if (find_alloc_nframes(siz, af, R_W | PRESENT)) {
+        klog("Alloc error");
+        return;
+    }
+
+    for (unsigned int i = 0; i < 8; i++) {
+        fb_print_hex(af[i]);
+    }
+}
+
 bool is_free_frame(uint32_t frame_map, uint32_t frame) {
     return !(frames[frame_map] & (1 << frame));
 }
@@ -100,17 +117,17 @@ static inline uint32_t get_frame_submap_mask(uint32_t nframes,
                                              unsigned int *buddy_id) {
     for (*buddy_id = 0; *buddy_id < MAX_BUDDY_SIZE; (*buddy_id)++) {
         if (nframes <= (1u << *buddy_id)) {
-            return (0xFFu << *buddy_id);
+            return (0xFFu << (*buddy_id * MAX_BUDDY_SIZE));
         }
     }
 
-    return 0xFFu << 3;
+    return 0xFFu << (3 * MAX_BUDDY_SIZE);
 }
 
 static inline void set_nalloc_addrs(uintptr_t *alloc_addrs, uint32_t nframes,
                                     uint32_t fm, uint32_t frame, uint16_t flags) {
     for (unsigned int i = 0; i < nframes; i++) {
-        alloc_addrs[i] = frame_map_to_addr(fm, frame) | flags;
+        alloc_addrs[i] = frame_map_to_addr(fm, frame + i) | flags;
     }
 }
 
@@ -122,6 +139,7 @@ int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
     if ((frames[frame_map] & sub_frame_bitmap) == sub_frame_bitmap) {
         return 1;
     }
+    fb_print_hex(sub_frame_bitmap);
 
     for (unsigned int j = MAX_BUDDY_SIZE * buddy;
          j < MAX_BUDDY_SIZE * (buddy + 1); j += nframes) {
@@ -149,7 +167,6 @@ int find_alloc_nframes(size_t nframes,
     for (unsigned int i = 0; i < frames_num; i++) {
         if ((frames[i] & 0xFFFFFFFFu) == 0xFFFFFFFFu) continue;
 
-
         uint32_t cur_nof = nframes - mapped_nof;
 
         if (cur_nof > 8) {
@@ -158,7 +175,7 @@ int find_alloc_nframes(size_t nframes,
 
         if (find_frame_in_map(i, &alloc_addrs[mapped_nof],
                                 cur_nof, &mapped_nof, flags)) {
-            return 1;
+            continue;
         }
 
         if (mapped_nof >= nframes) {
