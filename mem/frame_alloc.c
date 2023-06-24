@@ -1,5 +1,5 @@
-#include "kernel/error.h"
 #include "mem/allocator.h"
+#include "kernel/error.h"
 #include "drivers/fb.h"
 #include "mem/frame_allocator.h"
 #include "mem/paging.h"
@@ -12,6 +12,13 @@
 uint32_t *frames;
 uint32_t frames_num;
 uint32_t mem_limit;
+
+struct frame_map_addr {
+    uint32_t frame_map;
+    uint32_t frame;
+};
+
+struct frame_map_addr last_frame[4];
 
 #define BIT_FRAME_SIZE 32
 #define MAX_BUDDY_SIZE 8
@@ -38,14 +45,15 @@ bool is_free_frame(uint32_t frame_map, uint32_t frame) {
 }
 
 bool is_free_nframes(size_t nframes, uint32_t frame_map, uint32_t frame) {
+    int overflow = 0;
     for (unsigned int i = 0; i < nframes; i++) {
         if (i + frame >= BIT_FRAME_SIZE) {
             frame = 0;
-            i = 0;
+            overflow = -i;
             frame_map ++;
         }
         
-        if (!is_free_frame(frame_map, frame + i)) {
+        if (!is_free_frame(frame_map, frame + i + overflow)) {
             return false;
         }
     }
@@ -83,6 +91,17 @@ static inline uintptr_t frame_map_to_addr(uint32_t fm, uint32_t frame) {
     return ((fm * PAGE_SIZE * BIT_FRAME_SIZE) + (frame * PAGE_SIZE));
 }
 
+static inline uint32_t get_frame_submap_mask(uint32_t nframes,
+                                             unsigned int *buddy_id) {
+    for (*buddy_id = 0; *buddy_id < 4; (*buddy_id)++) {
+        if (nframes <= (1u << *buddy_id)) {
+            return (0xFFu << (*buddy_id * MAX_BUDDY_SIZE));
+        }
+    }
+
+    return 0xFFu << (3 * MAX_BUDDY_SIZE);
+}
+
 uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
                         uintptr_t *alloc_addrs, uint16_t flags) {
     if (!alloc_addrs) {
@@ -90,19 +109,30 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
     }
     
     unsigned int frame_map, frame;
+    uint32_t buddy;
+    
     get_frame_meta(addr, &frame_map, &frame);
+    get_frame_submap_mask(nframes, &buddy);
 
+    int overflow = 0;
     for (unsigned int i = 0; i < nframes; i++) {
         if (frame + i >= BIT_FRAME_SIZE) {
             frame = 0;
-            i = 0;
+            overflow = -i;
             frame_map ++;
         }
 
             /* fb_print_hex(frame + i); */
-        set_frame_used(frame_map, frame + i);
-
+        set_frame_used(frame_map, frame + i + overflow);
         alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
+   }
+
+    last_frame[buddy].frame = frame + nframes + 1;
+    last_frame[buddy].frame_map = frame_map;
+
+    if (last_frame[buddy].frame >= BIT_FRAME_SIZE) {
+        last_frame[buddy].frame = 0;
+        last_frame[buddy].frame_map++;
     }
 
     return 0;
@@ -112,18 +142,6 @@ int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr,
                 unsigned int flags) {
     return alloc_nframes(1, addr, alloc_addr, flags);
 }
-
-static inline uint32_t get_frame_submap_mask(uint32_t nframes,
-                                             unsigned int *buddy_id) {
-    for (*buddy_id = 0; *buddy_id < MAX_BUDDY_SIZE; (*buddy_id)++) {
-        if (nframes <= (1u << *buddy_id)) {
-            return (0xFFu << (*buddy_id * MAX_BUDDY_SIZE));
-        }
-    }
-
-    return 0xFFu << (3 * MAX_BUDDY_SIZE);
-}
-
 static inline void set_nalloc_addrs(uintptr_t *alloc_addrs, uint32_t nframes,
                                     uint32_t fm, uint32_t frame, uint16_t flags) {
     for (unsigned int i = 0; i < nframes; i++) {
@@ -132,7 +150,8 @@ static inline void set_nalloc_addrs(uintptr_t *alloc_addrs, uint32_t nframes,
 }
 
 int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
-                      size_t nframes, unsigned int *map_frames, uint16_t flags) {
+                      size_t nframes, unsigned int *map_frames,
+                      uint16_t flags) {
     uint32_t buddy = 0;
     uint32_t sub_frame_bitmap = get_frame_submap_mask(nframes, &buddy);
 
@@ -238,7 +257,7 @@ int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
     return 0;
 } 
 
-int dealloc_frame(uintptr_t addr) {
+int dealloc_nframes(size_t nframes, uintptr_t addr) {
     if (!addr) {
         return 1;
     }
@@ -247,15 +266,34 @@ int dealloc_frame(uintptr_t addr) {
 
     unsigned int frame_map, frame;
     get_frame_meta(addr, &frame_map, &frame);
-    frames[frame_map] &= ~(1 << frame);
+
+    int overflow = 0;
+    for (unsigned int i = 0; i < nframes; i++) {
+        if (frame + i >= BIT_FRAME_SIZE) {
+            frame = 0;
+            overflow = -i;
+            frame_map++;
+        }
+        
+        frames[frame_map] &= ~(1 << (frame + i + overflow));
+    }
 
     return 0;
+}
+
+int dealloc_frame(uintptr_t addr) {
+    return dealloc_nframes(1, addr);
 }
 
 int frame_alloc_init(size_t pmem_limit) {
     frames_num = pmem_limit / (PAGE_SIZE * BIT_FRAME_SIZE);
     frames = kmalloc(frames_num / BIT_FRAME_SIZE);
     memset(frames, 0, frames_num / BIT_FRAME_SIZE);
+
+    for (unsigned int i = 0; i < sizeof(last_frame); i++) {
+        last_frame[i].frame_map = 0;
+        last_frame[i].frame = MAX_BUDDY_SIZE * i;
+    }
 
     if (!frames) {
         return ENOMEM;
