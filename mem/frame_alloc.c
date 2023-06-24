@@ -3,6 +3,7 @@
 #include "mem/frame_allocator.h"
 #include "mem/paging.h"
 #include "lib/kernel.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -11,11 +12,45 @@ uint32_t *frames;
 uint32_t frames_num;
 uint32_t mem_limit;
 
-bool is_free_nframes(size_t nframes, uint32_t frame_map, uint32_t frame) {
-}
+#define MAX_BUDDY_SIZE 8
 
 bool is_free_frame(uint32_t frame_map, uint32_t frame) {
     return !(frames[frame_map] & (1 << frame));
+}
+
+bool is_free_nframes(size_t nframes, uint32_t frame_map, uint32_t frame) {
+    for (unsigned int i = 0; i < nframes; i++) {
+        if (i + frame >= sizeof(*frames)) {
+            frame = 0;
+            i = 0;
+            frame_map ++;
+        }
+        
+        if (!is_free_frame(frame_map, frame + i)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int set_frame_used(uint32_t frame_map, uint32_t frame) {
+    if (frames[frame_map] & (1 << frame)) {
+        return 1;
+    }
+    
+    frames[frame_map] |= (1 << frame);
+    return 0;
+}
+
+int set_nframes_used(size_t nframes, uint32_t frame_map, uint32_t frame) {
+    int ret = 0;
+
+    for (unsigned int i = 0; i < nframes; i++) {
+        ret |= set_frame_used(frame_map, frame + i);
+    }
+
+    return ret;
 }
 
 void get_frame_meta(uintptr_t addr,
@@ -35,7 +70,8 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr, uintptr_t *alloc_addrs, 
         get_frame_meta(addr, &frame_map, &frame);
 
         for (unsigned int i = 0; i < nframes; i++) {
-            if (i >= sizeof(*frames)) {
+            if (frame + i >= sizeof(*frames)) {
+                frame = 0;
                 i = 0;
                 frame_map ++;
             }
@@ -60,47 +96,61 @@ int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr, unsigned int flags) {
     return alloc_nframes(1, addr, alloc_addr, flags);
 }
 
+static inline uint32_t get_frame_submap_mask(uint32_t nframes) {
+    for (unsigned int i = 0; i < MAX_BUDDY_SIZE; i++) {
+        if (nframes <= (1 << i)) {
+            return (0xFFu << i);
+        }
+    }
 
+    return 0xFFu << 3;
+}
+
+int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
+                      size_t nframes, unsigned int *map_frames) {
+    uint32_t sub_frame_bitmap = get_frame_submap_mask(nframes);
+
+    if ((frames[frame_map] & sub_frame_bitmap) == sub_frame_bitmap) {
+        return 1;
+    }
+
+    for (unsigned int j = 8 * (nframes - 1); j < 8 * nframes; j += nframes) {
+        if (is_free_nframes(nframes, frame_map, j)) {
+            set_nframes_used(nframes, frame_map, j);
+            *alloc_addr =
+                ((frame_map * PAGE_SIZE * sizeof(*frames)) + (j * PAGE_SIZE));
+
+            (*map_frames)++;
+
+            if (*map_frames >= nframes) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
 
 int find_alloc_nframes(size_t nframes, uintptr_t *alloc_addrs, uint16_t flags) {
-    for (unsigned int f = 0; f < nframes; f++) {
+    uint16_t max_nf = (nframes / 8);
+    size_t mapped_nof = 0;
+
+    if (max_nf % 8) {
+        max_nf++;
+    }
+    
+    for (unsigned int f = 0; f < max_nf; f++) {
+        uint16_t cur_nof = (nframes % 8);
+
+        if (nframes > (f + 1) * 8) {
+            cur_nof = 8;
+        }
+
         for (unsigned int i = 0; i < frames_num; i++) {
-            if ((frames[i] & 0xFFFFFFFF) == 0xFFFFFFFF) continue;
+            if ((frames[i] & 0xFFFFFFFFu) == 0xFFFFFFFFu) continue;
 
-            if (nframes == 1) {
-                if ((frames[i] & 0xFFu) == 0xFFu) {
-                    continue;
-                }
-
-                for (unsigned int j = 0; j < 8; j++) {
-                    if (is_free_frame(i, j)) {
-                        frames[i] |= (1 << j);
-                        alloc_addrs[f] =
-                            ((i * PAGE_SIZE * sizeof(*frames)) + (j * PAGE_SIZE));
-                        f++;
-
-                        if (f >= nframes) {
-                            return 0;
-                        }
-                    }
-                }
-            } else if (nframes == 2) {
-                if ((frames[i] & 0xFF00u) == 0xFF00u) {
-                    continue;
-                }
-
-                for (unsigned int j = 8; j < 16; j += 2) {
-                    if (is_free_nframes(2, i, j)) {
-                        frames[i] |= (1 << j);
-                        alloc_addrs[f] =
-                            ((i * PAGE_SIZE * sizeof(*frames)) + (j * PAGE_SIZE));
-                        f++;
-
-                        if (f >= nframes) {
-                            return 0;
-                        }
-                    }
-                }
+            if (!find_frame_in_map(i, alloc_addrs+(i * 4), cur_nof, &mapped_nof)) {
+                break;
             }
         }
     }
@@ -135,7 +185,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
 }
 
 void map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
-    pt[pte] = find_alloc_frame(flags);
+    find_alloc_frame(&pt[pte], flags);
 }
 
 int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
