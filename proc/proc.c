@@ -4,6 +4,7 @@
 #include "lib/kernel.h"
 #include "mem/paging.h"
 #include "mem/allocator.h"
+#include <stddef.h>
 #include <stdint.h>
 
 void usermode_main(void);
@@ -25,7 +26,6 @@ int exec_init(void) {
     }
 
     ret = switch_page_dir(&new_pd);
-    klog("switch");
 
     asm volatile ("mov $_usermode_text_start, %0" : "=r"(usermode_text_start));
     asm volatile ("mov $_usermode_text_end, %0" : "=r"(usermode_text_end));
@@ -41,27 +41,23 @@ int exec_init(void) {
     page_table_t user_pt;
     new_pd.page_tables[pde] = alloc_pt(&user_pt, USER | R_W | PRESENT);
 
-    for (unsigned int i = pte; i <= end_pte + 1; i++) {
-        uintptr_t frame_addr = get_ident_phys_page_addr(pde, i);
-        user_pt[pte] = alloc_frame(frame_addr, USER | R_W | PRESENT);
-        fb_print_hex(user_pt[pte]);
+    uintptr_t frame_addr = get_ident_phys_page_addr(pde, pte);
+    size_t frames_n = end_pte - pte + 2;
+    if (alloc_nframes(frames_n, frame_addr, &user_pt[pte], USER | R_W | PRESENT)) {
+        return 1;
     }
 
-    
+    fb_print_num(frames_n);
+    for (unsigned int i = pte; i <= end_pte + 1; i++) {
+        fb_print_hex(user_pt[i]);
+    }
     proc_esp = get_ident_phys_page_addr(pde, end_pte + 1);
-    /* asm volatile ("mov %0, %%esp" */
-                  /* : */
-                  /* : "r" (proc_esp)); */
-
-    /* asm volatile ("mov %%esp, %0" : "=r" (esp)); */
-    klog("kello");
-    usermode_main();
-    /* usermode_main(); */
-    fb_print_hex((uintptr_t)&usermode_main);
-    /* jump_usermode(); */
-
-    /* return 0; */
-    /* usermode_main(); */
+    
+    uintptr_t af[8];
+    find_alloc_nframes(8, af, R_W | PRESENT);
+    for (unsigned int i = 0; i <= 8; i++) {
+        fb_print_hex(af[i]);
+    }
     
     return ret;
 }

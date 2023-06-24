@@ -56,7 +56,7 @@ void page_tables_init(void) {
     }
 
     for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
-        uint16_t flags = USER | PRESENT;
+        uint16_t flags = PRESENT;
         uintptr_t paddr = i * 0x1000;
 
         if (paddr >= rodata_end || paddr < rodata_start) {
@@ -71,7 +71,6 @@ void page_tables_init(void) {
             to_phys_addr(&kernel_page_table[PT_SIZE * i])
             | PRESENT
             | R_W
-            | USER
             ;
 
         init_pd.page_tables_virt[768 + i] =
@@ -141,11 +140,13 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
 
         if (pt[i] & USER && pt[i] & PRESENT) {
             if (find_alloc_frame(&new_pt[i], flags)) {
+                klog("alloc frame failed\n");
                 return 1;
             }
             
             uintptr_t paddr_pt = get_tab_pure_addr(pt[i]);
             uintptr_t paddr_new_pt = get_tab_pure_addr(new_pt[i]);
+            fb_print_hex(pt[i]);
             copy_page_data(paddr_pt, paddr_new_pt);
         } else {
             new_pt[i] = pt[i];

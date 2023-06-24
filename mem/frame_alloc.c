@@ -12,6 +12,7 @@ uint32_t *frames;
 uint32_t frames_num;
 uint32_t mem_limit;
 
+#define BIT_FRAME_SIZE 32
 #define MAX_BUDDY_SIZE 8
 
 bool is_free_frame(uint32_t frame_map, uint32_t frame) {
@@ -20,7 +21,7 @@ bool is_free_frame(uint32_t frame_map, uint32_t frame) {
 
 bool is_free_nframes(size_t nframes, uint32_t frame_map, uint32_t frame) {
     for (unsigned int i = 0; i < nframes; i++) {
-        if (i + frame >= sizeof(*frames)) {
+        if (i + frame >= BIT_FRAME_SIZE) {
             frame = 0;
             i = 0;
             frame_map ++;
@@ -56,12 +57,12 @@ int set_nframes_used(size_t nframes, uint32_t frame_map, uint32_t frame) {
 void get_frame_meta(uintptr_t addr,
                     unsigned int *frame_map, unsigned int *frame) {
 
-    *frame_map = addr / (PAGE_SIZE * sizeof(*frames));
-    *frame = (addr - (*frame_map * PAGE_SIZE * sizeof(*frames))) / PAGE_SIZE;
+    *frame_map = addr / (PAGE_SIZE * BIT_FRAME_SIZE);
+    *frame = (addr - (*frame_map * PAGE_SIZE * BIT_FRAME_SIZE)) / PAGE_SIZE;
 }
 
 static inline uintptr_t frame_map_to_addr(uint32_t fm, uint32_t frame) {
-    return ((fm * PAGE_SIZE * sizeof(*frames)) + (frame * PAGE_SIZE));
+    return ((fm * PAGE_SIZE * BIT_FRAME_SIZE) + (frame * PAGE_SIZE));
 }
 
 uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
@@ -70,29 +71,24 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
         return 1;
     }
     
-    if (addr) {
-        unsigned int frame_map, frame;
-        get_frame_meta(addr, &frame_map, &frame);
+    unsigned int frame_map, frame;
+    get_frame_meta(addr, &frame_map, &frame);
 
-        for (unsigned int i = 0; i < nframes; i++) {
-            if (frame + i >= sizeof(*frames)) {
-                frame = i = 0;
-                frame_map ++;
-            }
-
-            if (set_frame_used(frame_map, frame + i)) {
-                return 1;
-            }
-
-            alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
+    for (unsigned int i = 0; i < nframes; i++) {
+        if (frame + i >= BIT_FRAME_SIZE) {
+            frame = 0;
+            i = 0;
+            frame_map ++;
         }
-        
 
-        return 0;
+        if (set_frame_used(frame_map, frame + i)) {
+            return 1;
+        }
+
+        alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
     }
-    
-    return 1;
 
+    return 0;
 }
 
 int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr,
@@ -100,34 +96,42 @@ int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr,
     return alloc_nframes(1, addr, alloc_addr, flags);
 }
 
-static inline uint32_t get_frame_submap_mask(uint32_t nframes) {
-    for (unsigned int i = 0; i < MAX_BUDDY_SIZE; i++) {
-        if (nframes <= (1u << i)) {
-            return (0xFFu << i);
+static inline uint32_t get_frame_submap_mask(uint32_t nframes,
+                                             unsigned int *buddy_id) {
+    for (*buddy_id = 0; *buddy_id < MAX_BUDDY_SIZE; (*buddy_id)++) {
+        if (nframes <= (1u << *buddy_id)) {
+            return (0xFFu << *buddy_id);
         }
     }
 
     return 0xFFu << 3;
 }
 
+static inline void set_nalloc_addrs(uintptr_t *alloc_addrs, uint32_t nframes,
+                                    uint32_t fm, uint32_t frame, uint16_t flags) {
+    for (unsigned int i = 0; i < nframes; i++) {
+        alloc_addrs[i] = frame_map_to_addr(fm, frame) | flags;
+    }
+}
+
 int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
                       size_t nframes, unsigned int *map_frames, uint16_t flags) {
-    uint32_t sub_frame_bitmap = get_frame_submap_mask(nframes);
+    uint32_t buddy = 0;
+    uint32_t sub_frame_bitmap = get_frame_submap_mask(nframes, &buddy);
 
     if ((frames[frame_map] & sub_frame_bitmap) == sub_frame_bitmap) {
         return 1;
     }
 
-    for (unsigned int j = 8 * (nframes - 1); j < 8 * nframes; j += nframes) {
-        if (is_free_nframes(nframes, frame_map, j)) {
+    for (unsigned int j = MAX_BUDDY_SIZE * buddy;
+         j < MAX_BUDDY_SIZE * (buddy + 1); j += nframes) {
+
+        if (is_free_frame(frame_map, j)) {
             set_nframes_used(nframes, frame_map, j);
-            *alloc_addr = frame_map_to_addr(frame_map, j) | flags;
+            set_nalloc_addrs(alloc_addr, nframes, frame_map, j, flags);
 
-            (*map_frames)++;
-
-            if (*map_frames >= nframes) {
-                return 0;
-            }
+            (*map_frames) += nframes;
+            return 0;
         }
     }
 
@@ -136,27 +140,29 @@ int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
 
 int find_alloc_nframes(size_t nframes,
                        uintptr_t *alloc_addrs, uint16_t flags) {
-    uint16_t max_nf = (nframes / 8);
     size_t mapped_nof = 0;
 
-    if (max_nf % 8) {
-        max_nf++;
+    if (!alloc_addrs) {
+        return 0;
     }
-    
-    for (unsigned int f = 0; f < max_nf; f++) {
-        uint16_t cur_nof = (nframes % 8);
 
-        if (nframes >= (f + 1) * 8) {
+    for (unsigned int i = 0; i < frames_num; i++) {
+        if ((frames[i] & 0xFFFFFFFFu) == 0xFFFFFFFFu) continue;
+
+
+        uint32_t cur_nof = nframes - mapped_nof;
+
+        if (cur_nof > 8) {
             cur_nof = 8;
         }
 
-        for (unsigned int i = 0; i < frames_num; i++) {
-            if ((frames[i] & 0xFFFFFFFFu) == 0xFFFFFFFFu) continue;
+        if (find_frame_in_map(i, &alloc_addrs[mapped_nof],
+                                cur_nof, &mapped_nof, flags)) {
+            return 1;
+        }
 
-            if (!find_frame_in_map(i, alloc_addrs+(i * 4),
-                                   cur_nof, &mapped_nof, flags)) {
-                return 0;
-            }
+        if (mapped_nof >= nframes) {
+            return 0;
         }
     }
 
@@ -222,5 +228,5 @@ int dealloc_frame(uintptr_t addr) {
 void frame_alloc_init(void) {
     mem_limit = 128 * 1024 * 1024;
     frames_num = mem_limit / PAGE_SIZE;
-    frames = kmalloc(frames_num / sizeof(*frames));
+    frames = kmalloc(frames_num / BIT_FRAME_SIZE);
 }
