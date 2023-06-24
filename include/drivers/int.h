@@ -91,9 +91,9 @@ static inline void cli(void) {
 typedef void (*isr_handler_t)(struct isr_handler_args);
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler);
-void add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags);
+int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags);
 
-void init_idt();
+int idt_init(void);
 
 static inline void sti(void) {
     asm volatile ("sti");

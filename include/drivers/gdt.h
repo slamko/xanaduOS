@@ -74,7 +74,7 @@ struct gdtr {
 
 #define GDT_SIZE 6
 
-void init_gdt();
+void gdt_init(void);
 
 void load_gdt(uintptr_t gdt_ptr);
 

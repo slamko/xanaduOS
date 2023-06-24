@@ -1,6 +1,7 @@
 #ifndef PAGING_H
 #define PAGING_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include "drivers/int.h"
@@ -33,7 +34,7 @@ struct page_dir {
 
 uintptr_t to_phys_addr(void *virt_addr);
 
-void paging_init(void);
+void paging_init(size_t pmem_amount);
 
 void page_fault(struct isr_handler_args args);
 

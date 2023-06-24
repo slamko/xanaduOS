@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 #include "drivers/pic.h"
+#include "kernel/error.h"
 #include "drivers/int.h"
 #include "lib/slibc.h"
 #include "lib/kernel.h"

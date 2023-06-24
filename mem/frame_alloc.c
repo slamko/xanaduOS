@@ -1,3 +1,4 @@
+#include "kernel/error.h"
 #include "mem/allocator.h"
 #include "drivers/fb.h"
 #include "mem/frame_allocator.h"
@@ -54,7 +55,7 @@ bool is_free_nframes(size_t nframes, uint32_t frame_map, uint32_t frame) {
 
 int set_frame_used(uint32_t frame_map, uint32_t frame) {
     if (frames[frame_map] & (1 << frame)) {
-        return 1;
+        return EINVAL;
     }
     
     frames[frame_map] |= (1 << frame);
@@ -98,9 +99,8 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
             frame_map ++;
         }
 
-        if (set_frame_used(frame_map, frame + i)) {
-            return 1;
-        }
+            /* fb_print_hex(frame + i); */
+        set_frame_used(frame_map, frame + i);
 
         alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
     }
@@ -183,7 +183,7 @@ int find_alloc_nframes(size_t nframes,
         }
     }
 
-    return 1;
+    return ENOMEM;
 }
 
 int find_alloc_frame(uintptr_t *alloc_addr, unsigned int flags) {
@@ -200,12 +200,12 @@ uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
 
 int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     if (!pd) {
-        return 1;
+        return EINVAL;
     }
 
     pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
     if (!pd->page_tables[pde]) {
-        return 1;
+        return ENOMEM;
     }
     
     pd->page_tables_virt[pde] = to_uintptr(pt);
@@ -217,15 +217,25 @@ int map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
 }
 
 int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
+    int ret;
     page_table_t pt;
+
+    if (!page_dir) {
+        return EINVAL;
+    }
+
     page_dir->page_tables[pde] = alloc_pt(&pt, flags);
     page_dir->page_tables_virt[pde] = to_uintptr(pt);
     
     for (unsigned int i = 0; i < PT_SIZE; i++) {
-        map_frame(pt, i, flags);
+        ret = map_frame(pt, i, flags);
+
+        if (ret) {
+            return ret;
+        }
     }
 
-    return pde;
+    return 0;
 } 
 
 int dealloc_frame(uintptr_t addr) {
@@ -242,8 +252,14 @@ int dealloc_frame(uintptr_t addr) {
     return 0;
 }
 
-void frame_alloc_init(void) {
-    mem_limit = 128 * 1024 * 1024;
-    frames_num = mem_limit / PAGE_SIZE;
+int frame_alloc_init(size_t pmem_limit) {
+    frames_num = pmem_limit / (PAGE_SIZE * BIT_FRAME_SIZE);
     frames = kmalloc(frames_num / BIT_FRAME_SIZE);
+    memset(frames, 0, frames_num / BIT_FRAME_SIZE);
+
+    if (!frames) {
+        return ENOMEM;
+    }
+
+    return 0;
 }

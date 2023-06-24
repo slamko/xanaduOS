@@ -109,12 +109,15 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
 }
 
 void kernel_main(struct multiboot_meta *multiboot_data) {
+    struct multiboot_meta hm_mb_data;
+    memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data));
+    
     fb_clear();
 
-    init_gdt();
-    init_idt();
+    gdt_init();
+    idt_init();
     /* usermode_main(); */
-    paging_init();
+    paging_init(hm_mb_data.mem_upper * 0x400);
 
     serial_init();
 
@@ -124,6 +127,8 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     syscall_init();
 
     klog("Hello paging!\n");
+    /* fb_print_hex((uintptr_t)multiboot_data); */
+    /* print_multi_boot_data(multiboot_data); */
     /* shell_start(); */
     /* exec_init(); */
     /* jump_usermode(); */

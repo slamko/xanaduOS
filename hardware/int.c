@@ -1,6 +1,6 @@
-#include <stdint.h>
-
 #include "drivers/int.h"
+#include <stdint.h>
+#include "kernel/error.h"
 #include "drivers/fb.h"
 #include "drivers/serial.h"
 #include "kernel/syscall.h"
@@ -21,13 +21,18 @@ static isr_handler_t isr_handlers[256];
 
 void load_idt(uint32_t ptr);
 
-static void idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
+static int idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
     struct idt_entry *entry = &idt[idt_id];
+    if (!entry) {
+        return EINVAL;
+    }
+    
     entry->isr_low = (uint32_t)isr & 0xFFFF;
     entry->isr_high = (uint32_t)isr >> 16;
     entry->cs = 0x08;
     entry->attributes = flags;
     entry->reserved = 0;
+    return 0;
 }
 
 static void void_handler(struct isr_handler_args args) {
@@ -37,9 +42,7 @@ static void void_handler(struct isr_handler_args args) {
     fb_newline();
 }
 
-
-
-void init_idt() {
+int idt_init(void) {
     idtr.base = (uint32_t)&idt;
     idtr.limit = sizeof(idt) - 1;
 
@@ -55,6 +58,7 @@ void init_idt() {
     sti();
 
     klog("Interrupts enabled\n");
+    return 0;
 }
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
@@ -62,12 +66,13 @@ void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
     pic_unmask(irq_num);
 }
 
-void add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
+int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
     isr_handlers[int_num] = handler;
 
     if (flags) {
-        idt_set_entry(int_num, isr_table[int_num], flags);
+        return idt_set_entry(int_num, isr_table[int_num], flags);
     }
+    return 0;
 }
 
 void isr_x86(struct isr_full_stack isr) {

@@ -1,10 +1,11 @@
 #ifndef FRAME_ALLOC_H
 #define FRAME_ALLOC_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "mem/paging.h"
 
-void frame_alloc_init(void);
+int frame_alloc_init(size_t pmem_limit);
 
 int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr, unsigned int flags);
 

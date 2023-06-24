@@ -1,7 +1,9 @@
 #include "mem/paging.h"
 #include "mem/allocator.h"
+#include "kernel/error.h"
 #include "mem/frame_allocator.h"
 #include "drivers/fb.h"
+#include "kernel/error.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -28,6 +30,7 @@ void print_cr0(void);
 
 #define KERNEL_INIT_PT_COUNT 4
 #define DEFAULT_FLAGS (R_W | PRESENT)
+#define MAP_LOWER_ADDR 0x100000
 
 struct page_dir init_pd;
 struct page_dir *cur_pd;
@@ -50,12 +53,14 @@ uintptr_t to_phys_addr(void *virt_addr) {
             (virt_kernel_addr ? virt_kernel_addr : VADDR));
 }
 
-void page_tables_init(void) {
+int page_tables_init(void) {
+    int ret;
+    
     for (unsigned int i = 0; i < ARR_SIZE(init_page_tables); i++) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0; i < ARR_SIZE(kernel_page_table); i++) {
+    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table); i++) {
         uint16_t flags = PRESENT;
         uintptr_t paddr = i * 0x1000;
 
@@ -63,7 +68,10 @@ void page_tables_init(void) {
             flags |= R_W;
         }
         
-        alloc_frame(i * 0x1000, &kernel_page_table[i], flags);
+        ret = alloc_frame(i * 0x1000, &kernel_page_table[i], flags);
+        if (ret) {
+            return ret;
+        }
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -77,31 +85,46 @@ void page_tables_init(void) {
             (uintptr_t)&kernel_page_table[PT_SIZE * i];
     }
 
-    add_isr_handler(14, &page_fault, 0);
+    ret = add_isr_handler(14, &page_fault, 0);
 
     load_page_dir(init_pd.pd_phys_addr);
     enable_paging();
+
+    return ret;
 }
 
-void paging_init() {
+void paging_init(size_t pmem_limit) {
     asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
     asm volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
     asm volatile ("mov $_rodata_start, %0" : "=r" (rodata_start));
     asm volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
+
+    int ret;
     rodata_start = to_phys_addr((void *)rodata_start);
     rodata_end = to_phys_addr((void *)rodata_end);
 
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
 
     heap_init(pt_base_addr);
-    frame_alloc_init();
+    ret = frame_alloc_init(pmem_limit);
+
+    if (ret) {
+        struct error_state err;
+        err.err = ret;
+        panic("Frame allocator initialization failed\n", err);
+    }
 
     init_pd.page_tables_virt = init_page_tables_virt;
     init_pd.page_tables = init_page_tables;
     init_pd.pd_phys_addr = to_phys_addr(&init_page_tables);
     cur_pd = &init_pd;
 
-    page_tables_init();
+    ret = page_tables_init();
+    if (ret) {
+        struct error_state err;
+        err.err = ret;
+        panic("Paging data structures initialization failed\n", err);
+    }
     
     klog("Paging enabled\n");
 }
@@ -125,14 +148,14 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
     page_table_t new_pt;
     
     if (!new_pt_phys_addr || !new_pt_ptr) {
-        return 1;
+        return EINVAL;
     }
     
     *new_pt_ptr = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, new_pt_phys_addr);
     new_pt = *new_pt_ptr;
 
     if (!new_pt) {
-        return 1;
+        return EINVAL;
     }
 
     for (unsigned int i = 0; i < PT_SIZE; i++) {
@@ -141,7 +164,7 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
         if (pt[i] & USER && pt[i] & PRESENT) {
             if (find_alloc_frame(&new_pt[i], flags)) {
                 klog("alloc frame failed\n");
-                return 1;
+                return ENOMEM;
             }
             
             uintptr_t paddr_pt = get_tab_pure_addr(pt[i]);
@@ -160,28 +183,31 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     uintptr_t ptables_phys;
 
     if (!new_pd) {
-        return 1;
+        return EINVAL;
     }
 
     new_pd->page_tables = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &ptables_phys);
     new_pd->page_tables_virt = kmalloc(PAGE_SIZE);
     
     if (!new_pd->page_tables || !new_pd->page_tables_virt) {
-        return 1;
+        return ENOMEM;
     }
 
     new_pd->pd_phys_addr = ptables_phys;
 
     for (unsigned int i = 0; i < PT_SIZE; i++) {
         if (pd->page_tables[i] & USER && pd->page_tables[i] & PRESENT) {
-            klog("user");
+            int ret;
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
             page_table_t pt = (uintptr_t *)(void *)pd->page_tables_virt[i];
 
-            if (clone_page_table(pt, &new_pt, &new_pt_paddr)) {
-                return 1;
+            ret = clone_page_table(pt, &new_pt, &new_pt_paddr);
+
+            if (ret) {
+                return ret;
             }
+            
             new_pd->page_tables[i] = new_pt_paddr;
             new_pd->page_tables_virt[i] = to_uintptr(new_pt);
         } else {
@@ -231,14 +257,23 @@ int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p) {
 
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(cur_pd, pde)) {
+        int ret;
         page_table_t pt;
-        map_alloc_pt(cur_pd, &pt, pde);
-        map_frame(pt, pte, R_W | PRESENT);
+
+        ret = map_alloc_pt(cur_pd, &pt, pde);
+        if (ret) {
+            return ret;
+        }
+        
+        ret = map_frame(pt, pte, R_W | PRESENT);
+        if (ret) {
+            return ret;
+        }
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
 
         if (find_alloc_frame(pt_entry, R_W | PRESENT)) {
-            return 1;
+            return ENOMEM;
         }
     }
 

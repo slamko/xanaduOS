@@ -69,7 +69,7 @@ void fill_gdt() {
     load_tss();
 }
 
-void init_gdt() {
+void gdt_init(void) {
     cli();
     fill_gdt();
     klog("Setting up GDT\n");
