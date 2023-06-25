@@ -1,7 +1,7 @@
+#include "mem/frame_allocator.h"
 #include "mem/allocator.h"
 #include "kernel/error.h"
 #include "drivers/fb.h"
-#include "mem/frame_allocator.h"
 #include "mem/paging.h"
 #include "lib/kernel.h"
 #include <stddef.h>
@@ -73,8 +73,15 @@ int set_frame_used(uint32_t frame_map, uint32_t frame) {
 int set_nframes_used(size_t nframes, uint32_t frame_map, uint32_t frame) {
     int ret = 0;
 
+    int overflow = 0;
     for (unsigned int i = 0; i < nframes; i++) {
-        ret |= set_frame_used(frame_map, frame + i);
+        if (frame + i >= BIT_FRAME_SIZE) {
+            frame = 0;
+            overflow = -i;
+            frame_map ++;
+        }
+        
+        ret |= set_frame_used(frame_map, frame + i + overflow);
     }
 
     return ret;
@@ -127,6 +134,7 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
         alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
    }
 
+    /*
     last_frame[buddy].frame = frame + nframes + 1;
     last_frame[buddy].frame_map = frame_map;
 
@@ -134,6 +142,7 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
         last_frame[buddy].frame = 0;
         last_frame[buddy].frame_map++;
     }
+    */
 
     return 0;
 }
@@ -257,32 +266,25 @@ int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
     return 0;
 } 
 
-int dealloc_nframes(size_t nframes, uintptr_t addr) {
-    if (!addr) {
-        return 1;
+int dealloc_nframes(uintptr_t *addrs, size_t nframes) {
+    if (!addrs) {
+        return EINVAL;
     }
 
-    addr &= ~0xfff;
-
-    unsigned int frame_map, frame;
-    get_frame_meta(addr, &frame_map, &frame);
-
-    int overflow = 0;
     for (unsigned int i = 0; i < nframes; i++) {
-        if (frame + i >= BIT_FRAME_SIZE) {
-            frame = 0;
-            overflow = -i;
-            frame_map++;
-        }
-        
-        frames[frame_map] &= ~(1 << (frame + i + overflow));
+        dealloc_frame(addrs[i]);
     }
 
     return 0;
 }
 
-int dealloc_frame(uintptr_t addr) {
-    return dealloc_nframes(1, addr);
+void dealloc_frame(uintptr_t addr) {
+    addr &= ~0xfff; // remove paging flags
+
+    unsigned int frame_map, frame;
+    get_frame_meta(addr, &frame_map, &frame);
+
+    frames[frame_map] &= ~(1 << (frame));
 }
 
 int frame_alloc_init(size_t pmem_limit) {

@@ -22,9 +22,6 @@ void *kcalloc(size_t val, size_t size);
 
 void fa_test(size_t siz);
 
-int dealloc_nframes(size_t nframes, uintptr_t addr);
-int dealloc_frame(uintptr_t addr);
-
 void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys);
 
 void kfree(void *addr);
