@@ -8,23 +8,28 @@
 
 static uintptr_t last_eip;
 
-void gp_fault(struct isr_handler_args i) {
-    klog_error("Protection fault\n");
-}
-
-void invalid_tss_handler(struct isr_handler_args args) {
-    klog_error("Invalid TSS\n");
-}
-
-void invalid_opcode(struct isr_handler_args args) {
+void general_handler(struct isr_handler_args args, const char *msg) {
     if (last_eip == args.eip) return;
 
     last_eip = args.eip;
-    klog_error("Invalid opcode\n");
+    
+    klog_error(msg);
+}
+
+void gp_fault(struct isr_handler_args args) {
+    general_handler(args, "Protection fault\n");
+}
+
+void invalid_tss_handler(struct isr_handler_args args) {
+    general_handler(args, "Invalid TSS\n");
+}
+
+void invalid_opcode(struct isr_handler_args args) {
+    general_handler(args, "Invalid opcode\n");
 }
 
 static void spurious_handler(struct isr_handler_args args) {
-    klog_error("Spurious interrupr");
+    general_handler(args, "Spuriours interrupt\n");
 }
 
 void exception_handlers_init(void) {

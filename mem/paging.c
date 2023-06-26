@@ -61,8 +61,9 @@ int page_tables_init(void) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table); i++) {
+    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table) / PT_SIZE; i++) {
         uintptr_t paddr = i * 0x1000;
+        /*
         uint16_t flags = PRESENT;
 
         if (paddr >= rodata_end || paddr < rodata_start) {
@@ -73,9 +74,10 @@ int page_tables_init(void) {
         if (ret) {
             return ret;
         }
+        */
 
-        /* buddy_alloc_at_addr(paddr, kernel_page_table + (i * PT_SIZE), PT_SIZE, */
-                           /* R_W | PRESENT); */
+        buddy_alloc_at_addr(paddr, kernel_page_table + (i * PT_SIZE), PT_SIZE,
+                           R_W | PRESENT);
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -110,8 +112,8 @@ void paging_init(size_t pmem_limit) {
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
 
     heap_init(pt_base_addr);
-    ret = frame_alloc_init(pmem_limit);
-    /* ret = buddy_alloc_init(pmem_limit); */
+    /* ret = frame_alloc_init(pmem_limit); */
+    ret = buddy_alloc_init(pmem_limit);
 
     if (ret) {
         struct error_state err;
@@ -292,7 +294,8 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
             return ret;
         }
         
-        ret = map_frame(pt, pte, R_W | PRESENT);
+        /* ret = map_frame(pt, pte, R_W | PRESENT); */
+        ret = buddy_alloc_frame(&pt[pte], R_W | PRESENT);
         if (ret) {
             return ret;
         }

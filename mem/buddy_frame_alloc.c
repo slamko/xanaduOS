@@ -108,7 +108,6 @@ static inline void set_map_used(order_t order, uintptr_t addr,
 
 static uintptr_t buddy_slice(struct free_list *free,
                        order_t start, order_t target) {
-    remove_free_head(start);
     set_frame_used(start, free->addr);
     
     free_area[start - 1].num_free++;
@@ -119,9 +118,13 @@ static uintptr_t buddy_slice(struct free_list *free,
    
     if (start - 1 > target) {
         insert_buddy(next_order_fl, sec_buddy_addr);
+        /* klog("next addr"); */
+        /* fb_print_hex((uintptr_t)next_order_fl->next); */
         return buddy_slice(next_order_fl->next, start - 1, target);
     }
     
+    /* klog("sec bodyy"); */
+    /* fb_print_hex(sec_buddy_addr); */
     return sec_buddy_addr;
 }
 
@@ -131,10 +134,13 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
     }
 
     order_t order = get_buddy_order(nframes);
-    fb_print_num(order);
     struct free_list *free = free_area[order].free_list.next;
+    /* fb_print_num(order); */
+    /* klog("num free"); */
+    /* fb_print_num(free_area[order].num_free); */
+    
 
-    if (free) {
+    if (free_area[order].num_free > 0) {
         remove_free_head(order);
         set_addrs(addrs, free->addr, nframes, flags);
         set_frame_used(order, free->addr);
@@ -144,6 +150,8 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
     for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
         struct free_area *fa = &free_area[i];
         if (fa->num_free > 0) {
+            /* klog("free"); */
+            remove_free_head(i);
             uintptr_t addr = buddy_slice(fa->free_list.next, i, order);
             set_addrs(addrs, addr, nframes, flags);
         }
@@ -159,9 +167,9 @@ int buddy_alloc_at_addr(uintptr_t base, uintptr_t *addrs, size_t nframes,
     }
 
     order_t order = get_buddy_order(nframes);
-    klog("order");
-    fb_print_num(order);
-    fb_print_num((uintptr_t)free_area[order].free_list.next);
+    /* klog("order"); */
+    /* fb_print_num(order); */
+    /* fb_print_num((uintptr_t)free_area[order].free_list.next); */
 
     if (free_area[order].num_free > 0) {
         struct free_list *free = NULL;
@@ -170,8 +178,8 @@ int buddy_alloc_at_addr(uintptr_t base, uintptr_t *addrs, size_t nframes,
         struct free_list **prev_fl = &init_fl;
         for (struct free_list **fl = &free_area[order].free_list.next;
              fl; fl = &(*fl)->next) {
-            klog("addr");
-            fb_print_hex((*fl)->addr);
+            /* klog("addr"); */
+            /* fb_print_hex((*fl)->addr); */
             if ((*fl)->addr == base) {
                 free = *fl;
                 break;
@@ -185,7 +193,7 @@ int buddy_alloc_at_addr(uintptr_t base, uintptr_t *addrs, size_t nframes,
 
         free_area[order].num_free--;
         (*prev_fl)->next = free->next;
-        klog("Alloc at addr");
+        /* klog("Alloc at addr"); */
         
         set_addrs(addrs, free->addr, nframes, flags);
         set_frame_used(order, free->addr);
@@ -238,6 +246,7 @@ int buddy_alloc_init(size_t mem_limit) {
         return EINVAL;
     }
 
+    memset(&free_area, 0, sizeof(free_area));
     for (unsigned int i = 0; i < MAX_ORDER; i++) {
         size_t map_size = mem_limit / (PAGE_SIZE * MAP_SIZE * (1 << i));
         buddy_maps[i] = kmalloc(map_size);
@@ -245,6 +254,8 @@ int buddy_alloc_init(size_t mem_limit) {
         if (!buddy_maps[i]) {
             return ENOMEM;
         }
+        /* klog("num free"); */
+        /* fb_print_num(free_area[i].num_free); */
     }
 
     size_t max_map_size = mem_limit / (MAX_BUDDY_SIZE);
@@ -284,9 +295,9 @@ void buddy_test(size_t mem) {
 
     /* return 0; */
     klog("Buddy find alloc\n");
-    ret = buddy_alloc_frames(addrs, 512, R_W|PRESENT);
+    ret = buddy_alloc_frames(addrs, 1, R_W|PRESENT);
 
-    for (unsigned int i = 0; i < 512; i ++) {
+    for (unsigned int i = 0; i < 1; i ++) {
         fb_print_hex(addrs[i]);
     }
     fb_print_num(ret);
