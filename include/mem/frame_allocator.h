@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include "mem/paging.h"
 
+struct frame_map_addr {
+    uint32_t frame_map;
+    uint32_t frame;
+};
+
 int frame_alloc_init(size_t pmem_limit);
 
 int alloc_frame(uintptr_t addr, uintptr_t *alloc_addr, unsigned int flags);

@@ -1,5 +1,6 @@
 #include "mem/paging.h"
 #include "mem/allocator.h"
+#include "mem/buddy_alloc.h"
 #include "kernel/error.h"
 #include "mem/frame_allocator.h"
 #include "drivers/fb.h"
@@ -60,7 +61,8 @@ int page_tables_init(void) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table); i++) {
+    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table) / PT_SIZE; i++) {
+        /*
         uint16_t flags = PRESENT;
         uintptr_t paddr = i * 0x1000;
 
@@ -72,6 +74,10 @@ int page_tables_init(void) {
         if (ret) {
             return ret;
         }
+        */
+
+        buddy_alloc_frames(kernel_page_table + (i * PT_SIZE), PT_SIZE,
+                           R_W | PRESENT);
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -127,6 +133,28 @@ void paging_init(size_t pmem_limit) {
     }
     
     klog("Paging enabled\n");
+}
+
+uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
+    uintptr_t phys_addr = 0;
+    *new_pt = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &phys_addr);
+    memset(*new_pt, 0, PAGE_SIZE);
+
+    return phys_addr | flags;
+}
+
+int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
+    if (!pd) {
+        return EINVAL;
+    }
+
+    pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
+    if (!pd->page_tables[pde]) {
+        return ENOMEM;
+    }
+    
+    pd->page_tables_virt[pde] = to_uintptr(pt);
+    return 0;
 }
 
 static inline int tab_present(uintptr_t descriptor) {
@@ -271,10 +299,12 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         }
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
-
+/*
         if (find_alloc_frame(pt_entry, R_W | PRESENT)) {
             return ENOMEM;
         }
+*/
+        buddy_alloc_frame(pt_entry, R_W | PRESENT);
     }
 
     return 1;

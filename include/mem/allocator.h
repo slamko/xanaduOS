@@ -16,9 +16,9 @@ void *kmalloc(size_t siz);
 
 void *kmalloc_phys(size_t siz, uintptr_t *phys);
 
-void *kcalloc_align(size_t val, size_t align, size_t size);
+void *kzalloc_align(size_t val, size_t align, size_t size);
 
-void *kcalloc(size_t val, size_t size);
+void *kzalloc(size_t val, size_t size);
 
 void fa_test(size_t siz);
 

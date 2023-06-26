@@ -35,7 +35,7 @@ void fa_test(size_t siz) {
     }
 }
 
-bool is_free_frame(uint32_t frame_map, uint32_t frame) {
+bool is_frame_free(uint32_t frame_map, uint32_t frame) {
     return !(frames[frame_map] & (1 << frame));
 }
 
@@ -48,7 +48,7 @@ bool is_free_nframes(size_t nframes, uint32_t frame_map, uint32_t frame) {
             frame_map ++;
         }
         
-        if (!is_free_frame(frame_map, frame + i + overflow)) {
+        if (!is_frame_free(frame_map, frame + i + overflow)) {
             return false;
         }
     }
@@ -167,7 +167,7 @@ int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
     for (unsigned int j = MAX_BUDDY_SIZE * buddy;
          j < MAX_BUDDY_SIZE * (buddy + 1); j += nframes) {
 
-        if (is_free_frame(frame_map, j)) {
+        if (is_frame_free(frame_map, j)) {
             set_nframes_used(nframes, frame_map, j);
             set_nalloc_addrs(alloc_addr, nframes, frame_map, j, flags);
 
