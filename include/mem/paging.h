@@ -20,6 +20,7 @@ enum PAGING_STRUCT_FLAGS {
     ACCESSED             = (1 << 5),
     DIRTY                = (1 << 6),
     PS                   = (1 << 7),
+    GLOBAL               = (1 << 8),
 };
 
 typedef uintptr_t * page_table_t;

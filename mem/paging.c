@@ -28,6 +28,8 @@ void enable_paging(void);
 void disable_paging(void);
 
 void print_cr0(void);
+void flush_tlb(void);
+void flush_page(uintptr_t virt_addr);
 
 #define KERNEL_INIT_PT_COUNT 4
 #define DEFAULT_FLAGS (R_W | PRESENT)
@@ -61,7 +63,7 @@ int page_tables_init(void) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table) / PT_SIZE; i++) {
+    for (unsigned int i = 0x0; i < KERNEL_INIT_PT_COUNT; i++) {
         uintptr_t paddr = i * 0x1000;
         buddy_alloc_at_addr(paddr, kernel_page_table + (i * PT_SIZE),
                             PT_SIZE, R_W | PRESENT);
@@ -72,6 +74,7 @@ int page_tables_init(void) {
             to_phys_addr(&kernel_page_table[PT_SIZE * i])
             | PRESENT
             | R_W
+            | GLOBAL
             ;
 
         init_pd.page_tables_virt[768 + i] =
@@ -284,6 +287,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         if (ret) {
             return ret;
         }
+        flush_page(get_ident_phys_page_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
         buddy_alloc_frame(pt_entry, R_W | PRESENT);
