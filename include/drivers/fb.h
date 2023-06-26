@@ -64,6 +64,8 @@ size_t fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz);
 
 size_t fb_nprint_black(const char *msg, size_t siz);
 
+int fb_printf(const char *msg, ...);
+
 void fb_print_num(unsigned int num);
 void fb_print_hex(unsigned int num);
 

@@ -14,4 +14,6 @@ struct error_state {
 
 int panic(const char *msg, struct error_state);
 
+void error(const char *msg, struct error_state stat);
+
 #endif

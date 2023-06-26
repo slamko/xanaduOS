@@ -4,9 +4,11 @@
 #include "lib/slibc.h"
 #include "mem/paging.h"
 #include "drivers/dev.h"
-#include <bits/types.h>
+
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define FB_COMMAND_PORT         0x3D4
 #define FB_DATA_PORT            0x3D5
@@ -216,7 +218,6 @@ void fb_print_num(unsigned int num) {
     uint32_t mul = 1;
     char *str_num = _print_num_rec(num, &mul, str, sizeof(str));
     fb_nprint_black(str_num, mul);
-    fb_newline();
 }
 
 char dec_to_hex(unsigned int num) {
@@ -245,12 +246,56 @@ char *_print_hex_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     return str;
 }
 
+int fb_printf(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+
+    size_t sent = 0;
+    bool format_char = false;
+
+    for (unsigned int i = 0; msg[i]; i++) {
+        if (msg[i] == '%') {
+            format_char = true;
+            continue;
+        }
+
+        if (format_char) {
+            format_char = false;
+
+            switch (msg[i]) {
+            case 'd':;
+                int num = va_arg(args, int);
+                fb_print_num(num);
+                break;
+            case 'u':;
+                unsigned int unum = va_arg(args, unsigned int);
+                fb_print_num(unum);
+                break;
+            case 'x':;
+                unsigned long hex = va_arg(args, unsigned long);
+                fb_print_hex(hex);
+                break;
+            case 'p':;
+                void * ptr = va_arg(args, void *);
+                fb_print_hex((uintptr_t)ptr);
+                break;
+            }
+
+            continue;
+        }
+        
+        fb_putc(msg[i]);
+    }
+    
+    va_end(args);
+    return sent;
+}
+
 void fb_print_hex(unsigned int num) {
     char str[16];
     uint32_t mul = 1;
     char *str_num = _print_hex_rec(num, &mul, str, sizeof(str));
     fb_nprint_black(str_num, mul);
-    fb_newline();
 }
 
 void fb_mov_cursor(uint16_t pos) {

@@ -127,7 +127,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     pit_init(0);
     syscall_init();
 
-    klog("Hello paging!\n");
+    fb_printf("Hello: %d my name is %p\n", 25, &hm_mb_data);
     /* fb_print_hex((uintptr_t)multiboot_data); */
     /* print_multi_boot_data(multiboot_data); */
     /* shell_start(); */

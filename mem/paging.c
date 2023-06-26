@@ -63,10 +63,16 @@ int page_tables_init(void) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0x0; i < KERNEL_INIT_PT_COUNT; i++) {
+    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table) / PT_SIZE; i++) {
         uintptr_t paddr = i * 0x1000;
-        buddy_alloc_at_addr(paddr, kernel_page_table + (i * PT_SIZE),
-                            PT_SIZE, R_W | PRESENT);
+        uint16_t flags = R_W | PRESENT;
+
+        /* if (paddr >= rodata_end || paddr < rodata_start) { */
+            /* flags |= R_W; */
+        /* } */
+        
+        buddy_alloc_at_addr(paddr, kernel_page_table + i,
+                            PT_SIZE, flags);
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
