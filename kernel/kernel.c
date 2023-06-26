@@ -133,7 +133,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* shell_start(); */
     /* exec_init(); */
     /* jump_usermode(); */
-    buddy_test(hm_mb_data.mem_upper * 0x400);
+    /* buddy_test(hm_mb_data.mem_upper * 0x400); */
 
     while (1)
         ;
