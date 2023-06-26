@@ -6,6 +6,8 @@
 
 /* #define PACKED __attribute__((packed)) */
 
+void debug_log(const char *msg);
+
 void outb(uint16_t port, uint8_t data);
 uint8_t inb(uint16_t port);
 

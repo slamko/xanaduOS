@@ -236,14 +236,14 @@ void kfree(void *addr) {
     }
 
     if (header->next && header->next->is_hole) {
-        header->next = header->next->next;
-        header->next_hole = header->next_hole;
         header->size += header->next->size;
+        header->next_hole = header->next->next_hole;
         header->next->magic_num = 0;
 
         if (header->next->next) {
             header->next->prev = header;
         }
+        header->next = header->next->next;
     }
 
     if (header->prev && header->prev->is_hole) {
@@ -251,7 +251,7 @@ void kfree(void *addr) {
         header->prev->size += header->size;
         header->prev->next_hole = header->next_hole;
         header->magic_num = 0;
-        header->prev = header->prev->prev;
+        /* header->prev = header->prev->prev; */
 
         if (header->next) {
             header->next->prev = header->prev;

@@ -5,6 +5,10 @@ void klog(const char *msg) {
     fb_print_black(msg);
 }
 
+void debug_log(const char *msg) {
+    fb_print_black(msg);
+}
+
 void klog_warn(const char *msg) {
     fb_print_black(msg);
 }
