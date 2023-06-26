@@ -117,7 +117,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
                 (header->size >= aligned_alloc_size + (3 * sizeof(*header))
                  && header->next)) {
 
-                fb_print_black("insert new\n");
+                /* fb_print_black("insert new\n"); */
                 struct block_header *new_block =
                     (void *)(data_base + aligned_alloc_size);
                 if (!heap_base_block->next_hole

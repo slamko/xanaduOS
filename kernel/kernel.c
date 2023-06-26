@@ -14,6 +14,7 @@
 #include "mem/flat.h"
 #include "mem/paging.h"
 #include "proc/proc.h"
+#include "mem/buddy_alloc.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -132,6 +133,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* shell_start(); */
     /* exec_init(); */
     /* jump_usermode(); */
+    buddy_test(hm_mb_data.mem_upper * 0x400);
 
     while (1)
         ;
