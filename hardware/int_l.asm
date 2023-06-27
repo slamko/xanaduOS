@@ -8,9 +8,7 @@ section .text
 global disable_int
 disable_int:
     pushfd
-    call fb_print_hex
-    mov eax, [esp+4]
-    popfd
+    pop eax
     cli
     ret
 
@@ -18,9 +16,7 @@ global recover_int
 recover_int:
     mov eax, [esp+4]
     push eax
-    call fb_print_hex
-    ;; popfd
-    pop eax
+    popfd
     ret
 
 load_idt:

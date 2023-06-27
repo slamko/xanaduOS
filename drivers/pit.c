@@ -6,9 +6,12 @@
 #include "lib/slibc.h"
 #include <stdint.h>
 
+typedef uint32_t tick_t;
+
 static const unsigned long XTAL_FREQ = 1193182;
-static unsigned long tick;
+static tick_t tick;
 static unsigned long pit_freq = 10*1000;
+
 
 enum PIT_channels{
     PIT_CH0         = 0x40,
@@ -36,8 +39,8 @@ uint16_t get_pit_count(pit_channel_t ch) {
     return count;
 }
 
-void wait_ticks(unsigned long delay) {
-    unsigned long init_tick = tick;
+void wait_ticks(tick_t delay) {
+    tick_t init_tick = tick;
 
     if (init_tick + delay < tick) {
         // overflow
@@ -45,6 +48,7 @@ void wait_ticks(unsigned long delay) {
         while(tick >= init_tick) {
             halt();
         }
+        delay -= (UINT32_MAX - init_tick);
         init_tick = tick;
     }
 
@@ -53,7 +57,11 @@ void wait_ticks(unsigned long delay) {
     }
 }
 
-void sleep_us(unsigned long delay) {
+void sleep_us(uint32_t delay) {
+    if (!delay) {
+        return;
+    }
+    
     unsigned long min_delay = (1000*1000) / pit_freq;
     min_delay *= 2; // for slow timers
 
@@ -61,7 +69,7 @@ void sleep_us(unsigned long delay) {
         delay = min_delay;
     }
     
-    unsigned long delay_ticks = 0;
+    tick_t delay_ticks = 0;
 
     if (delay < 1000) {
         delay_ticks = delay * pit_freq;
@@ -77,8 +85,12 @@ void sleep_us(unsigned long delay) {
     wait_ticks(delay_ticks);
 }
 
-void sleep_ms(unsigned long delay) {
-    unsigned long delay_ticks = (delay * pit_freq) / 1000;
+void sleep_ms(uint32_t delay) {
+    if (!delay) {
+        return;
+    }
+
+    tick_t delay_ticks = (delay * pit_freq) / 1000;
 
     if (delay_ticks == 1) {
         sleep_us(delay * 1000);
@@ -90,8 +102,12 @@ void sleep_ms(unsigned long delay) {
     wait_ticks(delay_ticks);
 }
 
-void sleep_sec(unsigned long delay) {
-    unsigned long delay_ticks = (delay * pit_freq);
+void sleep_sec(uint32_t delay) {
+    if (!delay) {
+        return;
+    }
+
+    tick_t delay_ticks = (delay * pit_freq);
  
     if (delay_ticks == 1) {
         sleep_ms(delay * 1000);
@@ -125,8 +141,7 @@ int pit_init(unsigned long freq) {
     io_wait();
 
     add_irq_handler(IRQ0, &pit_handler);
-    sti();
-    /* recover_int(cflags); */
+    recover_int(cflags);
 
     klog("PIT initialized\n");
     
