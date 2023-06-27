@@ -15,6 +15,7 @@
 #include "mem/paging.h"
 #include "proc/proc.h"
 #include "mem/buddy_alloc.h"
+#include "drivers/rtc.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -129,7 +130,10 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     sleep_sec(1);
 
-    fb_printf("Hello: %d my name is %p\n", 25, &hm_mb_data);
+    char date[16];
+    fb_print_black(get_date_time("h:m:s", date, 16));
+    fb_newline();
+    /* fb_print_num(rtc_get_year()); */
     /* fb_print_hex((uintptr_t)multiboot_data); */
     /* print_multi_boot_data(multiboot_data); */
     /* shell_start(); */

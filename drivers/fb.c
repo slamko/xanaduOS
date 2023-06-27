@@ -213,6 +213,14 @@ char *_print_num_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     return str;
 }
 
+char *itoa(unsigned int num, char *buf, size_t siz, size_t *num_wr,
+           int radix) {
+    uint32_t mul = 1;
+    char *str_num = _print_num_rec(num, &mul, buf, siz);
+    *num_wr = mul;
+    return str_num;
+}
+
 void fb_print_num(unsigned int num) {
     char str[16];
     uint32_t mul = 1;

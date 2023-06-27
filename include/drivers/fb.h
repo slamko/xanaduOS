@@ -67,9 +67,12 @@ size_t fb_nprint_black(const char *msg, size_t siz);
 int fb_printf(const char *msg, ...);
 
 void fb_print_num(unsigned int num);
+
 void fb_print_hex(unsigned int num);
 
 void fb_mov_cursor(uint16_t pos);
+
+char *itoa(unsigned int num, char *buf, size_t siz, size_t *num_wr, int radix);
 
 void fb_clear(void);
  

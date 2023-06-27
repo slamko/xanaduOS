@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "drivers/cmos.h"
 #include "drivers/pit.h"
 #include "lib/kernel.h"
 #include "lib/slibc.h"
@@ -11,7 +12,7 @@ enum cmos {
 
 void cmos_select_reg(uint8_t reg) {
     outb(CMOS_COMMAND_PORT, reg);
-    sleep_ms(5);
+    sleep_ms(50);
 }
 
 uint8_t cmos_read_data(void) {
