@@ -3,6 +3,8 @@
 #include "lib/kernel.h"
 #include "lib/slibc.h"
 #include "drivers/cmos.h"
+#include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // standard base address of the primary floppy controller
@@ -39,6 +41,17 @@ enum floppy_drive_type {
     FLOPPY_720KB_3_5    = 3,
     FLOPPY_1_44MB_3_5   = 4,
     FLOPPY_2_88MB_3_5   = 5,
+};
+
+enum msr {
+    MSR_RQM             = (1 << 7),
+    MSR_DIO             = (1 << 6),
+    MSR_NDMA            = (1 << 5),
+    MSR_CD              = (1 << 4),
+    MSR_ACTD            = (1 << 3),
+    MSR_ACTC            = (1 << 2),
+    MSR_ACTB            = (1 << 1),
+    MSR_ACTA            = (1 << 0),
 };
 
 enum dor {
@@ -84,6 +97,42 @@ void floppy_detect(void) {
         klog(drive_types[dtypes & 0x0F]);
     }
     klog("\n");
+}
+
+uint8_t floppy_read(void) {
+    uint8_t msr = inb(FLOPPY_MAIN_STATUS_REG);
+
+    while(!(msr & MSR_RQM) || (msr & MSR_DIO)) {
+        msr = inb(FLOPPY_MAIN_STATUS_REG);
+    }
+    
+    return inb(FLOPPY_DATA_FIFO);
+}
+
+void floppy_write_cmd(uint8_t cmd, size_t param_cnt, ...) {
+    uint8_t msr = inb(FLOPPY_MAIN_STATUS_REG);
+
+    if (!(msr & MSR_RQM) || msr & MSR_DIO) {
+        //reset
+    }
+
+    outb(FLOPPY_DATA_FIFO, cmd);
+
+    va_list args;
+    va_start(args, param_cnt);
+
+    for (unsigned int i = 0; i < param_cnt; i++) {
+
+        msr = inb(FLOPPY_MAIN_STATUS_REG);
+
+        while(!(msr & MSR_RQM) || (msr & MSR_DIO)) {
+            msr = inb(FLOPPY_MAIN_STATUS_REG);
+        }
+
+        outb(FLOPPY_DATA_FIFO, va_arg(args, int));
+    }
+
+    va_end(args);
 }
 
 void run_motor(uint8_t drive) {
