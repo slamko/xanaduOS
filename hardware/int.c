@@ -36,8 +36,7 @@ static int idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
 }
 
 static void void_handler(struct isr_handler_args args) {
-    fb_newline();
-    fb_print_black("Unknown interrupt");
+    general_handler(args, "Unknown interrupt: ");
     fb_print_num(args.int_id);
     fb_newline();
 }

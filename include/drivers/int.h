@@ -95,6 +95,10 @@ int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags);
 
 int idt_init(void);
 
+uint32_t disable_int(void);
+
+void recover_int(uint32_t cflags);
+
 static inline void sti(void) {
     asm volatile ("sti");
 }

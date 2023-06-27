@@ -26,7 +26,6 @@ void kbd_add_receiver(receiver f);
 void kbd_init(void);
 uint32_t kbd_read(void);
 
-
 extern receiver receiver_f[KBD_INT_REC_NUM];
 
 #endif

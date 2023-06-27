@@ -293,10 +293,12 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         if (ret) {
             return ret;
         }
+
         flush_page(get_ident_phys_page_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
         buddy_alloc_frame(pt_entry, R_W | PRESENT);
+        /* fb_print_hex(*pt_entry); */
     }
 
     return 1;

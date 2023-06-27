@@ -2,20 +2,20 @@
 #include "drivers/fb.h"
 #include "lib/kernel.h"
 #include "drivers/int.h"
-#include "drivers/keyboard.h"
+#include "drivers/mouse.h"
 #include <stdint.h>
 
 __attribute__((weak)) void reboot() {
     uint8_t temp;
     cli();
 
-    temp = inb(KBD_STATUS_PORT);
+    temp = ps2_read_status();
     while (temp & 1) {
-        temp = inb(KBD_INPUT_PORT);
+        temp = ps2_read_data();
     }
-        
-    outb(KBD_STATUS_PORT, 0xFE);
 
+    ps2_write_cmd(PS2_RESET);
+    
     while(1) {
         halt();
     }

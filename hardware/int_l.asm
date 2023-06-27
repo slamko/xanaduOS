@@ -1,9 +1,28 @@
 extern isr_x86
 extern fb_print_num
+extern fb_print_hex
 
 global load_idt
 
 section .text
+global disable_int
+disable_int:
+    pushfd
+    call fb_print_hex
+    mov eax, [esp+4]
+    popfd
+    cli
+    ret
+
+global recover_int
+recover_int:
+    mov eax, [esp+4]
+    push eax
+    call fb_print_hex
+    ;; popfd
+    pop eax
+    ret
+
 load_idt:
     mov eax, [esp + 4]
     lidt [eax]
@@ -94,3 +113,4 @@ isr_table:
     ;; mov dword [isr_table + i], isr_%+i ; use DQ instead if targeting 64-bit
 %assign i i+1 
 %endrep
+    
