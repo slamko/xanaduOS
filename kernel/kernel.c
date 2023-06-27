@@ -16,6 +16,7 @@
 #include "proc/proc.h"
 #include "mem/buddy_alloc.h"
 #include "drivers/rtc.h"
+#include "drivers/floppy.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -111,15 +112,14 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
 }
 
 void kernel_main(struct multiboot_meta *multiboot_data) {
-    struct multiboot_meta hm_mb_data;
-    memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data));
+    /* struct multiboot_meta hm_mb_data; */
+    /* memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data)); */
     
     fb_clear();
 
     gdt_init();
     idt_init();
-    /* usermode_main(); */
-    paging_init(hm_mb_data.mem_upper * 0x400);
+    paging_init(multiboot_data->mem_upper * 0x400);
 
     serial_init();
 
@@ -127,11 +127,11 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     ps2_init();
     pit_init(0);
     syscall_init();
+    rtc_init();
+    floppy_init();
 
     sleep_sec(1);
 
-    char date[16];
-    fb_print_black(get_date_time("h:m:s", date, 16));
     fb_newline();
     /* fb_print_num(rtc_get_year()); */
     /* fb_print_hex((uintptr_t)multiboot_data); */
@@ -140,7 +140,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* exec_init(); */
     /* jump_usermode(); */
     /* buddy_test(hm_mb_data.mem_upper * 0x400); */
-
+        
     while (1)
         ;
 }

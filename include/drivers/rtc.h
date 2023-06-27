@@ -18,4 +18,6 @@ uint8_t rtc_get_day_of_month(void);
 
 uint16_t rtc_get_year(void);
 
+void rtc_init(void);
+
 #endif

@@ -11,6 +11,8 @@ enum rtc_registers {
     CMOS_DAY_OF_MONTH    = 0x07,
     CMOS_MONTH           = 0x08,
     CMOS_YEAR            = 0x09,
+    CMOS_STAT_A          = 0x0A,
+    CMOS_STAT_B          = 0x0B,
 };
 
 void cmos_select_reg(uint8_t reg);

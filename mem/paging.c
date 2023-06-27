@@ -52,8 +52,20 @@ static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
 
 uintptr_t to_phys_addr(void *virt_addr) {
-    return ((uintptr_t)virt_addr -
-            (virt_kernel_addr ? virt_kernel_addr : VADDR));
+    pte_t pde;
+    pte_t pte;
+    pte_t page_offset = (uintptr_t)virt_addr & 0xfff;
+
+    if (!cur_pd) {
+        return (uintptr_t)virt_addr -
+            (virt_kernel_addr ? virt_kernel_addr : VADDR);
+    }
+    
+    get_pde_pte((uintptr_t)virt_addr, &pde, &pte);
+    uintptr_t phys_addr = ((uintptr_t *)cur_pd->page_tables_virt[pde])[pte];
+    phys_addr = get_tab_pure_addr((uintptr_t)phys_addr);
+
+    return phys_addr;
 }
 
 int page_tables_init(void) {
@@ -119,9 +131,9 @@ void paging_init(size_t pmem_limit) {
     init_pd.page_tables_virt = init_page_tables_virt;
     init_pd.page_tables = init_page_tables;
     init_pd.pd_phys_addr = to_phys_addr(&init_page_tables);
-    cur_pd = &init_pd;
 
     ret = page_tables_init();
+    cur_pd = &init_pd;
     if (ret) {
         struct error_state err;
         err.err = ret;
@@ -161,7 +173,7 @@ static inline uint16_t get_tab_flags(uintptr_t table) {
     return (table & 0xfff);
 }
 
-static inline uintptr_t get_tab_pure_addr(uintptr_t table) {
+uintptr_t get_tab_pure_addr(uintptr_t table) {
     return (table & ~0xfff);
 }
 

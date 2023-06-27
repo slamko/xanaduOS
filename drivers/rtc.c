@@ -4,25 +4,49 @@
 #include "drivers/cmos.h"
 #include "lib/slibc.h"
 #include "drivers/fb.h"
+#include "lib/kernel.h"
+#include <stdint.h>
+
+enum time_mode {
+    H12_MODE = 0x1,
+    BCD_MODE,
+    H24_MODE,
+    BINARY_MODE,
+};
+
+static enum time_mode time_mode;
+
+uint8_t rtc_get_val(uint8_t reg) {
+    cmos_select_reg(CMOS_STAT_A);
+
+    while(cmos_read_data() & (1 << 7)) {
+        cmos_select_reg(CMOS_STAT_A);
+    }
+   
+    cmos_select_reg(reg);
+    uint8_t value = cmos_read_data();
+
+    if (time_mode == BCD_MODE) {
+        value = ((value & 0xF0) >> 1) + ((value & 0xF0) >> 3) + (value & 0xf);
+    }
+    
+    return value;
+}
 
 uint8_t rtc_get_seconds(void) {
-    cmos_select_reg(CMOS_SECONDS);
-    return cmos_read_data();
+    return rtc_get_val(CMOS_SECONDS);
 }
 
 uint8_t rtc_get_minutes(void) {
-    cmos_select_reg(CMOS_MINUTES);
-    return cmos_read_data();
+    return rtc_get_val(CMOS_MINUTES);
 }
 
 uint8_t rtc_get_hour(void) {
-    cmos_select_reg(CMOS_HOURS);
-    return cmos_read_data();
+    return rtc_get_val(CMOS_HOURS);
 }
 
 uint8_t rtc_get_month(void) {
-    cmos_select_reg(CMOS_MONTH);
-    return cmos_read_data();
+    return rtc_get_val(CMOS_MONTH);
 }
 
 uint8_t rtc_get_day_of_month(void) {
@@ -31,8 +55,7 @@ uint8_t rtc_get_day_of_month(void) {
 }
 
 uint16_t rtc_get_year(void) {
-    cmos_select_reg(CMOS_YEAR);
-    uint16_t year = (uint16_t)cmos_read_data();
+    uint16_t year = rtc_get_val(CMOS_YEAR);
     return 2000 + year;
 }
 
@@ -84,4 +107,13 @@ const char *get_date_time(const char *format, char *buf, size_t size) {
 }
 
 void rtc_init(void) {
+    cmos_select_reg(CMOS_STAT_B);
+    
+    time_mode = cmos_read_data(); 
+
+    char date[16];
+    klog("Real Time Clock configured\n");
+    
+    klog("Current time: ");
+    fb_print_black(get_date_time("h:m:s", date, 16));
 }

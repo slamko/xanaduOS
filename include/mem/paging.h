@@ -11,6 +11,11 @@
 
 #define to_uintptr(ptr) ((uintptr_t)(void *)(ptr))
 
+#define align(num, alignment) ((num) - ((num) % (alignment)))
+#define page_align(num) align(PAGE_SIZE) 
+
+typedef uint16_t pte_t;
+
 enum PAGING_STRUCT_FLAGS {
     PRESENT              = (1 << 0),
     R_W                  = (1 << 1),
@@ -53,6 +58,8 @@ int clone_cur_page_dir(struct page_dir *new_pd);
 int switch_page_dir(struct page_dir *pd);
 
 int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p);
+
+uintptr_t get_tab_pure_addr(uintptr_t table);
 
 extern struct page_dir *cur_pd;
 
