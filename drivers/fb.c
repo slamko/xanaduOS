@@ -221,11 +221,15 @@ char *itoa(unsigned int num, char *buf, size_t siz, size_t *num_wr,
     return str_num;
 }
 
-void fb_print_num(unsigned int num) {
+void fb_print_num_color(unsigned int num, uint8_t fg, uint8_t bg) {
     char str[16];
     uint32_t mul = 1;
     char *str_num = _print_num_rec(num, &mul, str, sizeof(str));
-    fb_nprint_black(str_num, mul);
+    fb_nprint(str_num, fg, bg, mul);
+}
+
+void fb_print_num(unsigned int num) {
+    fb_print_num_color(num, FB_WHITE, FB_BLACK);
 }
 
 char dec_to_hex(unsigned int num) {
@@ -254,7 +258,18 @@ char *_print_hex_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     return str;
 }
 
-int fb_vprintf(const char *msg, va_list vargs){
+void fb_print_hex_color(unsigned int num, uint8_t fg, uint8_t bg) {
+    char str[16];
+    uint32_t mul = 1;
+    char *str_num = _print_hex_rec(num, &mul, str, sizeof(str));
+    fb_nprint(str_num, fg, bg, mul);
+}
+
+void fb_print_hex(unsigned int num) {
+    fb_print_hex_color(num, FB_WHITE, FB_BLACK);
+}
+
+int fb_vprintf_color(const char *msg, uint8_t fg, uint8_t bg, va_list vargs){
     va_list args;
     va_copy(args, vargs);
 
@@ -273,34 +288,50 @@ int fb_vprintf(const char *msg, va_list vargs){
             switch (msg[i]) {
             case 's':;
                 const char *str = va_arg(args, const char *);
-                fb_print_black(str);
+                fb_print(str, fg, bg);
                 break;
             case 'd':;
                 int num = va_arg(args, int);
-                fb_print_num(num);
+                fb_print_num_color(num, fg, bg);
                 break;
             case 'u':;
                 unsigned int unum = va_arg(args, unsigned int);
-                fb_print_num(unum);
+                fb_print_num_color(unum, fg, bg);
                 break;
             case 'x':;
                 unsigned long hex = va_arg(args, unsigned long);
-                fb_print_hex(hex);
+                fb_print_hex_color(hex, fg, bg);
                 break;
             case 'p':;
                 void * ptr = va_arg(args, void *);
-                fb_print_hex((uintptr_t)ptr);
+                fb_print_hex_color((uintptr_t)ptr, fg, bg);
                 break;
             }
 
             continue;
         }
         
-        fb_putc(msg[i]);
+        fb_print_char(0, msg[i], fg, bg);
     }
     
     va_end(args);
     return sent;
+}
+
+int fb_vprintf(const char *msg, va_list vargs) {
+    va_list args;
+    va_copy(args, vargs);
+    int ret = fb_vprintf_color(msg, FB_WHITE, FB_BLACK, args);
+    va_end(args);
+    return ret;
+}
+
+int fb_printf_color(const char *msg, unsigned int fg, unsigned int bg, ...) {
+    va_list args;
+    va_start(args, bg);
+    int ret = fb_vprintf_color(msg, fg, bg, args);
+    va_end(args);
+    return ret;
 }
 
 int fb_printf(const char *msg, ...) {
@@ -309,13 +340,6 @@ int fb_printf(const char *msg, ...) {
     int ret = fb_vprintf(msg, args);
     va_end(args);
     return ret;
-}
-
-void fb_print_hex(unsigned int num) {
-    char str[16];
-    uint32_t mul = 1;
-    char *str_num = _print_hex_rec(num, &mul, str, sizeof(str));
-    fb_nprint_black(str_num, mul);
 }
 
 void fb_mov_cursor(uint16_t pos) {
