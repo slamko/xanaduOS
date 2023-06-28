@@ -9,7 +9,7 @@
 typedef uint32_t tick_t;
 
 static const unsigned long XTAL_FREQ = 1193182;
-static tick_t tick;
+static volatile tick_t tick;
 static unsigned long pit_freq = 10*1000;
 
 

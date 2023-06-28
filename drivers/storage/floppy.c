@@ -23,6 +23,13 @@ enum floppy_registers
    FLOPPY_CONFIG_REG                       = 0x7  // write-only
 };
 
+enum rotate_speed {
+    FLOPPY_500KBPS  = 0,
+    FLOPPY_300KBPS  = 1,
+    FLOPPY_250KBPS  = 2,
+    FLOPPY_1MBPS    = 3,
+};
+
 enum floppy_commands {
    CMD_SPECIFY = 3,            // SPECIFY
    CMD_WRITE_DATA = 5,         // WRITE DATA
@@ -62,7 +69,13 @@ enum dor {
     DOR_DSEL            = 0x3,
 };
 
+enum floppy_error {
+    FLOPPY_TIMEOUT = -1,
+    FLOPPY_FAULT = -2,
+};
+
 static uint8_t floppy_drive = 0;
+static uint16_t floppy_base = 0x3F0;
 static volatile tick_t floppy_irq_tick;
 
 static const char *drive_types[8] = {
@@ -82,7 +95,7 @@ enum cmos {
     CMOS_DATA_PORT    = 0x71,
 };
 
-enum floppy_drive_type floppy_type;
+enum floppy_drive_type floppy_type[4];
 
 int16_t floppy_wait(uint16_t base) {
     tick_t ticks = 0;
@@ -103,16 +116,17 @@ int16_t floppy_wait(uint16_t base) {
 
 int16_t floppy_read(uint16_t base) {
     if (floppy_wait(base)) {
-        return -1;
+        return FLOPPY_TIMEOUT;
     }
    
     return inb(base + FLOPPY_DATA_FIFO);
 }
 
-uint16_t floppy_write_cmd(uint16_t base, uint8_t cmd, size_t param_cnt, ...) {
+int floppy_write_cmd(uint16_t base, uint8_t cmd, size_t param_cnt, ...) {
     uint8_t msr = inb(base + FLOPPY_MAIN_STATUS_REG);
 
     if (!(msr & MSR_RQM) || msr & MSR_DIO) {
+        return FLOPPY_FAULT;
         //reset
     }
 
@@ -123,7 +137,7 @@ uint16_t floppy_write_cmd(uint16_t base, uint8_t cmd, size_t param_cnt, ...) {
 
     for (unsigned int i = 0; i < param_cnt; i++) {
         if (floppy_wait(base)) {
-            return -1;
+            return FLOPPY_TIMEOUT;
         }
         
         outb(base + FLOPPY_DATA_FIFO, va_arg(args, int));
@@ -140,42 +154,68 @@ int floppy_irq_wait(tick_t init_tick) {
         timeout_tick += 10;
 
         if (timeout_tick > TIMEOUT_MS) {
-            return 1;
+            return FLOPPY_TIMEOUT;
         }
     }
 
     return 0;
 }
 
-uint16_t floppy_sense_interrupt(uint16_t base) {
-    floppy_write_cmd(base, CMD_SENSE_INTERRUPT, 0);
+int floppy_sense_interrupt(uint16_t base) {
+    int ret;
+    if ((ret = floppy_write_cmd(base, CMD_SENSE_INTERRUPT, 0))) {
+        return ret;
+    }
 
-    uint16_t val = floppy_read(base);
-    val |= (floppy_read(base) << 8);
+    int val = floppy_read(base);
+    if (val < 0) {
+        return val;
+    }
+    
+    int lh = floppy_read(base);
 
+    if (lh < 0) {
+        return lh;
+    }
+
+    val |= (lh << 8);
+
+    klog("Interrupt sensed");
     return val;
 }
 
 void floppy_motor(uint16_t base, uint8_t drive, uint8_t motor_on) {
     uint8_t motor = ((1 << drive) & (motor_on << drive)) << 4;
-    outb(base + FLOPPY_DIGITAL_OUT_REG, (drive & 0x3) | motor);
+    outb(base + FLOPPY_DIGITAL_OUT_REG,
+         DOR_IRQ | DOR_RESET| (drive & 0x3) | motor);
     sleep_ms(1000);
 }
 
 int floppy_calibrate(uint16_t base) {
+    
     floppy_motor(base, floppy_drive, 1);
 
     for (unsigned int i = 0; i < 3; i++) {
+        klog("Floppy calibration\n");
         tick_t irq_tick = floppy_irq_tick;
-        floppy_write_cmd(base, CMD_RECALIBRATE, 1, floppy_drive);
+
+        if (floppy_write_cmd(base, CMD_RECALIBRATE, 1, floppy_drive)) {
+            return -1;
+        }
 
         if (floppy_irq_wait(irq_tick)) {
             continue;
         }
 
-        uint16_t sense = floppy_sense_interrupt(base);
-        uint8_t st1 = sense >> 8;
-        uint8_t cyl = sense & 0xFF;
+        int sense = floppy_sense_interrupt(base);
+        if (sense == -1) {
+            continue;
+        }
+
+        uint16_t usense = (uint16_t)sense;
+        
+        uint8_t st1 = usense >> 8;
+        uint8_t cyl = usense & 0xFF;
 
         if ((st1 & (0xC0 | floppy_drive)) != (0xC0 | floppy_drive)) {
             continue;
@@ -191,13 +231,38 @@ int floppy_calibrate(uint16_t base) {
     return 1;
 }
 
-void floppy_reset(uint16_t base) {
+int floppy_reset(uint16_t base) {
     uint8_t dor = inb(base + FLOPPY_DIGITAL_OUT_REG);
     sleep_us(100);
 
     outb(base + FLOPPY_DIGITAL_OUT_REG, 0);
+    sleep_ms(5);
     /* outb(FLOPPY_DIGITAL_OUT_REG, dor | (1 << 2)); */
     outb(base + FLOPPY_DIGITAL_OUT_REG, DOR_IRQ | DOR_RESET);
+
+    if (floppy_sense_interrupt(base) == -1) {
+        return -1;
+    }
+
+    uint8_t speed = FLOPPY_500KBPS;
+
+    if (floppy_type[floppy_drive] == FLOPPY_2_88MB_3_5) {
+        speed = FLOPPY_1MBPS;
+    }
+    
+    if (floppy_write_cmd(base + FLOPPY_CONFIG_REG, speed, 0) == -1) {
+        return -1;
+    }
+
+    if (floppy_write_cmd(base + CMD_SPECIFY, 2, 0xDF, 0x02) == -1) {
+        return -1;
+    }
+
+    if (floppy_calibrate(base)) {
+        return -1;
+    }
+         
+    return 0;
 }
 
 void floppy_detect(void) {
@@ -206,22 +271,29 @@ void floppy_detect(void) {
     uint8_t dtypes = cmos_read_data();
     if (dtypes >> 4) {
         klog("Detected Master floppy drive: %s\n", drive_types[dtypes >> 4]);
+        floppy_type[floppy_drive] = dtypes >> 4;
     }
 
     if (dtypes & 0x0F) {
         klog("Detected Slave floppy drive: %s\n", drive_types[dtypes & 0x0F]);
+        floppy_type[floppy_drive] = dtypes & 0x0F;
     }
-    floppy_drive = 0;
+
+    floppy_base = 0x3F0;
 }
 
 void floppy_handler(struct isr_handler_args args) {
-    klog("Floppy");
+    klog("Floppy\n");
     floppy_irq_tick++;
 }
 
 void floppy_init(void) {
     floppy_detect();
+    add_irq_handler(FLOPPY_IRQ, &floppy_handler);
+
+    if (floppy_reset(floppy_base) == -1) {
+        klog_error("error: Could not configure floppy disk\n");
+    }
     
-    add_isr_handler(FLOPPY_IRQ, &floppy_handler, 0);
     klog("Floppy controller initialized\n");
 }
