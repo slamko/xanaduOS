@@ -43,12 +43,13 @@ int exec_init(void) {
 
     uintptr_t frame_addr = get_ident_phys_page_addr(pde, pte);
     size_t frames_n = end_pte - pte + 2;
+
     if (alloc_nframes(frames_n, frame_addr, &user_pt[pte], USER | R_W | PRESENT)) {
         return 1;
     }
 
     fb_print_num(frames_n);
-    for (unsigned int i = pte; i <= end_pte + 1; i++) {
+    for (unsigned int i = pte; i <= end_pte + 1u; i++) {
         fb_print_hex(user_pt[i]);
     }
     proc_esp = get_ident_phys_page_addr(pde, end_pte + 1);

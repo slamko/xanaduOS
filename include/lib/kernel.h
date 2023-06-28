@@ -11,7 +11,7 @@ void debug_log(const char *msg);
 void outb(uint16_t port, uint8_t data);
 uint8_t inb(uint16_t port);
 
-void klog(const char *msg);
+void klog(const char *msg, ...);
 
 void klog_warn(const char *msg); 
 

@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include "drivers/dev.h"
 
 #define VGA_WIDTH 80
@@ -64,6 +65,8 @@ size_t fb_nprint(const char *msg, uint8_t fg, uint8_t bg, size_t siz);
 
 size_t fb_nprint_black(const char *msg, size_t siz);
 
+int fb_vprintf(const char *msg, va_list vargs);
+
 int fb_printf(const char *msg, ...);
 
 void fb_print_num(unsigned int num);
@@ -72,7 +75,8 @@ void fb_print_hex(unsigned int num);
 
 void fb_mov_cursor(uint16_t pos);
 
-char *itoa(unsigned int num, char *buf, size_t siz, size_t *num_wr, int radix);
+char *itoa(unsigned int num, char *buf, size_t siz,
+           size_t *num_wr, int radix);
 
 void fb_clear(void);
  

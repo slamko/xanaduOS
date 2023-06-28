@@ -3,6 +3,8 @@
 
 #include "drivers/int.h"
 
+typedef uint32_t tick_t;
+
 int pit_init(unsigned long freq);
 
 void sleep_us(uint32_t delay);

@@ -171,6 +171,43 @@ static uintptr_t buddy_slice(uintptr_t addr,
     return addr;
 }
 
+int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
+                            uint16_t flags) {
+
+    order_t order = get_buddy_order(nframes);
+    struct free_list *free = free_area[order].free_list.next;
+    /* fb_print_num(free_area[order].num_free); */
+
+    if (free_area[order].num_free) {
+        /* debug_log("free frame available"); */
+        remove_free_head(order);
+        set_addrs(addrs, free->addr, nframes, flags);
+        set_frame_used(order, free->addr);
+        return 0;
+    }
+
+    for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
+        struct free_list *upper_fl = free_area[i].free_list.next;
+        debug_log("search");
+        struct free_area *fa = &free_area[i];
+
+        if (fa->num_free) {
+            /* klog("free"); */
+            remove_free_head(i);
+            uintptr_t addr = buddy_slice(upper_fl->addr, i, order);
+            set_addrs(addrs, addr, nframes, flags);
+            return 0;
+        }
+    }
+    
+    size_t nnof = nframes / 2;
+    if (buddy_alloc_frames_max_order(addrs, nnof, flags)) {
+        return ENOMEM;
+    }
+
+    return buddy_alloc_frames_max_order(addrs + (nnof), nnof, flags);
+}
+
 int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
     if (!addrs) {
         return EINVAL;
@@ -183,36 +220,12 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
     
     for (unsigned int i = 0; i < rep_limit; i++) {
         size_t cur_nframes = nframes - (i * MAX_BUDDY_NFRAMES);
+
         if (cur_nframes > MAX_BUDDY_NFRAMES) {
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
 
-        order_t order = get_buddy_order(cur_nframes);
-        struct free_list *free = free_area[order].free_list.next;
-        /* klog("num free"); */
-        /* fb_print_num(free_area[order].num_free); */
-
-
-        if (free_area[order].num_free > 0) {
-            /* debug_log("free frame available"); */
-            remove_free_head(order);
-            set_addrs(addrs, free->addr, cur_nframes, flags);
-            set_frame_used(order, free->addr);
-            return 0;
-        }
-
-        for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
-            struct free_list *upper_fl = free_area[i].free_list.next;
-            debug_log("search");
-            struct free_area *fa = &free_area[i];
-            if (fa->num_free > 0) {
-                /* klog("free"); */
-                remove_free_head(i);
-                uintptr_t addr = buddy_slice(upper_fl->addr, i, order);
-                set_addrs(addrs, addr, cur_nframes, flags);
-                return 0;
-            }
-        }
+        buddy_alloc_frames_max_order(addrs, cur_nframes, flags);
     }
 
     return 0;

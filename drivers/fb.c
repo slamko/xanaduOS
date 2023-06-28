@@ -254,9 +254,9 @@ char *_print_hex_rec(unsigned int num, uint32_t *mul, char *str, size_t siz) {
     return str;
 }
 
-int fb_printf(const char *msg, ...) {
+int fb_vprintf(const char *msg, va_list vargs){
     va_list args;
-    va_start(args, msg);
+    va_copy(args, vargs);
 
     size_t sent = 0;
     bool format_char = false;
@@ -271,6 +271,10 @@ int fb_printf(const char *msg, ...) {
             format_char = false;
 
             switch (msg[i]) {
+            case 's':;
+                const char *str = va_arg(args, const char *);
+                fb_print_black(str);
+                break;
             case 'd':;
                 int num = va_arg(args, int);
                 fb_print_num(num);
@@ -297,6 +301,14 @@ int fb_printf(const char *msg, ...) {
     
     va_end(args);
     return sent;
+}
+
+int fb_printf(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    int ret = fb_vprintf(msg, args);
+    va_end(args);
+    return ret;
 }
 
 void fb_print_hex(unsigned int num) {

@@ -7,10 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// standard base address of the primary floppy controller
-static const int floppy_base = 0x03f0;
-// standard IRQ number for floppy controllers
 #define FLOPPY_IRQ 6
+#define TIMEOUT_MS 30000
 
 enum floppy_registers
 {
@@ -88,28 +86,48 @@ void floppy_detect(void) {
    
     uint8_t dtypes = cmos_read_data();
     if (dtypes >> 4) {
-        klog("\nDetected Master floppy drive: ");
-        klog(drive_types[dtypes >> 4]);
+        klog("Detected Master floppy drive: %s\n", drive_types[dtypes >> 4]);
     }
 
     if (dtypes & 0x0F) {
-        klog("\nDetected Slave floppy drive: ");
-        klog(drive_types[dtypes & 0x0F]);
+        klog("Detected Slave floppy drive: %s\n", drive_types[dtypes & 0x0F]);
     }
-    klog("\n");
 }
 
-uint8_t floppy_read(void) {
+void floppy_reset(void) {
+    uint8_t dor = inb(FLOPPY_DIGITAL_OUT_REG);
+    sleep_us(100);
+
+    outb(FLOPPY_DIGITAL_OUT_REG, 0);
+    outb(FLOPPY_DIGITAL_OUT_REG, dor | (1 << 2));
+}
+
+int16_t floppy_wait(void) {
+    tick_t ticks = 0;
+    uint32_t delay = 10;
     uint8_t msr = inb(FLOPPY_MAIN_STATUS_REG);
 
     while(!(msr & MSR_RQM) || (msr & MSR_DIO)) {
         msr = inb(FLOPPY_MAIN_STATUS_REG);
+        ticks += delay;
+
+        if (ticks >= TIMEOUT_MS) {
+            return 1;
+        }
+        sleep_ms(delay);
     }
-    
+    return 0;
+}
+
+int16_t floppy_read(void) {
+    if (floppy_wait()) {
+        return -1;
+    }
+   
     return inb(FLOPPY_DATA_FIFO);
 }
 
-void floppy_write_cmd(uint8_t cmd, size_t param_cnt, ...) {
+uint16_t floppy_write_cmd(uint8_t cmd, size_t param_cnt, ...) {
     uint8_t msr = inb(FLOPPY_MAIN_STATUS_REG);
 
     if (!(msr & MSR_RQM) || msr & MSR_DIO) {
@@ -122,17 +140,15 @@ void floppy_write_cmd(uint8_t cmd, size_t param_cnt, ...) {
     va_start(args, param_cnt);
 
     for (unsigned int i = 0; i < param_cnt; i++) {
-
-        msr = inb(FLOPPY_MAIN_STATUS_REG);
-
-        while(!(msr & MSR_RQM) || (msr & MSR_DIO)) {
-            msr = inb(FLOPPY_MAIN_STATUS_REG);
+        if (floppy_wait()) {
+            return -1;
         }
-
+        
         outb(FLOPPY_DATA_FIFO, va_arg(args, int));
     }
 
     va_end(args);
+    return 0;
 }
 
 void run_motor(uint8_t drive) {

@@ -114,6 +114,5 @@ void rtc_init(void) {
     char date[16];
     klog("Real Time Clock configured\n");
     
-    klog("Current time: ");
-    fb_print_black(get_date_time("h:m:s", date, 16));
+    klog("Current time: %s\n", get_date_time("h:m:s", date, 16));
 }
