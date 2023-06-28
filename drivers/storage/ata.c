@@ -25,6 +25,13 @@ enum {
     ATA_ST_ERR        = (1 << 0),
 };
 
+enum ata_drive_types {
+    ATA_PATAPI        = 0xEB14,
+    ATA_SATAPI        = 0x9669,
+    ATA_PATA          = 0x0000,
+    ATA_SATA          = 0xC33C,
+};
+
 struct ata_bus {
     uint16_t io_base;
     uint16_t control_base;
@@ -37,11 +44,25 @@ void ata_detect(struct ata_bus *bus, uint8_t drive) {
         inb(bus->control_base);
     }
 
-    uint16_t ata = inb(bus->io_base + ATA_CYL_LOW);
-    ata |= (inb(bus->io_base + ATA_CYL_HIGH) << 8);
+    int drive_type = -1;
+    uint16_t ata = (uint16_t)inb(bus->io_base + ATA_CYL_LOW) & 0xFF;
+    ata |= ((uint16_t)inb(bus->io_base + ATA_CYL_HIGH) << 8);
 
-    if (ata) {
-        klog("ATA drive detected: %u\n", ata);
+    switch (ata) {
+    case ATA_PATAPI:
+        klog("Detected PATAPI drive\n");
+        break;
+    case ATA_SATAPI:
+        klog("Detected SATAPI drive\n");
+        break;
+    case ATA_PATA:
+        klog("Detected PATA drive\n");
+        break;
+    case ATA_SATA:
+        klog("Detected SATA drive\n");
+        break;
+    default:
+        klog("Unknown ATA drive detected: %x\n", ata);
     }
 }
 
@@ -52,7 +73,7 @@ void ata_init(void) {
     
     ata_detect(&prim_bus, 1);
 
-    klog("ATA controller set up");
+    klog("ATA controller set up\n");
 }
 
 

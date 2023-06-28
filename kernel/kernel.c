@@ -135,6 +135,8 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     sleep_sec(1);
     ata_init();
 
+    jump_usermode();
+
     while (1) {
         /* reboot(); */
         

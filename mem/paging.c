@@ -77,7 +77,7 @@ int page_tables_init(void) {
 
     for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table) / PT_SIZE; i++) {
         uintptr_t paddr = i * 0x1000;
-        uint16_t flags = R_W | PRESENT;
+        uint16_t flags = USER | R_W | PRESENT;
 
         /* if (paddr >= rodata_end || paddr < rodata_start) { */
             /* flags |= R_W; */
@@ -93,6 +93,7 @@ int page_tables_init(void) {
             | PRESENT
             | R_W
             | GLOBAL
+            | USER
             ;
 
         init_pd.page_tables_virt[768 + i] =
@@ -301,7 +302,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
             return ret;
         }
         
-        ret = buddy_alloc_frame(&pt[pte], R_W | PRESENT);
+        ret = buddy_alloc_frame(&pt[pte], USER | R_W | PRESENT);
         if (ret) {
             return ret;
         }
@@ -309,7 +310,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         flush_page(get_ident_phys_page_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
-        buddy_alloc_frame(pt_entry, R_W | PRESENT);
+        buddy_alloc_frame(pt_entry, R_W | PRESENT | USER);
         /* fb_print_hex(*pt_entry); */
     }
 

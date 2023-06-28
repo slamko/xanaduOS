@@ -1,4 +1,4 @@
-megs:            32
+megs:            2048
 # display_library: sdl2
 romimage:        file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage:     file=/usr/share/bochs/VGABIOS-lgpl-latest
@@ -8,3 +8,4 @@ log:             bochslog.txt
 clock:           sync=realtime, time0=local
 mouse:           type=imps2, enabled=1
 cpu:             count=1, ips=1000000
+magic_break: enabled=1

@@ -5,6 +5,7 @@
 #include "lib/slibc.h"
 #include "drivers/fb.h"
 #include "lib/kernel.h"
+#include <stddef.h>
 #include <stdint.h>
 
 enum time_mode {
@@ -59,6 +60,17 @@ uint16_t rtc_get_year(void) {
     return 2000 + year;
 }
 
+void get_time_str(char *res, char *buf,
+                  size_t cur_buf_pos, size_t size, size_t *chars_wrote) {
+    if (*chars_wrote == 1) {
+        buf[cur_buf_pos] = '0';
+        cur_buf_pos++;
+        (*chars_wrote)++;
+    }
+    
+    strcpy(buf + cur_buf_pos, res, *chars_wrote);
+}
+
 const char *get_date_time(const char *format, char *buf, size_t size) {
     memset(buf, 0, size);
     size_t cur_buf_pos = 0;
@@ -71,16 +83,18 @@ const char *get_date_time(const char *format, char *buf, size_t size) {
         
         switch (format[i]) {
         case 'h':;
-            res = itoa(rtc_get_hour(), local_buf, size, &chars_wrote, 10);
-            strcpy(buf + cur_buf_pos, res, chars_wrote);
+            char *res = itoa(rtc_get_hour(), local_buf, size,
+                             &chars_wrote, 10);
+            get_time_str(res, buf, cur_buf_pos, size, &chars_wrote);
             break;
         case 's':;
             res = itoa(rtc_get_seconds(), local_buf, size, &chars_wrote, 10);
-            strcpy(buf + cur_buf_pos, res, chars_wrote);
+            get_time_str(res, buf, cur_buf_pos, size, &chars_wrote);
             break;
         case 'm':;
             res = itoa(rtc_get_minutes(), local_buf, size, &chars_wrote, 10);
-            strcpy(buf + cur_buf_pos, res, chars_wrote);
+            get_time_str(res, buf, cur_buf_pos, size, &chars_wrote);
+            break;
             break;
         case 'y':;
             res = itoa(rtc_get_year(), local_buf, size, &chars_wrote, 10);
