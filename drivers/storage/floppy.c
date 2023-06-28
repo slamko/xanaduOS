@@ -99,7 +99,8 @@ void floppy_reset(void) {
     sleep_us(100);
 
     outb(FLOPPY_DIGITAL_OUT_REG, 0);
-    outb(FLOPPY_DIGITAL_OUT_REG, dor | (1 << 2));
+    /* outb(FLOPPY_DIGITAL_OUT_REG, dor | (1 << 2)); */
+    outb(FLOPPY_DIGITAL_OUT_REG, DOR_IRQ | DOR_RESET);
 }
 
 int16_t floppy_wait(void) {
@@ -165,5 +166,5 @@ void floppy_init(void) {
     floppy_detect();
     
     add_isr_handler(FLOPPY_IRQ, &floppy_handler, 0);
-    klog("Floppy controller initialized");
+    klog("Floppy controller initialized\n");
 }

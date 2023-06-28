@@ -17,6 +17,7 @@
 #include "mem/buddy_alloc.h"
 #include "drivers/rtc.h"
 #include "drivers/floppy.h"
+#include "drivers/storage/ata.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -126,21 +127,18 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     kbd_init();
     ps2_init();
     pit_init(0);
-    syscall_init();
     rtc_init();
+
+    syscall_init();
     floppy_init();
 
     sleep_sec(1);
+    ata_init();
 
-    fb_newline();
-    /* fb_print_num(rtc_get_year()); */
-    /* fb_print_hex((uintptr_t)multiboot_data); */
-    /* print_multi_boot_data(multiboot_data); */
-    /* shell_start(); */
-    /* exec_init(); */
-    /* jump_usermode(); */
-    /* buddy_test(hm_mb_data.mem_upper * 0x400); */
+    while (1) {
+        /* reboot(); */
         
-    while (1)
-        ;
+        cli();
+        halt();
+    }
 }
