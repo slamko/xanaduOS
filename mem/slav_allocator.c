@@ -10,7 +10,7 @@ enum slab_state {
 
 struct slab {
     size_t size;
-    void *addr;
+    void *addrs;
     enum slab_state state;
     struct slab *next;
 };
@@ -60,9 +60,8 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         *non_full_slabs = cache->slabs_free;
     }
 
-    void *addr = (*non_full_slabs)->addr;
     *non_full_slabs = (*non_full_slabs)->next;
-    return addr;
+    return 0;
 }
 
 void *slab_alloc(size_t size) {

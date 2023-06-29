@@ -22,6 +22,7 @@
 
 void jump_usermode(void);
 void usermode_main(void);
+void apic_init(void);
 
 #define MB_MAGIC_NUM_DEF 0x1BADB002
 
@@ -130,12 +131,13 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
-    floppy_init();
+    /* floppy_init(); */
 
-    sleep_sec(1);
-    ata_init();
+    /* sleep_sec(1); */
+    /* ata_init(); */
+    apic_init();
 
-    jump_usermode();
+    /* jump_usermode(); */
 
     while (1) {
         /* reboot(); */
