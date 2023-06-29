@@ -1,4 +1,5 @@
 #include "mem/allocator.h"
+#include "mem/paging.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -8,10 +9,15 @@ enum slab_state {
     SLAB_FULL,
 };
 
+struct slab_chunk {
+    struct slab_chunk *next;
+    struct slab_chunk *next_free;
+    uintptr_t data_addr;
+};
+
 struct slab {
     size_t size;
-    void *addrs;
-    enum slab_state state;
+    struct slab_chunk *chunks;
     struct slab *next;
 };
 
@@ -23,25 +29,54 @@ struct slab_cache {
     size_t size;
 };
 
-static uintptr_t slab_heap_addr;
+#define SLAB_CAPACITY 16
 
+static uintptr_t slab_heap_addr;
 struct slab_cache *caches;
 
-struct slab_cache *slab_create(size_t size) {
-    struct slab_cache *cache = caches;
-
-    for ( ;cache && cache->slabs_free; cache = cache->next);
-
-    if (!cache) {
-        cache = kmalloc(sizeof(*cache));
-    }
-
-    cache->slabs_free = kmalloc(sizeof(*(cache->slabs_free)));
-    
-    return cache;
-}
+#define to_chunk_ptr(uint_ptr) ((struct slab_chunk *)(void *)(uint_ptr))
 
 int slab_alloc_slab(struct slab_cache *cache) {
+    struct slab *next_slab = cache->slabs_free;
+    size_t chunk_meta_size = (cache->size + sizeof(struct slab_chunk));
+    
+    size_t slab_data_size = SLAB_CAPACITY * chunk_meta_size;
+    cache->slabs_free = kmalloc(sizeof(*cache->slabs_free) + slab_data_size);
+
+    uintptr_t slab_chunks_addr =
+        to_uintptr(cache->slabs_free) + sizeof(*cache->slabs_free);
+
+    struct slab_chunk **cur_chunk = &cache->slabs_free->chunks;
+
+    for (unsigned int i = 0; i < SLAB_CAPACITY; i++) {
+        uintptr_t chunk_addr = slab_chunks_addr + (i * chunk_meta_size);
+
+        *cur_chunk = to_chunk_ptr(chunk_addr);
+
+        (*cur_chunk)->data_addr = chunk_addr + sizeof(struct slab_chunk);
+        (*cur_chunk)->next = to_chunk_ptr(chunk_addr + chunk_meta_size);
+        (*cur_chunk)->next_free = (*cur_chunk)->next;
+
+        cur_chunk = &(*cur_chunk)->next;
+    }
+        
+    cache->slabs_free->next = next_slab;
+
+    return 0;
+}
+
+struct slab_cache *slab_cache_create(size_t size) {
+    if (!caches) {
+        caches = kmalloc(sizeof(*caches));
+    }
+
+    struct slab_cache *next_cache = caches->next;
+    caches = kmalloc(sizeof(*caches));
+    caches->next = next_cache;
+    slab_alloc_slab(caches);
+    caches->size = size;
+    
+    return caches;
 }
 
 void *slab_alloc_from_cache(struct slab_cache *cache) {
@@ -49,7 +84,7 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         return NULL;
     }
 
-    struct slab **non_full_slabs = &cache->slabs_partial;
+    struct slab **non_full_slabs = &cache->slabs_partial->next;
     
     if (!*non_full_slabs) {
         *non_full_slabs = cache->slabs_free;
@@ -59,9 +94,11 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         slab_alloc_slab(cache);
         *non_full_slabs = cache->slabs_free;
     }
+    
+    return (void *)((*non_full_slabs)->chunks->next_free->data_addr);
+}
 
-    *non_full_slabs = (*non_full_slabs)->next;
-    return 0;
+void slab_free(void *obj) {
 }
 
 void *slab_alloc(size_t size) {

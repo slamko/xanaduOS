@@ -7,26 +7,29 @@ section .text
 extern fb_print_hex
 global apic_available
 apic_available:
+    
     mov eax, 1
     pushfd
-    mov ecx, [esp + 4]
-    xor dword [esp + 4], CPUID_ENABLED
+    mov ecx, [esp] 
+    xor dword [esp], CPUID_ENABLED
     popfd
     pushfd
-    cmp ecx, [esp+4]
+    cmp ecx, [esp]
     je no_cpuid
+    popfd
 
     cpuid
+    
     ;; pop ecx
     shr edx, 9
     and edx, 0x1
     mov eax, edx
-    push eax
-    call fb_print_hex
-    pop eax
+    ;; call fb_print_hex
+    ;; call fb_print_hex
     ret
 
 no_cpuid:
+    popfd
     mov eax, -1
     ret
     
