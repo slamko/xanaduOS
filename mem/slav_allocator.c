@@ -1,9 +1,24 @@
+#include "mem/slab_allocator.h"
 #include "lib/kernel.h"
 #include "mem/allocator.h"
-#include "mem/slab_allocator.h"
 #include "mem/paging.h"
 #include <stddef.h>
 #include <stdint.h>
+
+struct slab {
+    size_t size;
+    size_t num_free;
+    struct slab_chunk *chunks;
+    struct slab *next;
+};
+
+struct slab_cache {
+    struct slab_cache *next;
+    struct slab *slabs_free;
+    struct slab *slabs_full;
+    struct slab *slabs_partial;
+    size_t size;
+};
 
 struct slab_chunk {
     struct slab_chunk *next;

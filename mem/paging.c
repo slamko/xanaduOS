@@ -52,6 +52,8 @@ static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
 
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
 
+static struct slab_cache *slab_cache;
+
 uintptr_t to_phys_addr(void *virt_addr) {
     pte_t pde;
     pte_t pte;
@@ -76,7 +78,7 @@ int page_tables_init(void) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0x0; i < ARR_SIZE(kernel_page_table) / PT_SIZE; i++) {
+    for (unsigned int i = 0x0; i < KERNEL_INIT_PT_COUNT; i++) {
         uintptr_t paddr = i * 0x1000;
         uint16_t flags = USER | R_W | PRESENT;
 
@@ -124,6 +126,7 @@ void paging_init(size_t pmem_limit) {
     heap_init(pt_base_addr);
     slab_alloc_init(pt_base_addr);
     ret = buddy_alloc_init(pmem_limit);
+    /* slab_cache = slab_cache_create(PAGE_SIZE); */
 
     if (ret) {
         struct error_state err;

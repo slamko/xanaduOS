@@ -3,7 +3,7 @@ ASM_SRC += $(wildcard ./*.asm)
 ATT_SRC += $(wildcard ./*.s)
 
 C_OBJS = $(patsubst %.c, %.o, $(C_SRC))
-ASM_OBJS = $(patsubst %.asm, %.o, $(ASM_SRC))
+ASM_OBJS = $(patsubst %.asm, %_asm.o, $(ASM_SRC))
 ATT_OBJS = $(patsubst %.s, %.o, $(ATT_SRC))
 
 BUILD_C_OBJS = $(patsubst %.o, $(BUILD_DIR)/%.o, $(C_OBJS))
@@ -18,7 +18,7 @@ $(BUILD_C_OBJS): $(C_SRC)
 	mv $(C_OBJS) $(BUILD_DIR)
 
 $(BUILD_ASM_OBJS): $(ASM_SRC)
-	$(foreach asmf, $^, nasm -f elf$(ELF_F) $(asmf);) 
+	$(foreach asmf, $^, nasm -f elf$(ELF_F) $(asmf) -o $(basename $(asmf))_asm.o;) 
 	mkdir -p $(BUILD_DIR)
 	mv $(ASM_OBJS) $(BUILD_DIR)
 

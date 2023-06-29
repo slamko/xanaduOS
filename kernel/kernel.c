@@ -129,15 +129,15 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     kbd_init();
     ps2_init();
     pit_init(0);
+    apic_init();
     rtc_init();
 
     syscall_init();
     /* floppy_init(); */
 
     /* sleep_sec(1); */
-    ata_init();
+    /* ata_init(); */
 
-    /* apic_init(); */
 
     /* jump_usermode(); */
 
