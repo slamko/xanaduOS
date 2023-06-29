@@ -139,12 +139,6 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     /* apic_init(); */
 
-    struct slab_cache *cache = slab_cache_create(32);
-    void *p1 = slab_alloc_from_cache(cache);
-    void *p2 = slab_alloc_from_cache(cache);
-    klog("Slab alloc: %p, %p\n", p1, p2);
-
-
     /* jump_usermode(); */
 
     while (1) {

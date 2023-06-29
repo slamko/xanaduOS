@@ -15,4 +15,6 @@ void klog_warn(const char *msg, ...);
 
 void klog_error(const char *msg, ...); 
 
+void slab_test(void);
+
 #endif

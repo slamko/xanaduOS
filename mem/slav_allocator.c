@@ -1,3 +1,4 @@
+#include "lib/kernel.h"
 #include "mem/allocator.h"
 #include "mem/slab_allocator.h"
 #include "mem/paging.h"
@@ -39,6 +40,7 @@ int slab_alloc_slab(struct slab_cache *cache) {
         *cur_chunk = to_chunk_ptr(chunk_addr);
 
         (*cur_chunk)->data_addr = chunk_addr + sizeof(struct slab_chunk);
+        klog("Init data addrs: %p\n", (*cur_chunk)->data_addr);
         (*cur_chunk)->next = to_chunk_ptr(chunk_addr + chunk_meta_size);
         (*cur_chunk)->next_free = (*cur_chunk)->next;
         /* (*cur_chunk)->prev = prev_chunk; */
@@ -84,8 +86,8 @@ struct slab_cache *slab_cache_create(size_t size) {
     struct slab_cache *next_cache = caches->next;
     caches = kmalloc(sizeof(*caches));
     caches->next = next_cache;
-    slab_alloc_slab(caches);
     caches->size = size;
+    slab_alloc_slab(caches);
     
     return caches;
 }
@@ -98,14 +100,16 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         return NULL;
     }
 
-    struct slab **non_full_slabs = &cache->slabs_partial->next;
+    struct slab **non_full_slabs = &cache->slabs_partial;
     
     if (!*non_full_slabs) {
+        debug_log("No partially full slabs\n");
         *non_full_slabs = cache->slabs_free;
     }
 
     // no more free or partially free slabs
     if (!*non_full_slabs) {
+        debug_log("Alloc new slab");
         slab_alloc_slab(cache);
         *non_full_slabs = cache->slabs_free;
     }
@@ -169,4 +173,14 @@ int slab_alloc_init(uintptr_t base) {
     
     slab_heap_addr = base;
     return 0;
+}
+
+void slab_test(void) {
+    struct slab_cache *cache = slab_cache_create(64);
+    void *p1 = slab_alloc_from_cache(cache);
+    void *p2 = slab_alloc_from_cache(cache);
+    slab_free(cache, p1);
+    void *p3 = slab_alloc_from_cache(cache);
+    klog("Slab alloc: %p, %p, %p\n", p1, p2, p3);
+
 }
