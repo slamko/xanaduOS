@@ -13,6 +13,7 @@
 #include "mem/allocator.h"
 #include "mem/flat.h"
 #include "mem/paging.h"
+#include "mem/slab_allocator.h"
 #include "proc/proc.h"
 #include "mem/buddy_alloc.h"
 #include "drivers/rtc.h"
@@ -131,12 +132,17 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
-    floppy_init();
+    /* floppy_init(); */
 
     /* sleep_sec(1); */
     ata_init();
 
-    apic_init();
+    /* apic_init(); */
+
+    struct slab_cache *cache = slab_cache_create(32);
+    void *p1 = slab_alloc_from_cache(cache);
+    void *p2 = slab_alloc_from_cache(cache);
+    klog("Slab alloc: %p, %p\n", p1, p2);
 
 
     /* jump_usermode(); */

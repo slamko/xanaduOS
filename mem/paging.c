@@ -1,5 +1,6 @@
 #include "mem/paging.h"
 #include "mem/allocator.h"
+#include "mem/slab_allocator.h"
 #include "mem/buddy_alloc.h"
 #include "kernel/error.h"
 #include "mem/frame_allocator.h"
@@ -121,6 +122,7 @@ void paging_init(size_t pmem_limit) {
     pt_base_addr = kernel_end_addr + PAGE_SIZE;
 
     heap_init(pt_base_addr);
+    slab_alloc_init(pt_base_addr);
     ret = buddy_alloc_init(pmem_limit);
 
     if (ret) {

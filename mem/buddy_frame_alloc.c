@@ -188,7 +188,7 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
 
     for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
         struct free_list *upper_fl = free_area[i].free_list.next;
-        debug_log("search");
+        /* debug_log("search"); */
         struct free_area *fa = &free_area[i];
 
         if (fa->num_free) {
