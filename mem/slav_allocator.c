@@ -3,14 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-enum slab_state {
-    SLAB_EMPTY,
-    SLAB_PARTIAL,
-    SLAB_FULL,
-};
-
 struct slab_chunk {
     struct slab_chunk *next;
+    struct slab_chunk *prev;
     struct slab_chunk *next_free;
     uintptr_t data_addr;
 };
@@ -47,7 +42,10 @@ int slab_alloc_slab(struct slab_cache *cache) {
         to_uintptr(cache->slabs_free) + sizeof(*cache->slabs_free);
 
     struct slab_chunk **cur_chunk = &cache->slabs_free->chunks;
+    struct slab_chunk *prev_chunk = NULL;
 
+    // insert the data chunks linked list inside the kmalloc
+    // allocated space
     for (unsigned int i = 0; i < SLAB_CAPACITY; i++) {
         uintptr_t chunk_addr = slab_chunks_addr + (i * chunk_meta_size);
 
@@ -56,7 +54,9 @@ int slab_alloc_slab(struct slab_cache *cache) {
         (*cur_chunk)->data_addr = chunk_addr + sizeof(struct slab_chunk);
         (*cur_chunk)->next = to_chunk_ptr(chunk_addr + chunk_meta_size);
         (*cur_chunk)->next_free = (*cur_chunk)->next;
+        (*cur_chunk)->prev = prev_chunk;
 
+        prev_chunk = *cur_chunk;
         cur_chunk = &(*cur_chunk)->next;
     }
         
@@ -90,6 +90,7 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         *non_full_slabs = cache->slabs_free;
     }
 
+    // no more free on partially free slabs
     if (!*non_full_slabs) {
         slab_alloc_slab(cache);
         *non_full_slabs = cache->slabs_free;
@@ -99,6 +100,17 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
 }
 
 void slab_free(void *obj) {
+    uintptr_t chunk_addr = (uintptr_t)obj - sizeof(struct slab_chunk);
+    struct slab_chunk *chunk = to_chunk_ptr(chunk_addr);
+    struct slab_chunk *first_chunk = chunk->prev;
+
+    for (; first_chunk->prev; first_chunk = first_chunk->prev);
+    
+    chunk->prev->next_free = chunk;
+
+    if (to_uintptr(first_chunk->next_free) > to_uintptr(chunk)) {
+        first_chunk->next_free = chunk;
+    }
 }
 
 void *slab_alloc(size_t size) {
