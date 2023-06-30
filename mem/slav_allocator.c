@@ -278,6 +278,7 @@ void slab_free(struct slab_cache *cache, void *obj) {
     chunk->slab->num_free++;
 
     if (chunk->slab->num_free == 1) {
+        debug_log("Move to partial list %p\n", cache->slabs_partial);
         slab_insert_in_cache(&cache->slabs_partial, chunk->slab);
         slab_remove_from_cache(&cache->slabs_full);
     } else if (chunk->slab->num_free == SLAB_CAPACITY) {
@@ -291,11 +292,14 @@ void slab_free(struct slab_cache *cache, void *obj) {
         chunk->next_free = first_chunk->next_free;
         first_chunk->next_free = chunk;
     } else {
-        chunk->next_free = chunk->prev_free->next_free;
-        chunk->prev_free->next_free = chunk;
+        struct slab_chunk *prev_free = first_chunk->next_free;
+        for (; to_uintptr(prev_free->next_free) < to_uintptr(chunk);
+             prev_free = prev_free->next_free);
+
+        chunk->next_free = prev_free->next_free;
+        prev_free->next_free = chunk;
     }
 
-    debug_log("Move to partial list %p\n", cache->slabs_partial);
 }
 
 void *slab_alloc(size_t size) {
@@ -328,6 +332,10 @@ void slab_test(void) {
     for (unsigned int i = 0; i < 20; i++) {
         ps[i] = slab_alloc_from_cache(cache);
         klog("Slab alloc %u: %p\n", i, ps[i]);
+
+        if (!(i % 3)) {
+            slab_free(cache, ps[i]);
+        }
     }
     slab_free(cache, ps[15]);
     ps[15] = slab_alloc_from_cache(cache);

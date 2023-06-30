@@ -233,6 +233,13 @@ void kfree(void *addr) {
     if (to_uintptr(heap_base_block->next_hole) > to_uintptr(header)) {
         header->next_hole = heap_base_block->next_hole;
         heap_base_block->next_hole = header;
+    } else {
+        struct block_header *prev_hole = heap_base_block;
+        for (; to_uintptr(prev_hole->next_hole) < to_uintptr(header);
+            prev_hole = prev_hole->next_hole);
+
+        header->next_hole = prev_hole->next_hole;
+        prev_hole->next_hole = header;
     }
 
     if (header->next && header->next->is_hole) {
