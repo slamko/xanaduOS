@@ -4,6 +4,13 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define asm_call(body) \
+    { \
+        asm volatile ("pushal;"); \
+        body \
+        asm volatile ("popal;"); \
+    }
+
 void outb(uint16_t port, uint8_t data);
 uint8_t inb(uint16_t port);
 

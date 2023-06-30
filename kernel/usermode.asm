@@ -40,6 +40,8 @@ usermode_bootstrap:
     mov eax, cs
     and eax, 0x3
     jz loop
+
+    ;; int 0x80
     call usermode
     
 loop:

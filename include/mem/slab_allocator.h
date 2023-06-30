@@ -13,6 +13,8 @@ void slab_cache_destroy(struct slab_cache *cache);
 
 void *slab_alloc_from_cache(struct slab_cache *cache);
 
+struct slab_cache *slab_cache_create_align(size_t size, size_t alignment);
+
 void slab_free(struct slab_cache *cache, void *obj);
 
 int slab_alloc_init(uintptr_t base);

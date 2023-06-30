@@ -134,6 +134,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     syscall_init();
     /* floppy_init(); */
+    slab_test();
 
     /* sleep_sec(1); */
     /* ata_init(); */

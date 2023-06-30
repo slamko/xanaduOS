@@ -65,8 +65,9 @@ void fill_gdt() {
                    GDTD_PRESENT_MASK,
                    0x00);
 
-    load_gdt((uintptr_t)&gdtr);
-    load_tss();
+    asm_call(load_gdt((uintptr_t)&gdtr););
+    
+    asm_call(load_tss(););
 }
 
 void gdt_init(void) {

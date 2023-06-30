@@ -4,22 +4,15 @@
 __attribute__((cdecl)) int apic_available(void);
 
 void apic_detect(void) {
-    unsigned int apic = 0;
-    asm volatile("push %eax;"
-                 "push %edx");
+    int apic = 0;
 
-    asm volatile("mov $1, %eax");
-    asm volatile("cpuid");
-    asm volatile("mov %%edx, %0" : "=r"(apic));
-
-    asm volatile("pop %edx;"
-                 "pop %eax");
-    apic = (apic >> 9) & 0x1;
+    asm_call(
+        apic = apic_available();
+    );
     
     if (apic) {
         klog("APIC available\n");
     }
- 
 }
 
 void apic_init(void) {
