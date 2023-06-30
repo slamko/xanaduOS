@@ -126,7 +126,7 @@ void paging_init(size_t pmem_limit) {
     heap_init(pt_base_addr);
     slab_alloc_init(pt_base_addr);
     ret = buddy_alloc_init(pmem_limit);
-    /* slab_cache = slab_cache_create(PAGE_SIZE); */
+    slab_cache = slab_cache_create_align(PAGE_SIZE, PAGE_SIZE);
 
     if (ret) {
         struct error_state err;
@@ -150,8 +150,9 @@ void paging_init(size_t pmem_limit) {
 }
 
 uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
-    uintptr_t phys_addr = 0;
-    *new_pt = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &phys_addr);
+    uintptr_t phys_addr;
+    *new_pt = slab_alloc_from_cache(slab_cache);
+    phys_addr = to_phys_addr(*new_pt);
     memset(*new_pt, 0, PAGE_SIZE);
 
     return phys_addr | flags;
@@ -193,7 +194,9 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
         return EINVAL;
     }
     
-    *new_pt_ptr = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, new_pt_phys_addr);
+    /* *new_pt_ptr = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, new_pt_phys_addr); */
+    *new_pt_ptr = slab_alloc_from_cache(slab_cache);
+    *new_pt_phys_addr = to_phys_addr(*new_pt_ptr);
     new_pt = *new_pt_ptr;
 
     if (!new_pt) {
@@ -228,8 +231,9 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
         return EINVAL;
     }
 
-    new_pd->page_tables = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, &ptables_phys);
-    new_pd->page_tables_virt = kmalloc(PAGE_SIZE);
+    new_pd->page_tables = slab_alloc_from_cache(slab_cache);
+    ptables_phys = to_phys_addr(new_pd->page_tables);
+    new_pd->page_tables_virt = slab_alloc_from_cache(slab_cache);
     
     if (!new_pd->page_tables || !new_pd->page_tables_virt) {
         return ENOMEM;

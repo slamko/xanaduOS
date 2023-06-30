@@ -150,7 +150,6 @@ struct slab_cache *slab_cache_create_align(size_t size, size_t alignment) {
         if (size % alignment) {
             caches->size += alignment;
         }
-        klog("Cache chunk size: %u\n", caches->size);
     } else {
         caches->size = size;
     }
