@@ -24,6 +24,7 @@
 void jump_usermode(void);
 void usermode_main(void);
 void apic_init(void);
+void lookup_pci_dev(void);
 
 #define MB_MAGIC_NUM_DEF 0x1BADB002
 
@@ -133,6 +134,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
+    lookup_pci_dev();
     /* floppy_init(); */
     /* slab_test(); */
 
