@@ -22,16 +22,6 @@ void *memcpy(void *buf, const void *cpy, size_t len) {
     return dest;
 }
 
-void outb(uint16_t port, uint8_t value) {
-    asm volatile ("out %1, %0" : : "dN" (port), "a" (value));
-}
-
-uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ("inb %1, %0" : "=a" (ret) : "dN" (port));
-    return ret;
-}
-
 int strcmp(const char *str, const char *cmp) {
     if (!str || !cmp) return -1;
 
