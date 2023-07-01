@@ -2,8 +2,11 @@
 #include "drivers/int.h"
 #include "drivers/pic.h"
 #include "lib/kernel.h"
+#include "lib/slibc.h"
 #include "mem/allocator.h"
 #include "ipc/pci.h"
+#include "mem/paging.h"
+#include <stddef.h>
 #include <stdint.h>
 
 enum {
@@ -14,6 +17,8 @@ enum {
     RTL_IMR                 = 0x3C,
     RTL_ISR                 = 0x3E,
     RTL_RCR                 = 0x44,
+    RTL_TX_STAT             = 0x10,
+    RTL_TX_START            = 0x20,
 };
 
 enum isr {
@@ -35,6 +40,10 @@ enum rcr {
     RCR_ACC_ALL             = (1 << 0),
 };
 
+enum tx {
+    TX_OWN = (1 << 13),
+};
+
 enum cmd {
     CMD_RX_EN               = (1 << 3),
     CMD_TX_EN               = (1 << 2),
@@ -54,6 +63,7 @@ enum {
 
 static uint32_t *rx_buffer;
 struct pci_dev_data *dev;
+static uint8_t tx_d;
 
 void rtl_reset(uint16_t io_addr) {
     outb(io_addr + RTL_COMMAND_REG, CMD_RST);
@@ -86,24 +96,39 @@ void rtl_handler(struct isr_handler_args args) {
     klog("RTL isr\n");
     uint16_t isr = inw(dev->io_addr + RTL_ISR);
 
-    switch(isr) {
-    case ISR_RER:
-        break;
-    case ISR_ROK:
-        break;
-    case ISR_TER:
-        break;
-    case ISR_TOK:
-        break;
+    if (isr & ISR_ROK) {
+        outw(dev->io_addr + RTL_ISR, ISR_ROK);
+
     }
+
+    if (isr & ISR_TOK) {
+        outw(dev->io_addr + RTL_ISR, ISR_TOK);
+
+    }
+    
+}
+
+void rtl_send(uint32_t *buf, size_t size) {
+    uintptr_t phys_addr = to_phys_addr(buf);
+    uint16_t stat_port = dev->io_addr + RTL_TX_STAT + (tx_d * 0x4);
+
+    while(!(inl(stat_port) & TX_OWN));
+
+    outl(dev->io_addr + RTL_TX_START + (tx_d * 0x4), phys_addr);
+    outl(stat_port, (size & 0x1FFF));
+    klog("Packet sent %x\n", inl(stat_port)); 
+    
+    tx_d++;
 }
 
 void rtl_init_isr(uint16_t io_addr, uint8_t irq) {
-    klog("RTL8139 IRQ %u\n", irq);
-    return;
-    outw(io_addr + RTL_IMR, 0xE03F); // enable all interrupts
+    outw(io_addr + RTL_IMR, 0xF); // enable all interrupts
 
-    add_irq_handler(irq, &rtl_handler);
+    add_irq_handler(IRQ9, &rtl_handler);
+    add_irq_handler(IRQ10, &rtl_handler);
+    add_irq_handler(IRQ11, &rtl_handler);
+
+    klog("RTL8139 IRQ %x\n", inw(io_addr + RTL_IMR));
 }
 
 int rtl_master_bus(void) {
@@ -141,6 +166,10 @@ int rtl8139_init(struct pci_dev_data *dev_data) {
     rtl_rx_tx_config(dev_data->io_addr);
 
     klog("RTL8139 NIC configured\n");
+
+    uint32_t data[64];
+    data[0] = 0xA;
+    rtl_send(data, ARR_SIZE(data));
     
     return 0;
 }
