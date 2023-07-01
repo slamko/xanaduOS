@@ -2,7 +2,8 @@
 #define RTL8139_H
 
 #include <stdint.h>
+#include "ipc/pci.h"
 
-int rtl8139_init(uint8_t bus, uint8_t dev_num, uint8_t irq, uint16_t io_base);
+int rtl8139_init(struct pci_dev_data *data);
 
 #endif

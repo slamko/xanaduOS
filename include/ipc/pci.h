@@ -4,13 +4,25 @@
 #include <stdint.h>
 
 enum command_reg {
-    PCI_COM_IO_SPACE = (1 << 0),
-    PCI_COM_MEMORY_SPACE = (1 << 1),
-    PCI_COM_BUS_MASTER = (1 << 2),
-    PCI_COM_MEM_WRITE = (1 << 4),
+    PCI_COM_IO_SPACE            = (1 << 0),
+    PCI_COM_MEMORY_SPACE        = (1 << 1),
+    PCI_COM_BUS_MASTER          = (1 << 2),
+    PCI_COM_MEM_WRITE           = (1 << 4),
 };
 
-typedef int (*pci_dev_init)(uint8_t, uint8_t, uint8_t, uint16_t);
+enum common_reg {
+    PCI_REG_COMMAND             = 0x4,
+    PCI_REG_BAR0                = 0x10,
+};
+
+struct pci_dev_data {
+    uint8_t bus;
+    uint8_t dev;
+    uint8_t irq;
+    uint16_t io_addr;
+};
+
+typedef int (*pci_dev_init)(struct pci_dev_data *);
 
 void pci_register_dev(uint32_t device_id, pci_dev_init dev_init);
 

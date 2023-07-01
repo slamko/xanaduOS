@@ -1,4 +1,5 @@
 #include "ipc/pci.h"
+#include "drivers/pic.h"
 #include "lib/kernel.h"
 #include "net/ethernet/rtl8139.h"
 #include "mem/slab_allocator.h"
@@ -15,7 +16,8 @@ struct pci_dev {
     struct pci_dev *next;
     pci_dev_init dev_init;
     uint32_t device_id;
-    uint8_t devuce_num;
+
+    struct pci_dev_data data;
 };
 
 struct pci_dev *pci_devices;
@@ -115,7 +117,12 @@ void pci_enumeration(void) {
                     uint32_t io_base = pci_get_io_base(bus, dev, header);
                     uint8_t irq = pci_get_irq(bus, dev, header);
 
-                    device->dev_init(bus, dev, irq, io_base);
+                    device->data.bus = bus;
+                    device->data.dev = dev;
+                    device->data.io_addr = io_base;
+                    device->data.irq = irq;
+
+                    device->dev_init(&device->data);
                 }
             }
        }

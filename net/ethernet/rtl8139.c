@@ -13,6 +13,7 @@ enum {
     RTL_RX_BUF_START        = 0x30,
     RTL_IMR                 = 0x3C,
     RTL_ISR                 = 0x3E,
+    RTL_RCR                 = 0x44,
 };
 
 enum isr {
@@ -24,29 +25,49 @@ enum isr {
     ISR_ROK = (1 << 0),
 };
 
+enum rcr {
+    RCR_WRAP = (1 << 7),
+    RCR_ACC_ERR = (1 << 5),
+    RCR_ACC_RUNT = (1 << 4),
+    RCR_ACC_BROAD = (1 << 3),
+    RCR_ACC_MULTIC = (1 << 2),
+    RCR_ACC_PHYS_MATCH = (1 << 1),
+    RCR_ACC_ALL = (1 << 0),
+};
+
 enum {
     CMD_RST                 = (1 << 4),
 };
 
-#define RX_BUF_SIZE 0x2010
+#define RX_BUF_SIZE (0x4010 + 1500)
+
 static uint32_t *rx_buffer;
-static uint16_t io_addr;
+struct pci_dev_data *dev;
 
 void rtl_reset(uint16_t io_addr) {
     outb(io_addr + RTL_COMMAND_REG, CMD_RST);
     while(inb(io_addr + RTL_COMMAND_REG) & CMD_RST);
 }
 
-void rtl_init_rx_buffer(uint16_t io_addr) {
+void rtl_rx_config(uint16_t io_addr) {
     uintptr_t buf_phys_addr;
     rx_buffer = kmalloc_phys(RX_BUF_SIZE, &buf_phys_addr);
 
     outl(io_addr + RTL_RX_BUF_START, buf_phys_addr);
+
+    outl(io_addr + RTL_RCR, (1 << 11)
+         | RCR_WRAP
+         | RCR_ACC_ERR
+         | RCR_ACC_RUNT
+         | RCR_ACC_BROAD
+         | RCR_ACC_MULTIC
+         | RCR_ACC_PHYS_MATCH
+         | RCR_ACC_ALL);
 }
 
 void rtl_handler(struct isr_handler_args args) {
     klog("RTL isr\n");
-    uint16_t isr = inw(io_addr + RTL_ISR);
+    uint16_t isr = inw(dev->io_addr + RTL_ISR);
 
     switch(isr) {
     case ISR_RER:
@@ -69,14 +90,15 @@ void rtl_init_isr(uint16_t io_addr, uint8_t irq) {
 }
 
 int rtl_master_bus(void) {
-    uint32_t command = pci_read_reg(0, 3, 0, 1 << 2);
+    uint32_t command = pci_read_reg(dev->bus, dev->dev, 0, PCI_REG_COMMAND);
     if (command & PCI_COM_BUS_MASTER) {
         return 0;
     }
     
-    pci_write_reg(0, 3, 0, 1 << 2, command | PCI_COM_BUS_MASTER);
+    pci_write_reg(dev->bus, dev->dev, 0, PCI_REG_COMMAND,
+                  command | PCI_COM_BUS_MASTER);
 
-    command = pci_read_reg(0, 3, 0, 1 << 2);
+    command = pci_read_reg(dev->bus, dev->dev, 0, PCI_REG_COMMAND);
 
     if (!(command & PCI_COM_BUS_MASTER)) {
         return 1;
@@ -86,19 +108,19 @@ int rtl_master_bus(void) {
     return 0;
 }
 
-int rtl8139_init(uint8_t bus, uint8_t dev_num, uint8_t irq, uint16_t io_base) {
+int rtl8139_init(struct pci_dev_data *dev_data) {
     /* pci_get_io_base(bus, dev_num); */
-    io_addr = io_base; 
-    klog("RTL IO base addr %x\n", io_base);
+    klog("RTL IO base addr %x\n", dev_data->io_addr);
+    dev = dev_data;
     
     if (rtl_master_bus()) {
         klog_error("PCI DMA is unavailable\n");
     }
-    rtl_init_isr(io_base, irq);
+    rtl_init_isr(dev_data->io_addr, dev_data->irq);
     return 0;
 
-    outb(io_base + RTL_CONFIG_1, 0x0);
+    outb(dev_data->io_addr + RTL_CONFIG_1, 0x0);
     
-    rtl_reset(io_base);
+    rtl_reset(dev_data->io_addr);
 }
 
