@@ -1,8 +1,11 @@
+#include "net/ethernet/rtl8139.h"
 #include "drivers/int.h"
 #include "drivers/pic.h"
 #include "lib/kernel.h"
 #include "mem/allocator.h"
+#include "ipc/pci.h"
 #include <stdint.h>
+
 enum {
     RTL_CONFIG_1            = 0x52,
     RTL_MSR                 = 0x58,
@@ -65,10 +68,32 @@ void rtl_init_isr(uint16_t io_addr) {
     add_irq_handler(IRQ11, &rtl_handler);
 }
 
-void rtl8139_init() {
-    uint16_t io_addr = 0;
+int rtl_master_bus(void) {
+    uint32_t command = pci_read_reg(0, 3, 0, 1 << 2);
+    pci_write_reg(0, 3, 0, 1 << 2, command | PCI_COM_BUS_MASTER);
+
+    command = pci_read_reg(0, 3, 0, 1 << 2);
+
+    if (command & PCI_COM_BUS_MASTER) {
+        return 1;
+    }
+    
+    klog("PCI RTL8139 Command Register set up: %x\n", command);
+    return 0;
+}
+
+void rtl8139_init(uint8_t bus, uint8_t dev_num, uint16_t io_addr) {
+    /* pci_get_io_base(bus, dev_num); */
+    klog("RTL IO base addr %x\n", io_addr);
+    
+    return;
+    if (rtl_master_bus()) {
+        klog_error("PCI DMA is unavailable\n");
+    }
+
     outb(io_addr + RTL_CONFIG_1, 0x0);
     
     rtl_reset(io_addr);
+    rtl_init_isr(io_addr);
 }
 

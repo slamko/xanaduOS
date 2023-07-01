@@ -8,6 +8,7 @@
 #include "drivers/pit.h"
 #include "drivers/serial.h"
 #include "io.h"
+#include "ipc/pci.h"
 #include "kernel/syscall.h"
 #include "lib/slibc.h"
 #include "mem/allocator.h"
@@ -19,6 +20,7 @@
 #include "drivers/rtc.h"
 #include "drivers/floppy.h"
 #include "drivers/storage/ata.h"
+#include "net/ethernet/rtl8139.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -115,6 +117,8 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
     fb_print_hex(mb->cmdline);
 }
 
+void rtl_master_bus(void);
+
 void kernel_main(struct multiboot_meta *multiboot_data) {
     /* struct multiboot_meta hm_mb_data; */
     /* memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data)); */
@@ -134,7 +138,11 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
-    lookup_pci_dev();
+    rtl_master_bus();
+
+    pci_enumeration();
+    /* rtl8139_init(); */
+    /* lookup_pci_dev(); */
     /* floppy_init(); */
     /* slab_test(); */
 
