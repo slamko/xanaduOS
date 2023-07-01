@@ -60,21 +60,25 @@ void rtl_handler(struct isr_handler_args args) {
     }
 }
 
-void rtl_init_isr(uint16_t io_addr) {
+void rtl_init_isr(uint16_t io_addr, uint8_t irq) {
+    klog("RTL8139 IRQ %u\n", irq);
+    return;
     outw(io_addr + RTL_IMR, 0xE03F); // enable all interrupts
 
-    add_irq_handler(IRQ9, &rtl_handler);
-    add_irq_handler(IRQ10, &rtl_handler);
-    add_irq_handler(IRQ11, &rtl_handler);
+    add_irq_handler(irq, &rtl_handler);
 }
 
 int rtl_master_bus(void) {
     uint32_t command = pci_read_reg(0, 3, 0, 1 << 2);
+    if (command & PCI_COM_BUS_MASTER) {
+        return 0;
+    }
+    
     pci_write_reg(0, 3, 0, 1 << 2, command | PCI_COM_BUS_MASTER);
 
     command = pci_read_reg(0, 3, 0, 1 << 2);
 
-    if (command & PCI_COM_BUS_MASTER) {
+    if (!(command & PCI_COM_BUS_MASTER)) {
         return 1;
     }
     
@@ -82,18 +86,19 @@ int rtl_master_bus(void) {
     return 0;
 }
 
-void rtl8139_init(uint8_t bus, uint8_t dev_num, uint16_t io_addr) {
+void rtl8139_init(uint8_t bus, uint8_t dev_num, uint8_t irq, uint16_t io_base) {
     /* pci_get_io_base(bus, dev_num); */
-    klog("RTL IO base addr %x\n", io_addr);
+    io_addr = io_base; 
+    klog("RTL IO base addr %x\n", io_base);
     
-    return;
     if (rtl_master_bus()) {
         klog_error("PCI DMA is unavailable\n");
     }
+    rtl_init_isr(io_base, irq);
+    return;
 
-    outb(io_addr + RTL_CONFIG_1, 0x0);
+    outb(io_base + RTL_CONFIG_1, 0x0);
     
-    rtl_reset(io_addr);
-    rtl_init_isr(io_addr);
+    rtl_reset(io_base);
 }
 
