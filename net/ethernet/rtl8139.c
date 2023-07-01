@@ -86,7 +86,7 @@ int rtl_master_bus(void) {
     return 0;
 }
 
-void rtl8139_init(uint8_t bus, uint8_t dev_num, uint8_t irq, uint16_t io_base) {
+int rtl8139_init(uint8_t bus, uint8_t dev_num, uint8_t irq, uint16_t io_base) {
     /* pci_get_io_base(bus, dev_num); */
     io_addr = io_base; 
     klog("RTL IO base addr %x\n", io_base);
@@ -95,7 +95,7 @@ void rtl8139_init(uint8_t bus, uint8_t dev_num, uint8_t irq, uint16_t io_base) {
         klog_error("PCI DMA is unavailable\n");
     }
     rtl_init_isr(io_base, irq);
-    return;
+    return 0;
 
     outb(io_base + RTL_CONFIG_1, 0x0);
     

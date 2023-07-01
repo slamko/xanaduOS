@@ -10,7 +10,9 @@ enum command_reg {
     PCI_COM_MEM_WRITE = (1 << 4),
 };
 
-void pci_register_dev(uint32_t device_id);
+typedef int (*pci_dev_init)(uint8_t, uint8_t, uint8_t, uint16_t);
+
+void pci_register_dev(uint32_t device_id, pci_dev_init dev_init);
 
 void pci_enumeration(void);
 

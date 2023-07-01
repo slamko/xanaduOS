@@ -13,6 +13,7 @@ enum {
 
 struct pci_dev {
     struct pci_dev *next;
+    pci_dev_init dev_init;
     uint32_t device_id;
     uint8_t devuce_num;
 };
@@ -20,9 +21,11 @@ struct pci_dev {
 struct pci_dev *pci_devices;
 struct slab_cache *pci_slab;
 
-void pci_register_dev(uint32_t device_id) {
+void pci_register_dev(uint32_t device_id, pci_dev_init dev_init) {
     struct pci_dev *next = pci_devices;
+
     pci_devices = slab_alloc_from_cache(pci_slab);
+    pci_devices->dev_init = dev_init;
     pci_devices->device_id = device_id;
     pci_devices->next = next;
 }
@@ -105,16 +108,22 @@ void pci_enumeration(void) {
                      bus, dev, device_id, vendor_id);
             }
 
-            if (device_id == 0x8139) {
-                uint8_t header = pci_get_header_type(bus, dev);
-                uint32_t io_base = pci_get_io_base(bus, dev, header);
-                uint8_t irq = pci_get_irq(bus, dev, header);
-                rtl8139_init(bus, dev, irq, io_base);
+            struct pci_dev *device = pci_devices;
+            for (; device; device = device->next) {
+                if (device_id == device->device_id) {
+                    uint8_t header = pci_get_header_type(bus, dev);
+                    uint32_t io_base = pci_get_io_base(bus, dev, header);
+                    uint8_t irq = pci_get_irq(bus, dev, header);
+
+                    device->dev_init(bus, dev, irq, io_base);
+                }
             }
-        }
+       }
     }
 }
 
 void pci_init(void) {
     pci_slab = slab_cache_create(sizeof(*pci_devices));
+
+    pci_register_dev(0x8139, &rtl8139_init);
 }
