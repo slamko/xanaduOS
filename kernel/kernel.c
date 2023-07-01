@@ -141,7 +141,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     syscall_init();
 
-    pci_enumeration();
+    /* pci_enumeration(); */
     /* rtl8139_init(); */
     /* lookup_pci_dev(); */
     /* floppy_init(); */
@@ -150,8 +150,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* sleep_sec(1); */
     /* ata_init(); */
 
-
-    /* jump_usermode(); */
+    jump_usermode();
 
     while (1) {
         /* reboot(); */

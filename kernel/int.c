@@ -51,7 +51,7 @@ int idt_init(void) {
     }
 
     load_idt((uint32_t)&idtr);
-    pic_init(0, true);
+    pic_init(0x00, true);
     exception_handlers_init();
     
     sti();

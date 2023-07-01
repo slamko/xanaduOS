@@ -166,10 +166,42 @@ int rtl8139_init(struct pci_dev_data *dev_data) {
     rtl_rx_tx_config(dev_data->io_addr);
 
     klog("RTL8139 NIC configured\n");
+/*
+    uint8_t data[92];
+    for (unsigned int i = 0; i < 7; i++) {
+        data[i] = 0xAA;
+    }
 
-    uint32_t data[64];
-    data[0] = 0xA;
-    rtl_send(data, ARR_SIZE(data));
+    data[7] = 0xAB;
+    for (unsigned int i = 8; i < 14; i++) {
+        data[i] = 0xFF;
+    }
+
+    for (unsigned int i = 14; i < 20; i++) {
+        data[i] = 0xA5;
+    }
+    data[20] = 0;
+    data[21] = 64;
+*/
+
+    uint8_t data[92];
+    uint8_t len = ARR_SIZE(data);
+    for (unsigned int i = len; i < len - 7; i++) {
+        data[i] = 0xAA;
+    }
+
+    data[7] = 0xAB;
+    for (unsigned int i = len - 8; i < len - 14; i++) {
+        data[i] = 0xFF;
+    }
+
+    for (unsigned int i = len - 14; i < len - 20; i++) {
+        data[i] = 0xA5;
+    }
+    data[len - 20] = 0;
+    data[len - 21] = 64;
+    
+    rtl_send((uint32_t *)data, ARR_SIZE(data));
     
     return 0;
 }

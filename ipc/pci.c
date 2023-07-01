@@ -96,9 +96,9 @@ uint16_t pci_get_device_id(uint8_t bus, uint8_t device_num) {
     return (reg >> 16);
 }
 
-header_t pci_get_header_type(uint8_t bus, uint8_t dev) {
-    uint8_t header_type = (pci_read_reg(bus, dev, 0, 0xC) >> 16) & 0xFF;
-    return header_type;
+uint8_t pci_get_header_type(uint8_t bus, uint8_t dev, header_t *header) {
+    *header = (pci_read_reg(bus, dev, 0, 0xC) >> 16) & 0xFF;
+    return ((1 << 7) & *header);
 }
 
 uint32_t pci_get_io_base(uint8_t bus, uint8_t device_num, header_t header) {
@@ -136,9 +136,13 @@ void pci_enumeration(void) {
             uint32_t val = pci_read_reg(bus, dev, 0, 0);
             uint16_t vendor_id = val & 0xFFFF;
             uint16_t device_id = val >> 16;
-            header_t header = pci_get_header_type(bus, dev);
+            header_t header;
            
             if (vendor_id != 0xFFFF) {
+                if (pci_get_header_type(bus, dev, &header)) {
+                }
+                klog("Subclass: %x\n", pci_read_reg(bus, dev, 0, 0x8) >> 16);
+                klog("Subclass: %x\n", pci_read_reg(bus, dev, 0, 0x18));
 
                 if (header) {
                     union bridge_bus_data bd;
@@ -147,7 +151,7 @@ void pci_enumeration(void) {
 
                 klog("Vendor ID bus %u, dev %u: %x, %x\n",
                      bus, dev, device_id, vendor_id);
-                /* klog("Header: %d\n", header); */
+                klog("Header: %d\n", header);
             }
 
             struct pci_dev *device = pci_devices;
@@ -177,7 +181,8 @@ uint8_t pci_enumerate_bus(uint8_t bus) {
             break;
         }
         
-        header_t header = pci_get_header_type(bus, dev);
+        header_t header;
+        pci_get_header_type(bus, dev, &header);
 
         if (header) {
             union bridge_bus_data bus_info;

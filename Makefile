@@ -4,8 +4,7 @@ ELF_F=$(ARCH)
 OBJS = $(shell find ./build -name '*.o')
 MODULES = arch net net/ethernet drivers drivers/storage lib bin mem kernel usermode proc ipc
 MODE=
-QEMU_ARGS= -enable-kvm -cdrom $(OS_NAME).iso -boot menu=on -drive file=Image.img -m 1G -net nic,model=rtl8139,netdev=mynet0 -netdev user,id=mynet0
-# -d int -machine accel=tcg -D ./log.txt
+QEMU_ARGS= -enable-kvm -cdrom $(OS_NAME).iso -boot menu=on -drive file=Image.img -m 1G -net nic,model=rtl8139,netdev=mynet0 -netdev user,id=mynet0 -d int -machine accel=tcg -D ./log.txt
 
 build_modules:
 	for md in $(MODULES); do \
