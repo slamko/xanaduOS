@@ -5,12 +5,21 @@
 #include "mem/slab_allocator.h"
 
 #include <stdint.h>
+#include <string.h>
 
 enum {
     CONFIG_ADDRESS          = 0xCF8,
     CONFIG_DATA             = 0xCFC,
     COMMAND_REG_OFFSET      = 0x4,
 };
+
+enum pci_header {
+    PCI_END_POINT           = 0x0,
+    PCI_BRIDGE              = 0x1,
+    PCI_CARDBUS_BRIDGE      = 0x2,
+};
+
+typedef enum pci_header header_t;
 
 struct pci_dev {
     struct pci_dev *next;
@@ -19,6 +28,23 @@ struct pci_dev {
 
     struct pci_dev_data data;
 };
+
+
+union bridge_bus_data {
+    struct {
+        uint8_t primary_bus;
+        uint8_t secondary_bus;
+        uint8_t sub_bus_num;
+        uint8_t timer;
+    };
+    uint32_t data;
+} __attribute__((packed));
+
+void print_bus_data(union bridge_bus_data bd) {
+    klog("Prime bus: %u\n", bd.primary_bus);
+    klog("Secondary bus: %u\n", bd.secondary_bus);
+    klog("Subordinary bus num: %u\n", bd.sub_bus_num);
+}
 
 struct pci_dev *pci_devices;
 struct slab_cache *pci_slab;
@@ -58,18 +84,24 @@ uint32_t pci_read_reg(uint32_t bus, uint32_t device, uint32_t function,
     return val;
 }
 
+uint16_t pci_get_vendor_id(uint8_t bus, uint8_t device_num) {
+    uint32_t reg = pci_read_reg(bus, device_num, 0, 0);
+
+    return (reg & 0xFFFF);
+}
+
 uint16_t pci_get_device_id(uint8_t bus, uint8_t device_num) {
     uint32_t reg = pci_read_reg(bus, device_num, 0, 0);
 
     return (reg >> 16);
 }
 
-uint8_t pci_get_header_type(uint8_t bus, uint8_t dev) {
-    uint8_t header_type = pci_read_reg(bus, dev, 0, 0xC) & 0xFF0000;
+header_t pci_get_header_type(uint8_t bus, uint8_t dev) {
+    uint8_t header_type = (pci_read_reg(bus, dev, 0, 0xC) >> 16) & 0xFF;
     return header_type;
 }
 
-uint32_t pci_get_io_base(uint8_t bus, uint8_t device_num, uint8_t header) {
+uint32_t pci_get_io_base(uint8_t bus, uint8_t device_num, header_t header) {
     uint32_t io_base = 0;
 
     switch (header) {
@@ -85,7 +117,7 @@ uint32_t pci_get_io_base(uint8_t bus, uint8_t device_num, uint8_t header) {
     return io_base & ~0x3;
 }
 
-uint32_t pci_get_irq(uint8_t bus, uint8_t device_num, uint8_t header_type) {
+uint32_t pci_get_irq(uint8_t bus, uint8_t device_num, header_t header_type) {
     uint8_t irq = 0;
 
     switch (header_type) {
@@ -104,16 +136,23 @@ void pci_enumeration(void) {
             uint32_t val = pci_read_reg(bus, dev, 0, 0);
             uint16_t vendor_id = val & 0xFFFF;
             uint16_t device_id = val >> 16;
-            
+            header_t header = pci_get_header_type(bus, dev);
+           
             if (vendor_id != 0xFFFF) {
+
+                if (header) {
+                    union bridge_bus_data bd;
+                    bd.data = pci_read_reg(bus, dev, 0, 0x18);
+               }
+
                 klog("Vendor ID bus %u, dev %u: %x, %x\n",
                      bus, dev, device_id, vendor_id);
+                /* klog("Header: %d\n", header); */
             }
 
             struct pci_dev *device = pci_devices;
             for (; device; device = device->next) {
                 if (device_id == device->device_id) {
-                    uint8_t header = pci_get_header_type(bus, dev);
                     uint32_t io_base = pci_get_io_base(bus, dev, header);
                     uint8_t irq = pci_get_irq(bus, dev, header);
 
@@ -127,6 +166,35 @@ void pci_enumeration(void) {
             }
        }
     }
+}
+
+uint8_t pci_enumerate_bus(uint8_t bus) {
+    uint8_t max_bus = bus;
+    
+    for (unsigned int dev = 0; dev < 32; dev++) {
+        uint16_t vendor_id = pci_get_vendor_id(bus, dev);
+        if (vendor_id == 0xFFFF) {
+            break;
+        }
+        
+        header_t header = pci_get_header_type(bus, dev);
+
+        if (header) {
+            union bridge_bus_data bus_info;
+            bus_info.data = pci_read_reg(bus, dev, 0, 0x18);
+
+            max_bus++;
+            bus_info.primary_bus = bus;
+            bus_info.secondary_bus = max_bus;
+            bus_info.sub_bus_num = 0xFF;
+            pci_write_reg(bus, dev, 0, 0x18, bus_info.data);
+
+            bus_info.sub_bus_num = pci_enumerate_bus(max_bus);
+            pci_write_reg(bus, dev, 0, 0x18, bus_info.data);
+        }
+    }
+
+    return max_bus;
 }
 
 void pci_init(void) {
