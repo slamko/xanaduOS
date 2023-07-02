@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include "drivers/int.h"
 
 #define PT_SIZE 1024

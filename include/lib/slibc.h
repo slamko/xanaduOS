@@ -10,6 +10,8 @@
 
 #define UNUSED(X) (void)((X))
 
+int atoi(const char *str, size_t len, int radix);
+
 void *memset(void *buf, int val, size_t siz);
 
 void *memcpy(void *buf, const void *cpy, size_t len);

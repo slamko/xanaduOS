@@ -332,7 +332,7 @@ void page_fault(struct isr_handler_args args) {
     uint16_t pte;
 
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
-    klog("Page fault at addr: %x\n", fault_addr);
+    /* klog("Page fault at addr: %x\n", fault_addr); */
 
     pde = fault_addr >> 22;
     /* fb_print_hex(pde); */

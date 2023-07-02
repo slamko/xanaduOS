@@ -2,7 +2,7 @@
 #define ALLOCATOR_H
 
 #include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 #define INIT_HEAP_SIZE (PAGE_SIZE * PT_SIZE)
 

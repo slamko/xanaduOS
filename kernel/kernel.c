@@ -21,6 +21,7 @@
 #include "drivers/floppy.h"
 #include "drivers/storage/ata.h"
 #include "net/ethernet/rtl8139.h"
+#include "drivers/initrd.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -45,7 +46,7 @@ void lookup_pci_dev(void);
 
 #define MB_FLAGS_DEF ( \
     (1 << MB_MEM) \
-    | (1 << MB_CMDLINE) \
+    | (1 << MB_BOOT_DEV) \
 )
 
 #define MB_SECTION __attribute__((section(".multiboot.data")))
@@ -114,7 +115,7 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
     fb_print_hex(mb->flags);
     fb_print_hex(mb->mem_lower);
     fb_print_hex(mb->mem_upper);
-    fb_print_hex(mb->cmdline);
+    /* fb_print_hex(mb->cmdline); */
 }
 
 void rtl_master_bus(void);
@@ -142,20 +143,20 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     syscall_init();
 
     /* pci_enumeration(); */
-    /* rtl8139_init(); */
-    /* lookup_pci_dev(); */
+
+    initrd_init(NULL);
     /* floppy_init(); */
     /* slab_test(); */
 
-    /* sleep_sec(1); */
     /* ata_init(); */
+    /* shell_start(); */
 
-    jump_usermode();
+    /* jump_usermode(); */
 
     while (1) {
         /* reboot(); */
         
-        cli();
-        halt();
+        /* cli(); */
+        /* halt(); */
     }
 }

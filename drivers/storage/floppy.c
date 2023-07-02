@@ -127,7 +127,6 @@ int floppy_write_cmd(uint16_t base, uint8_t cmd, size_t param_cnt, ...) {
 
     if (!(msr & MSR_RQM) || msr & MSR_DIO) {
         return FLOPPY_FAULT;
-        //reset
     }
 
     outb(base + FLOPPY_DATA_FIFO, cmd);
@@ -192,7 +191,6 @@ void floppy_motor(uint16_t base, uint8_t drive, uint8_t motor_on) {
 }
 
 int floppy_calibrate(uint16_t base) {
-    
     floppy_motor(base, floppy_drive, 1);
 
     for (unsigned int i = 0; i < 3; i++) {
@@ -204,11 +202,13 @@ int floppy_calibrate(uint16_t base) {
         }
 
         if (floppy_irq_wait(irq_tick)) {
+            klog_warn("Floppy IRQ wait timeout\n");
             continue;
         }
 
         int sense = floppy_sense_interrupt(base);
         if (sense == -1) {
+            klog_warn("Sense interupt failed\n");
             continue;
         }
 
@@ -218,6 +218,7 @@ int floppy_calibrate(uint16_t base) {
         uint8_t cyl = usense & 0xFF;
 
         if ((st1 & (0xC0 | floppy_drive)) != (0xC0 | floppy_drive)) {
+            klog_warn("Sense interupt failed\n");
             continue;
         }
 

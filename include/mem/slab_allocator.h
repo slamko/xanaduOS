@@ -2,7 +2,7 @@
 #define SLAB_ALLOC_H
 
 #include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 struct slab;
 struct slab_cache;

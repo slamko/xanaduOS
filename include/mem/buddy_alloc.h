@@ -1,6 +1,5 @@
 #include <stdint.h>
-#include <stdlib.h>
-
+#include <stddef.h>
 
 void buddy_test(size_t mem);
 

@@ -1,5 +1,10 @@
-default = 0
-timeout = 0
+# default = 0
+# timeout = 0
 
 title slavos
 kernel /boot/kernel.elf
+
+menuentry "SlavOS" {
+    multiboot /boot/kernel.elf
+    module /boot/initrd
+}

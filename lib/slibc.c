@@ -1,7 +1,22 @@
 #include "lib/slibc.h"
+#include "drivers/fb.h"
 #include "lib/kernel.h"
 #include <stddef.h>
 #include <stdint.h>
+
+int atoi(const char *str, size_t len, int radix) {
+    unsigned int order = 1;
+    int res = 0;
+    
+    for (unsigned int i = 12; i > 0; i--) {
+        if (str[i - 1]) {
+            res += (str[i - 1] - '0') * order;
+            order *= radix;
+        }
+    }
+
+    return res;
+}
 
 void *memset(void *buf, int val, size_t siz) {
     char *bbuf = (char *) buf;

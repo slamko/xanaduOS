@@ -69,7 +69,8 @@ int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
     isr_handlers[int_num] = handler;
 
     if (flags) {
-        return idt_set_entry(int_num, isr_table[int_num], flags);
+        return
+            idt_set_entry(int_num, isr_table[int_num], flags | IDTD_DEFAULT);
     }
     return 0;
 }

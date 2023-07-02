@@ -1,7 +1,7 @@
 #ifndef RTC_H
 #define RTC_H
 
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdint.h>
 
 const char *get_date_time(const char *format, char *buf, size_t size);
