@@ -61,6 +61,12 @@ static inline uintptr_t get_tab_pure_addr(uintptr_t table) {
     return (table & ~0xfff);
 }
 
+void print_cr0(void);
+
+void flush_tlb(void);
+
+void flush_page(uintptr_t virt_addr);
+
 int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
                      uintptr_t *pt_phys_addr);
 

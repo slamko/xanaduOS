@@ -29,10 +29,6 @@ void load_page_dir(uintptr_t dir);
 void enable_paging(void);
 void disable_paging(void);
 
-void print_cr0(void);
-void flush_tlb(void);
-void flush_page(uintptr_t virt_addr);
-
 #define KERNEL_INIT_PT_COUNT 4
 #define DEFAULT_FLAGS (R_W | PRESENT)
 #define MAP_LOWER_ADDR 0x100000
@@ -167,11 +163,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     if (!pd || !pt) {
         return EINVAL;
     }
-
-    /* klog("Fault %x\n", slab_cache); */
-    /* void * some = slab_alloc_from_cache(slab_cache); */
-    /* return 1; */
-    
+   
     pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
     if (!pd->page_tables[pde]) {
         return ENOMEM;

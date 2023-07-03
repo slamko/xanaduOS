@@ -14,10 +14,6 @@ build_modules:
 
 kernel.elf:
 	ld $(LD_ARGS) -melf_$(ARCH) $(OBJS) -o iso/$(ARCH)/boot/kernel.elf
-	cd iso/$(ARCH)/boot && \
-	echo "hello" > some && \
-	cat kernel.elf some > immediate && \
-	mv immediate kernel.elf
 
 # release: clean
 release: MODE=release
@@ -37,7 +33,13 @@ x86_64: build_modules
 x86_64: ELF_F = 64
 x86_64: kernel.elf
 
-mkiso_i386: kernel.elf
+initrd:
+	mkdir -p iso/$(ARCH)/boot/ramdisk
+	mv build/usermode/* iso/$(ARCH)/boot/ramdisk  && \
+	cd iso/$(ARCH)/boot/ramdisk && \
+	tar --format=posix -cf ../initrd *
+
+mkiso_i386: kernel.elf initrd
 	mkisofs -R \
 		-b boot/grub/stage2_eltorito    \
 		-no-emul-boot                   \
@@ -75,5 +77,9 @@ clean:
 	$(RM) $(OS_NAME).iso
 	$(RM) *.out
 	$(RM) -r build
+	$(RM) -r iso/i386/boot/ramdisk
+	$(RM) -r iso/i386/boot/kernel.elf
+	$(RM) -r iso/x86_64/boot/ramdisk
+	$(RM) -r iso/x86_64/boot/kernel.elf
 
 

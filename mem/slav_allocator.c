@@ -189,13 +189,11 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         return NULL;
     }
 
-    klog("New: %u\n", caches->alignment);
     struct slab **non_full_slabs = &cache->slabs_partial;
     
     if (!*non_full_slabs) {
         debug_log("No partially full slabs\n");
         non_full_slabs = &cache->slabs_free;
-        /* return 1; */
     }
 
     // no more free or partially free slabs

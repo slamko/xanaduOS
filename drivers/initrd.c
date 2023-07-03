@@ -6,6 +6,7 @@
 #include "mem/buddy_alloc.h"
 #include "mem/paging.h"
 #include "mem/frame_allocator.h"
+#include "mem/mmap.h"
 
 struct tar_pax_header
 {                              /* byte offset */
@@ -29,36 +30,19 @@ struct tar_pax_header
 
 int initrd_init(struct module_struct *modules) {
     struct tar_pax_header tar;
-
-    uintptr_t tar_paddr;
+    uintptr_t initrd_addr;
 
     int ret;
-    page_table_t pt;
-    uint16_t pde, pte;
-    get_pde_pte(modules->mod_start, &pde, &pte);
-
-    ret = map_alloc_pt(cur_pd, &pt, pde);
-    if (ret) {
-        return 1;
-    }
-
-    klog("Initrd file name: %x\n", modules->mod_start); 
-
-    ret = alloc_frame(modules->mod_start, &pt[pte], R_W | PRESENT);
-    if (ret) {
-        klog_error("Initrd module was overwritten\n");
-        return 1;
-    }
-
-    /* flush_page(get_ident_phys_page_addr(pde, pte)); */
-
+    ret = kmmap(cur_pd, &initrd_addr, modules->mod_start);
     
-    memcpy(&tar, (void *)(modules->mod_start), sizeof(tar));
+    if (ret) {
+        klog_error("InitRD was overwritten\n");
+        return ret;
+    }
+   
+    memcpy(&tar, (void *)initrd_addr, sizeof(tar));
     
-    /* int siz = atoi(tar.size, sizeof tar.size, 8); */
-    /* for (unsigned int i = 0; i < sizeof(val); i++) { */
-        /* if (val[i] >= 'a' && val[i] <= 'z') { */
+    int siz = atoi(tar.size, sizeof tar.size, 8);
     klog("Initrd file name: %s\n", tar.name);
-        /* } */
-    /* } */
+    return ret;
 }
