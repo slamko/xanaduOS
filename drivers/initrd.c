@@ -33,7 +33,7 @@ int initrd_init(struct module_struct *modules) {
     uintptr_t initrd_addr;
 
     int ret;
-    ret = kmmap(cur_pd, &initrd_addr, modules->mod_start);
+    ret = kmmap(cur_pd, &initrd_addr, modules->mod_start, R_W | PRESENT);
     
     if (ret) {
         klog_error("InitRD was overwritten\n");
@@ -43,6 +43,6 @@ int initrd_init(struct module_struct *modules) {
     memcpy(&tar, (void *)initrd_addr, sizeof(tar));
     
     int siz = atoi(tar.size, sizeof tar.size, 8);
-    klog("Initrd file name: %s\n", tar.name);
+    klog("Initrd file name: %s\n", tar.size);
     return ret;
 }

@@ -20,7 +20,6 @@ void load_tss(void) {
     tss.iomap = sizeof(tss);
     tss.ss0 = 0x10;
     tss.esp0 = (uint32_t)kern_int_stack_end;
-    klog("Int esp: %x\n", tss.esp0);
 
     tss.cs = 0x8 | 3;
     tss.ss = tss.ds = tss.es = tss.fs = tss.gs = 0x10 | 3;

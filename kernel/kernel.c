@@ -22,6 +22,7 @@
 #include "drivers/storage/ata.h"
 #include "net/ethernet/rtl8139.h"
 #include "drivers/initrd.h"
+#include "mem/mmap.h"
 #include <stdint.h>
 
 void jump_usermode(void);
@@ -133,6 +134,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     idt_init();
 
     paging_init(multiboot_data->mem_upper * 0x400);
+    kmmap_init(SIZE_MAX);
 
     initrd_init(&s);
     /* map_alloc_pt(0, 0, 0); */

@@ -45,6 +45,8 @@ void page_fault(struct isr_handler_args args);
 
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd);
 
+void flush_pages(uintptr_t virt_addr, size_t npages);
+
 static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
     return (pde * 0x400000) + (pte * PAGE_SIZE);
 }
@@ -79,6 +81,8 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde);
 int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p);
 
 uintptr_t get_tab_pure_addr(uintptr_t table);
+
+void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte);
 
 extern struct page_dir *cur_pd;
 

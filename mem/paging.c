@@ -69,6 +69,12 @@ uintptr_t to_phys_addr(void *virt_addr) {
     return phys_addr;
 }
 
+void flush_pages(uintptr_t virt_addr, size_t npages) {
+    for (unsigned int i = 0; i < npages; i++) {
+        flush_page(virt_addr + (i * 0x1000));
+    }
+}
+
 int page_tables_init(void) {
     int ret;
     
@@ -290,6 +296,11 @@ int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p) {
     return 0;
 }
 
+void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte) {
+    page_table_t pt = (uintptr_t *)pd->page_tables_virt[pde];
+    pt[pte] &= ~PRESENT;
+}
+
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(cur_pd, pde)) {
         int ret;
@@ -309,7 +320,6 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
         find_alloc_frame(pt_entry, R_W | PRESENT | USER);
-        /* fb_print_hex(*pt_entry); */
     }
 
     return 1;

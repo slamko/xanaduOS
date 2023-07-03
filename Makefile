@@ -33,7 +33,9 @@ x86_64: build_modules
 x86_64: ELF_F = 64
 x86_64: kernel.elf
 
+
 initrd:
+	rm -rf iso/$(ARCH)/boot/ramdisk
 	mkdir -p iso/$(ARCH)/boot/ramdisk
 	mv build/usermode/* iso/$(ARCH)/boot/ramdisk  && \
 	cd iso/$(ARCH)/boot/ramdisk && \
