@@ -134,20 +134,30 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     paging_init(multiboot_data->mem_upper * 0x400);
 
-    klog("Modules addr: %x\n", s.mod_start); 
     initrd_init(&s);
+    /* map_alloc_pt(0, 0, 0); */
+    /* klog("Modules addr: %x\n", s.mod_start); */
+    /* buddy_test(0); */
 
     serial_init();
 
     kbd_init();
     ps2_init();
-    pci_init();
+    /* pci_init(); */
     
     pit_init(0);
     apic_init();
     rtc_init();
 
     syscall_init();
+/*
+    void * a = alloc_test(4);
+    void *b = alloc_test(8245);
+    kfree(a);
+    a = alloc_test(1025);
+    kfree(b);
+
+    slab_test(); */
         /* pci_enumeration(); */
 
     /* initrd_init(NULL); */

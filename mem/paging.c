@@ -80,7 +80,7 @@ int page_tables_init(void) {
         init_pd.page_tables[i] |= R_W;
     }
 
-    for (unsigned int i = 0x0; i < KERNEL_INIT_PT_COUNT; i++) {
+    for (unsigned int i = 0x0; i < KERNEL_INIT_PT_COUNT * PT_SIZE; i++) {
         uintptr_t paddr = i * 0x1000;
         uint16_t flags = USER | R_W | PRESENT;
 
@@ -88,8 +88,7 @@ int page_tables_init(void) {
             /* flags |= R_W; */
         /* } */
         
-        buddy_alloc_at_addr(paddr, kernel_page_table + i,
-                            PT_SIZE, flags);
+        alloc_frame(paddr, kernel_page_table + i, flags);
     }
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
@@ -123,12 +122,12 @@ void paging_init(size_t pmem_limit) {
     rodata_start = to_phys_addr((void *)rodata_start);
     rodata_end = to_phys_addr((void *)rodata_end);
 
-    pt_base_addr = kernel_end_addr + (PAGE_SIZE * 4);
+    pt_base_addr = kernel_end_addr + (PAGE_SIZE * 1);
 
     heap_init(pt_base_addr);
     slab_alloc_init(pt_base_addr);
-    ret = buddy_alloc_init(pmem_limit);
-    slab_cache = slab_cache_create_align(PAGE_SIZE, PAGE_SIZE);
+    /* ret = buddy_alloc_init(pmem_limit); */
+    ret = frame_alloc_init(pmem_limit);
 
     if (ret) {
         struct error_state err;
@@ -148,6 +147,10 @@ void paging_init(size_t pmem_limit) {
         panic("Paging data structures initialization failed\n", err);
     }
 
+    slab_cache = slab_cache_create_align(PAGE_SIZE, PAGE_SIZE);
+    /* klog("Cache: %x\n", slab_cache); */
+    
+
     klog("Paging enabled\n");
 }
 
@@ -161,10 +164,14 @@ uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
 }
 
 int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
-    if (!pd) {
+    if (!pd || !pt) {
         return EINVAL;
     }
 
+    /* klog("Fault %x\n", slab_cache); */
+    /* void * some = slab_alloc_from_cache(slab_cache); */
+    /* return 1; */
+    
     pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
     if (!pd->page_tables[pde]) {
         return ENOMEM;
@@ -301,7 +308,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
             return ret;
         }
         
-        ret = buddy_alloc_frame(&pt[pte], USER | R_W | PRESENT);
+        ret = find_alloc_frame(&pt[pte], USER | R_W | PRESENT);
         if (ret) {
             return ret;
         }
@@ -309,7 +316,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         flush_page(get_ident_phys_page_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
-        buddy_alloc_frame(pt_entry, R_W | PRESENT | USER);
+        find_alloc_frame(pt_entry, R_W | PRESENT | USER);
         /* fb_print_hex(*pt_entry); */
     }
 
@@ -323,7 +330,7 @@ void page_fault(struct isr_handler_args args) {
 
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
     if (fault_addr != last_fault_addr) {
-        klog_warn("Page fault at addr: %x\n", fault_addr);
+        klog_warn("Page fault at addr: %x\n", fault_addr); /*  */
     }
     last_fault_addr = fault_addr;
 

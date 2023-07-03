@@ -124,9 +124,9 @@ uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
             frame_map ++;
         }
 
-            /* fb_print_hex(frame + i); */
         set_frame_used(frame_map, frame + i + overflow);
         alloc_addrs[i] = (addr + (i * PAGE_SIZE)) | flags;
+        /* fb_print_hex(alloc_addrs[i]); */
    }
 
     /*

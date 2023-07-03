@@ -5,6 +5,7 @@
 #include "lib/kernel.h"
 #include "mem/buddy_alloc.h"
 #include "mem/paging.h"
+#include "mem/frame_allocator.h"
 
 struct tar_pax_header
 {                              /* byte offset */
@@ -41,9 +42,11 @@ int initrd_init(struct module_struct *modules) {
         return 1;
     }
 
-    klog("Initrd file name: %x\n", pt); 
-    ret = buddy_alloc_at_addr(modules->mod_start, &pt[pte], 1, R_W | PRESENT);
+    klog("Initrd file name: %x\n", modules->mod_start); 
+
+    ret = alloc_frame(modules->mod_start, &pt[pte], R_W | PRESENT);
     if (ret) {
+        klog_error("Initrd module was overwritten\n");
         return 1;
     }
 

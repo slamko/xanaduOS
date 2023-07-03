@@ -49,13 +49,8 @@ void *alloc_test(size_t size) {
         klog("null\n");
     }
     
-    *t = size * 3;
-    klog("alloc bytes: ");
-    fb_print_num(size);
-    klog("at address: ");
-    fb_print_hex((uintptr_t)t);
-    klog("val: ");
-    fb_print_hex(t[0]);
+    klog("alloc bytes: %u\n", size);
+    klog("at address: %x\n", t);
 
     return t;
 }
@@ -103,6 +98,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
     for (header = heap_base_block;
          ;
          header = header->next_hole) {
+            /* fb_print_hex(header); */
         uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
         if (data_base % alignment) {
             data_base += (alignment - (data_base % alignment));
@@ -112,7 +108,6 @@ void *kmalloc_align(size_t siz, size_t alignment) {
             && header->size >=
                 (aligned_alloc_size + (data_base - (uintptr_t)header))) {
 
-            /* fb_print_hex(header->size); */
             if (!header->next ||
                 (header->size >= aligned_alloc_size + (3 * sizeof(*header))
                  && header->next)) {
@@ -264,6 +259,10 @@ void kfree(void *addr) {
             header->next->prev = header->prev;
         }
     }
+}
+
+void ktest() {
+
 }
 
 

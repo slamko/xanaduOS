@@ -52,6 +52,7 @@ static inline bool is_frame_free(uint32_t bitmap, uint8_t frame) {
 
 static int insert_buddy(struct free_list **fl, order_t order, uintptr_t addr) {
     struct free_list *old_head = (*fl)->next;
+    /* klog("a\n"); */
     (*fl)->next = kmalloc(sizeof(**fl));
     if (!(*fl)->next) {
         return ENOMEM;
@@ -156,12 +157,12 @@ static uintptr_t buddy_slice(uintptr_t addr,
     uintptr_t sec_buddy_addr = addr +
                 ((PAGE_SIZE * (1 << start)) / 2);
 
+        /* klog("slice\n"); */
     insert_buddy(&next_order_fl, start - 1, sec_buddy_addr);
     /* debug_log("sec buddy addr"); */
     /* fb_print_hex((uintptr_t)sec_buddy_addr); */
    
     if (start - 1 > target) {
-        /* klog("slice\n"); */
         return buddy_slice(addr, start - 1, target);
     }
     
@@ -188,11 +189,11 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
 
     for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
         struct free_list *upper_fl = free_area[i].free_list.next;
-        /* debug_log("search"); */
+        debug_log("Search\n");
         struct free_area *fa = &free_area[i];
 
         if (fa->num_free) {
-            /* klog("free"); */
+            klog("Free %d %d\n", i, order);
             remove_free_head(i);
             uintptr_t addr = buddy_slice(upper_fl->addr, i, order);
             set_addrs(addrs, addr, nframes, flags);
@@ -200,6 +201,7 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
         }
     }
     
+    klog("Divide frames\n");
     size_t nnof = nframes / 2;
     if (buddy_alloc_frames_max_order(addrs, nnof, flags)) {
         return ENOMEM;
@@ -231,6 +233,34 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
     return 0;
 }
 
+int buddy_get_free_at_addr(struct free_list *init_fl,
+                            struct free_list **free,
+                           struct free_list **prev_fl,
+                           uintptr_t addr) {
+    if (!init_fl || !free || !prev_fl) {
+        return EINVAL;
+    }
+    
+    struct free_list *fl = init_fl->next;
+    *prev_fl = init_fl;
+    
+    for (; fl; fl = fl->next) {
+        if (fl->addr == addr) {
+            *free = fl;
+            break;
+        }
+        *prev_fl = fl;
+    }
+
+    if (!*free) {
+        /* klog("addr: %x\n", fl->addr); */
+        return EINVAL;
+    }
+
+    return 0;
+}
+                           
+
 int buddy_alloc_at_addr(uintptr_t base, uintptr_t *addrs, size_t nframes,
                         uint16_t flags) {
     if (!addrs) {
@@ -243,30 +273,40 @@ int buddy_alloc_at_addr(uintptr_t base, uintptr_t *addrs, size_t nframes,
 
     if (free_area[order].num_free > 0) {
         struct free_list *free = NULL;
+        struct free_list *prev_fl = NULL;
+
+        if (buddy_get_free_at_addr(init_fl, &free, &prev_fl, base)) {
+            return ENOMEM;
+        }
+        klog("Alloc at addr: %x\n", free->addr);
         
-        struct free_list **prev_fl = &init_fl;
-        struct free_list **fl = &free_area[order].free_list.next;
-        for (; fl; fl = &(*fl)->next) {
-            /* klog("addr"); */
-            /* fb_print_hex((*fl)->addr); */
-            if ((*fl)->addr == base) {
-                free = *fl;
-                break;
-            }
-            prev_fl = fl;
-        }
-
-        if (!free) {
-            return EINVAL;
-        }
-
         free_area[order].num_free--;
-        (*prev_fl)->next = free->next;
-        /* klog("Alloc at addr"); */
+        prev_fl->next = free->next;
         
         set_addrs(addrs, free->addr, nframes, flags);
         set_frame_used(order, free->addr);
         return 0;
+    }
+
+    for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
+        struct free_area *fa = &free_area[i];
+
+        if (fa->num_free) {
+            struct free_list *free = NULL;
+            struct free_list *prev_fl = NULL;
+
+            klog("Iter\n");
+            if (buddy_get_free_at_addr(&fa->free_list, &free, &prev_fl, base)) {
+                return ENOMEM;
+            }
+
+            free_area[i].num_free--;
+            prev_fl->next = free->next;
+        
+            uintptr_t addr = buddy_slice(free->addr, i, order);
+            set_addrs(addrs, addr, nframes, flags);
+            return 0;
+        }
     }
  
     return EINVAL;
@@ -359,7 +399,6 @@ int buddy_alloc_init(size_t mem_limit) {
     return 0;
 }
 
-
 void buddy_test(size_t mem) {
     uintptr_t addrs[1024];
     /* buddy_alloc_init(mem); */
@@ -372,9 +411,10 @@ void buddy_test(size_t mem) {
 
     for (unsigned int i = 0; i < 4; i ++) {
         fb_print_hex(addrs[i]);
+        fb_newline();
     }
 
-    buddy_free_frames(addrs[0], 4);
+    /* buddy_free_frames(addrs[0], 4); */
 
     klog("Buddy find alloc\n");
     memset(addrs, 0, sizeof(addrs));
@@ -383,6 +423,7 @@ void buddy_test(size_t mem) {
 
     for (unsigned int i = 0; i < 4; i ++) {
         fb_print_hex(addrs[i]);
+        fb_newline();
     }
     memset(addrs, 0, sizeof(addrs));
     klog("Buddy find alloc\n");
@@ -390,6 +431,7 @@ void buddy_test(size_t mem) {
 
     for (unsigned int i = 0; i < 8; i ++) {
         fb_print_hex(addrs[i]);
+        fb_newline();
     }
 
     buddy_free_frames(addrs[0], 8);
@@ -400,6 +442,7 @@ void buddy_test(size_t mem) {
 
     for (unsigned int i = 0; i < 8; i ++) {
         fb_print_hex(addrs[i]);
+        fb_newline();
     }
 
 

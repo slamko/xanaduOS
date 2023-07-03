@@ -4,8 +4,22 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct slab;
-struct slab_cache;
+struct slab {
+    size_t size;
+    size_t num_free;
+    struct slab_chunk *chunks;
+    struct slab *next;
+};
+
+struct slab_cache {
+    struct slab_cache *next;
+    struct slab_cache *prev;
+    struct slab *slabs_free;
+    struct slab *slabs_full;
+    struct slab *slabs_partial;
+    size_t size;
+    size_t alignment;
+};
 
 struct slab_cache *slab_cache_create(size_t size);
 
