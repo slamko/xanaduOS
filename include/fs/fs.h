@@ -14,7 +14,7 @@ typedef size_t (*fs_write_f)(struct fs_node *, uint32_t, uint32_t, uint8_t *);
 typedef void (*fs_open_f)(struct fs_node *);
 typedef void (*fs_close_f)(struct fs_node *);
 
-typedef struct dirent *(*fs_readdir_f)(struct fs_node *, uint32_t);
+typedef struct dirent *(*fs_readdir_f)(struct fs_node *);
 typedef struct fs_node *(*fs_finddir_f)(struct fs_node *, char *name);
 
 struct fs_node {

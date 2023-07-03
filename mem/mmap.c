@@ -2,6 +2,7 @@
 #include "mem/paging.h"
 #include "mem/frame_allocator.h"
 #include "mem/buddy_alloc.h"
+#include "fs/fs.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -31,6 +32,10 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
 int kmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
           uint16_t flags) {
     return knmmap(pd, virt_addr, phys_addr, 1, flags);
+}
+
+int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, uint16_t flags) {
+    
 }
 
 void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {

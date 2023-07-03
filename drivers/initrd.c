@@ -8,6 +8,7 @@
 #include "mem/buddy_alloc.h"
 #include "mem/paging.h"
 #include "mem/frame_allocator.h"
+#include "mem/slab_allocator.h"
 #include "fs/fs.h"
 #include "mem/mmap.h"
 
@@ -37,10 +38,20 @@ struct tar_pax_header
 struct initrd_entry {
     struct tar_pax_header *header;
     uintptr_t data;
-    struct initrd_entry *next;
+};
+
+enum {
+    FS_DIR = 0x1,
+    FS_FILE = 0x0,
 };
 
 struct initrd_entry *initrd;
+struct fs_node *root_nodes;
+struct slab_cache *fs_cache;
+
+size_t initrd_read(struct fs_node *node, uint32_t offset, size_t size, uint8_t *buf) {
+
+}
 
 unsigned int tar_parse(uintptr_t initrd_addr, size_t *size) {
     uintptr_t next_addr = initrd_addr;
@@ -50,15 +61,22 @@ unsigned int tar_parse(uintptr_t initrd_addr, size_t *size) {
          header->name[0];
          header = (struct tar_pax_header *)next_addr) {
 
+        size_t size = atoi(header->size, sizeof header->size, 8);
+
         if (i % 2) {
-            struct initrd_entry *next = initrd ? initrd->next : NULL;
-            initrd = kmalloc(sizeof(*initrd));
-            initrd->next = next;
-            initrd->header = header;
-            initrd->data = next_addr + HEADER_SIZE;
+            unsigned int fd = i / 2;
+            initrd[fd].header = header;
+            initrd[fd].data = next_addr + HEADER_SIZE;
+
+            root_nodes[fd].size = size;
+            root_nodes[fd].close = NULL;
+            root_nodes[fd].open = NULL;
+            root_nodes[fd].readdir = NULL;
+            root_nodes[fd].write = NULL;
+            root_nodes[fd].finddir = NULL;
+            root_nodes[fd].read = &initrd_read;
         }
 
-        size_t size = atoi(header->size, sizeof header->size, 8);
         next_addr += HEADER_SIZE + ((size / HEADER_SIZE) * HEADER_SIZE);
         if (size % HEADER_SIZE) {
             next_addr += HEADER_SIZE;
@@ -68,7 +86,7 @@ unsigned int tar_parse(uintptr_t initrd_addr, size_t *size) {
         i++;
     }
 
-    *size = next_addr - initrd_addr;
+    /* *size = next_addr - initrd_addr; */
     return i / 2;
 }
 
@@ -87,9 +105,14 @@ int initrd_init(struct module_struct *modules) {
         klog_error("Initrd was overwritten\n");
         return ret;
     }
+
+    fs_cache = slab_cache_create(sizeof(struct fs_node));
    
-    size_t initrd_size;
-    unsigned int entry_num = tar_parse(initrd_addr, &initrd_size);
+    size_t initrd_len = (modules->mod_end - modules->mod_start) / HEADER_BLOCK_SIZE;
+    initrd = kmalloc(initrd_len * sizeof(*initrd));
+    root_nodes = kmalloc(initrd_len * sizeof(*root_nodes));
+
+    unsigned int entry_num = tar_parse(initrd_addr, &initrd_len);
     klog("Initrd file name: %u\n", entry_num);
 
     return ret;
