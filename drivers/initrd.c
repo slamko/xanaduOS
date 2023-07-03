@@ -1,8 +1,10 @@
-#include <stdint.h>
-#include "lib/slibc.h"
 #include "drivers/initrd.h"
+#include <stdint.h>
+#include "drivers/int.h"
+#include "lib/slibc.h"
 #include "lib/kernel.h"
-#include "initrd.h"
+#include "mem/buddy_alloc.h"
+#include "mem/paging.h"
 
 struct tar_pax_header
 {                              /* byte offset */
@@ -24,22 +26,36 @@ struct tar_pax_header
   char prefix[155];             /* 345 */
 };
 
-struct module_struct {
-    uintptr_t mod_start;
-    uintptr_t mod_end;
-    char *string;
-    int reserved;
-} __attribute__((packed));
-
-void initrd_init(struct module_struct *mod_struct) {
+int initrd_init(struct module_struct *modules) {
     struct tar_pax_header tar;
 
-    if (!mod_struct) {
-        /* klog_warn("No Initrd found\n"); */
+    uintptr_t tar_paddr;
+
+    int ret;
+    page_table_t pt;
+    uint16_t pde, pte;
+    get_pde_pte(modules->mod_start, &pde, &pte);
+
+    ret = map_alloc_pt(cur_pd, &pt, pde);
+    if (ret) {
+        return 1;
     }
+
+    klog("Initrd file name: %x\n", pt); 
+    ret = buddy_alloc_at_addr(modules->mod_start, &pt[pte], 1, R_W | PRESENT);
+    if (ret) {
+        return 1;
+    }
+
+    /* flush_page(get_ident_phys_page_addr(pde, pte)); */
+
     
-    memcpy(&tar, &header, sizeof(tar)); 
+    memcpy(&tar, (void *)(modules->mod_start), sizeof(tar));
     
-    int siz = atoi(tar.size, sizeof tar.size, 8);
-    klog("Initrd file name: %u\n", siz);
+    /* int siz = atoi(tar.size, sizeof tar.size, 8); */
+    /* for (unsigned int i = 0; i < sizeof(val); i++) { */
+        /* if (val[i] >= 'a' && val[i] <= 'z') { */
+    klog("Initrd file name: %s\n", tar.name);
+        /* } */
+    /* } */
 }

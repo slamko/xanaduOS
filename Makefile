@@ -14,6 +14,10 @@ build_modules:
 
 kernel.elf:
 	ld $(LD_ARGS) -melf_$(ARCH) $(OBJS) -o iso/$(ARCH)/boot/kernel.elf
+	cd iso/$(ARCH)/boot && \
+	echo "hello" > some && \
+	cat kernel.elf some > immediate && \
+	mv immediate kernel.elf
 
 # release: clean
 release: MODE=release
@@ -45,7 +49,7 @@ mkiso_i386: kernel.elf
 		iso/i386
 
 mkiso_x86_64: x86_64
-	grub-mkrescue -o grub.iso iso/x86_64
+	grub-mkrescue -o $(OSNAME).iso iso/i386
 
 debug_run: debug mkiso_$(ARCH)
 	qemu-system-$(ARCH) -s -S $(QEMU_ARGS) 

@@ -1,4 +1,5 @@
 #include "mem/paging.h"
+#include "drivers/initrd.h"
 #include "mem/allocator.h"
 #include "mem/slab_allocator.h"
 #include "mem/buddy_alloc.h"
@@ -51,6 +52,7 @@ static uintptr_t rodata_end;
 static uintptr_t kernel_end_addr __attribute__((aligned(PAGE_SIZE)));
 
 static uintptr_t pt_base_addr __attribute__((aligned(PAGE_SIZE)));
+static uintptr_t last_fault_addr;
 
 static struct slab_cache *slab_cache;
 
@@ -121,7 +123,7 @@ void paging_init(size_t pmem_limit) {
     rodata_start = to_phys_addr((void *)rodata_start);
     rodata_end = to_phys_addr((void *)rodata_end);
 
-    pt_base_addr = kernel_end_addr + PAGE_SIZE;
+    pt_base_addr = kernel_end_addr + (PAGE_SIZE * 4);
 
     heap_init(pt_base_addr);
     slab_alloc_init(pt_base_addr);
@@ -145,7 +147,7 @@ void paging_init(size_t pmem_limit) {
         err.err = ret;
         panic("Paging data structures initialization failed\n", err);
     }
-    
+
     klog("Paging enabled\n");
 }
 
@@ -170,18 +172,6 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     
     pd->page_tables_virt[pde] = to_uintptr(pt);
     return 0;
-}
-
-static inline int tab_present(uintptr_t descriptor) {
-    return descriptor & PRESENT;
-}
-
-static inline uint16_t get_tab_flags(uintptr_t table) {
-    return (table & 0xfff);
-}
-
-uintptr_t get_tab_pure_addr(uintptr_t table) {
-    return (table & ~0xfff);
 }
 
 int copy_page_data(uintptr_t src, uintptr_t dest);
@@ -332,7 +322,10 @@ void page_fault(struct isr_handler_args args) {
     uint16_t pte;
 
     asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
-    /* klog("Page fault at addr: %x\n", fault_addr); */
+    if (fault_addr != last_fault_addr) {
+        klog_warn("Page fault at addr: %x\n", fault_addr);
+    }
+    last_fault_addr = fault_addr;
 
     pde = fault_addr >> 22;
     /* fb_print_hex(pde); */

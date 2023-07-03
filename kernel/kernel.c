@@ -47,6 +47,7 @@ void lookup_pci_dev(void);
 #define MB_FLAGS_DEF ( \
     (1 << MB_MEM) \
     | (1 << MB_BOOT_DEV) \
+    | (1 << MB_CMDLINE) \
 )
 
 #define MB_SECTION __attribute__((section(".multiboot.data")))
@@ -67,10 +68,10 @@ struct multiboot_meta {
 #endif
 #if MB_FLAG(MB_CMDLINE)
     unsigned int cmdline;
-#endif
-#if MB_FLAG(MB_MODS)
+/* #if MB_FLAG(MB_MODS) */
     unsigned int mods_count;
     unsigned int mods_addr;
+/* #endif */
 #endif
 #if MB_FLAG(MB_SYMS)
     unsigned int syms[3];
@@ -121,14 +122,20 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
 void rtl_master_bus(void);
 
 void kernel_main(struct multiboot_meta *multiboot_data) {
-    /* struct multiboot_meta hm_mb_data; */
-    /* memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data)); */
+    struct multiboot_meta hm_mb_data;
+    memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data));
     
-    fb_clear();
+    struct module_struct s;
+    memcpy(&s, (void *)(hm_mb_data.mods_addr), sizeof(s));
 
+    fb_clear();
     gdt_init();
     idt_init();
+
     paging_init(multiboot_data->mem_upper * 0x400);
+
+    klog("Modules addr: %x\n", s.mod_start); 
+    initrd_init(&s);
 
     serial_init();
 
@@ -141,10 +148,9 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
+        /* pci_enumeration(); */
 
-    /* pci_enumeration(); */
-
-    initrd_init(NULL);
+    /* initrd_init(NULL); */
     /* floppy_init(); */
     /* slab_test(); */
 

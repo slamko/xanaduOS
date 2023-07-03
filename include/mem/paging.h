@@ -49,12 +49,26 @@ static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
     return (pde * 0x400000) + (pte * PAGE_SIZE);
 }
 
+static inline int tab_present(uintptr_t descriptor) {
+    return descriptor & PRESENT;
+}
+
+static inline uint16_t get_tab_flags(uintptr_t table) {
+    return (table & 0xfff);
+}
+
+static inline uintptr_t get_tab_pure_addr(uintptr_t table) {
+    return (table & ~0xfff);
+}
+
 int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
                      uintptr_t *pt_phys_addr);
 
 int clone_cur_page_dir(struct page_dir *new_pd);
 
 int switch_page_dir(struct page_dir *pd);
+
+int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde);
 
 int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p);
 
