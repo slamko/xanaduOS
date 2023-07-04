@@ -115,10 +115,10 @@ int page_tables_init(void) {
 }
 
 void paging_init(size_t pmem_limit) {
-    asm volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
-    asm volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
-    asm volatile ("mov $_rodata_start, %0" : "=r" (rodata_start));
-    asm volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
+    __asm__ volatile ("mov $_kernel_end, %0" : "=r" (kernel_end_addr));
+    __asm__ volatile ("mov $_virt_kernel_addr, %0" : "=r" (virt_kernel_addr));
+    __asm__ volatile ("mov $_rodata_start, %0" : "=r" (rodata_start));
+    __asm__ volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
 
     int ret;
     rodata_start = to_phys_addr((void *)rodata_start);
@@ -330,7 +330,7 @@ void page_fault(struct isr_handler_args args) {
     uint16_t pde;
     uint16_t pte;
 
-    asm volatile ("mov %%cr2, %0" : "=r" (fault_addr));
+    __asm__ volatile ("mov %%cr2, %0" : "=r" (fault_addr));
     if (fault_addr != last_fault_addr) {
         klog_warn("Page fault at addr: %x\n", fault_addr); /*  */
     }

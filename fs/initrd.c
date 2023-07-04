@@ -73,7 +73,7 @@ struct DIR *initrd_opendir(struct fs_node *node) {
     size_t allocation = ent->sub_ent_num * sizeof(struct dirent);
     struct DIR *dir = kmalloc(sizeof(*dir) + allocation);
 
-    dir->data = (struct dirent *)(void *)(to_uintptr(dir) + sizeof(*dir));
+    /* dir->data = (struct dirent *)(void *)(to_uintptr(dir) + sizeof(*dir)); */
     dir->node = node;
     dir->ofset = 0;
 
@@ -89,7 +89,7 @@ struct dirent *initrd_readdir(struct DIR *dir) {
         return NULL;
     }
 
-    struct dirent *dirent = &dir->data[dir->ofset];
+    struct dirent *dirent = (struct dirent *)&dir->data[dir->ofset];
 
     strcpy(dirent->name, ent->header->name, sizeof dirent->name);
     dirent->inode = ent_inode;
@@ -188,7 +188,8 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     rd_nodes = kmalloc((i + 1) * sizeof(*rd_nodes));
     /* klog("Create root node %x\n", rd_nodes); */
 
-    foreach(ent, initrd_list,
+    struct initrd_entry *ent = initrd_list;
+    foreach(ent, 
             memcpy(&rd_nodes[i], &ent->node, sizeof(ent->node));
             /* klog("Initrd node name %s\n", ent->node.header->name); */
 

@@ -85,7 +85,7 @@ struct isr_handler_args {
 };
 
 static inline void cli(void) {
-    asm volatile ("cli");
+    __asm__ volatile ("cli");
 }
 
 typedef void (*isr_handler_t)(struct isr_handler_args);
@@ -100,11 +100,11 @@ uint32_t disable_int(void);
 void recover_int(uint32_t cflags);
 
 static inline void sti(void) {
-    asm volatile ("sti");
+    __asm__ volatile ("sti");
 }
 
 static inline void halt(void) {
-    asm volatile ("hlt");
+    __asm__ volatile ("hlt");
 }
 
 /* void isr_x86(struct x86_cpu_state, uint32_t int_num, struct isr_stack);  */

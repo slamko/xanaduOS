@@ -13,7 +13,7 @@ void ltr(void);
 struct tss_entry tss __attribute__((aligned(4096)));
 
 void load_tss(void) {
-    asm volatile("mov $kernel_int_stack_end, %0"
+    __asm__ volatile("mov $kernel_int_stack_end, %0"
                  : "=r"(kern_int_stack_end));
 
     memset(&tss, 0, sizeof(tss));

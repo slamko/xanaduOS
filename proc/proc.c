@@ -27,8 +27,8 @@ int exec_init(void) {
 
     ret = switch_page_dir(&new_pd);
 
-    asm volatile ("mov $_usermode_text_start, %0" : "=r"(usermode_text_start));
-    asm volatile ("mov $_usermode_text_end, %0" : "=r"(usermode_text_end));
+    __asm__ volatile ("mov $_usermode_text_start, %0" : "=r"(usermode_text_start));
+    __asm__ volatile ("mov $_usermode_text_end, %0" : "=r"(usermode_text_end));
 
     uint16_t pde, pte; 
     uint16_t end_pde, end_pte; 

@@ -35,7 +35,7 @@ void ps2_handler(struct isr_handler_args args) {
 
 uint8_t ps2_wait_read(void) {
     while (!(inb(0x64) & 1))
-        asm volatile("pause");
+        __asm__ volatile("pause");
     fb_newline();
     fb_print_num(inb(PS2_COMMAND_PORT));
     fb_newline();

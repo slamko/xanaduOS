@@ -6,12 +6,12 @@
 
 #define asm_call(body)                                                         \
     {                                                                          \
-        asm volatile("pushal;");                                               \
-        body asm volatile("popal;");                                           \
+        __asm__ volatile("pushal;");                                           \
+        body __asm__ volatile("popal;");                                       \
     }
 
-#define foreach(var, list, action)                                             \
-    for (typeof(list) var = list; var; var = var->next) {                 \
+#define foreach(var, action)                                                   \
+    for (; var; var = var->next) {                                             \
         action;                                                                \
     }
 

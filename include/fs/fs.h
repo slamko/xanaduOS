@@ -19,7 +19,8 @@ typedef void (*fs_close_f)(struct fs_node *);
 struct DIR {
     unsigned int ofset;
     struct fs_node *node;
-    struct dirent *data;
+    char data[] __attribute__((aligned(__alignof(long double))));
+    /* struct dirent *data; */
 };
 
 typedef struct DIR *(*fs_opendir_f)(struct fs_node *);
