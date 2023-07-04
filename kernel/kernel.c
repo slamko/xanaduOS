@@ -159,12 +159,15 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     closedir_fs(root_dir);
 
-    uintptr_t user_addr;
-    kfsmmap(user_main, &user_addr, USER | R_W | PRESENT);
+    uintptr_t user_addr[4096];
+    klog("Modules addr: %x\n", s.mod_start);
+    kfsmmap(user_main, user_addr, USER | R_W | PRESENT);
+    klog("Main user file inode %u\n", user_main->inode);
 
     for (unsigned int i = 0; i < 0x100; i++) {
-        /* fb_print_hex(*(uint8_t *)(user_addr + i)); */
+        /* fb_print_hex(*(uint8_t *)(*user_addr + i)); */
     }
+    fb_print_black((char *)*user_addr);
 
     serial_init();
 
@@ -177,6 +180,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
+    /* buddy_test(64); */
 /*
     void * a = alloc_test(4);
     void *b = alloc_test(8245);

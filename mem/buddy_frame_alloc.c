@@ -157,7 +157,7 @@ static uintptr_t buddy_slice(uintptr_t addr,
     }
     
     set_frame_used(target, addr);
-    debug_log("buddy addr %x\n", addr);
+    /* debug_log("Buddy addr %x\n", addr); */
     return addr;
 }
 
@@ -166,11 +166,9 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
 
     order_t order = get_buddy_order(nframes);
     struct free_list *free = free_area[order].free_list.next;
-    klog("Alloc frames %u\n", order);
-    fb_print_num(free_area[order].num_free);
 
     if (free_area[order].num_free) {
-        debug_log("free frame available");
+        /* debug_log("Free frame available\n"); */
         remove_free_head(order);
         set_addrs(addrs, free->addr, nframes, 0);
         set_frame_used(order, free->addr);
@@ -179,7 +177,7 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
 
     for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
         struct free_list *upper_fl = free_area[i].free_list.next;
-        debug_log("Search\n");
+        /* debug_log("Search\n"); */
         struct free_area *fa = &free_area[i];
 
         if (fa->num_free) {
@@ -190,7 +188,7 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
         }
     }
     
-    klog("Divide frames\n");
+    /* klog("Divide frames\n"); */
     size_t nnof = nframes / 2;
     if (buddy_alloc_frames_max_order(addrs, nnof, flags)) {
         return ENOMEM;
@@ -200,6 +198,8 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
 }
 
 int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
+    int ret;
+
     if (!addrs) {
         return EINVAL;
     }
@@ -215,11 +215,16 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
         if (cur_nframes > MAX_BUDDY_NFRAMES) {
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
+        /* klog("Current number of frames %d\n", cur_nframes); */
 
-        buddy_alloc_frames_max_order(addrs, cur_nframes, flags);
+        ret = buddy_alloc_frames_max_order(addrs + (i * MAX_BUDDY_NFRAMES),
+                                           cur_nframes, flags);
+
+        if (ret) {
+            return ret;
+        }
     }
 
-    klog("Free %x\n", addrs[0]);
     return 0;
 }
 
@@ -313,51 +318,11 @@ int buddy_alloc_init(size_t mem_start, size_t mem_limit) {
 }
 
 void buddy_test(size_t mem) {
-    uintptr_t addrs[1024];
-    /* buddy_alloc_init(mem); */
-    memset(addrs, 0, sizeof(addrs));
-    int ret;
+    uintptr_t adrs[4096];
+    buddy_alloc_frames(adrs, 2048, 0);
 
-    memset(addrs, 0, sizeof(addrs));
-    klog("Buddy find alloc\n");
-    ret = buddy_alloc_frames(addrs, 4, R_W|PRESENT);
-
-    for (unsigned int i = 0; i < 4; i ++) {
-        fb_print_hex(addrs[i]);
-        fb_newline();
-    }
-
-    /* buddy_free_frames(addrs[0], 4); */
-
-    klog("Buddy find alloc\n");
-    memset(addrs, 0, sizeof(addrs));
-    /* klog("Buddy find alloc\n"); */
-    ret = buddy_alloc_frames(addrs, 4, R_W|PRESENT);
-
-    for (unsigned int i = 0; i < 4; i ++) {
-        fb_print_hex(addrs[i]);
-        fb_newline();
-    }
-    memset(addrs, 0, sizeof(addrs));
-    klog("Buddy find alloc\n");
-    ret = buddy_alloc_frames(addrs, 8, R_W|PRESENT);
-
-    for (unsigned int i = 0; i < 8; i ++) {
-        fb_print_hex(addrs[i]);
-        fb_newline();
-    }
-
-    buddy_free_frames(addrs[0], 8);
-
-    memset(addrs, 0, sizeof(addrs));
-    klog("Buddy find alloc\n");
-    ret = buddy_alloc_frames(addrs, 8, R_W|PRESENT);
-
-    for (unsigned int i = 0; i < 8; i ++) {
-        fb_print_hex(addrs[i]);
-        fb_newline();
-    }
-
+    /* klog("alloc at %x\n", adrs[1025]); */
+    
 
     return;
 }

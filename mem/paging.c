@@ -64,7 +64,7 @@ uintptr_t to_phys_addr(void *virt_addr) {
     
     get_pde_pte((uintptr_t)virt_addr, &pde, &pte);
     uintptr_t phys_addr = ((uintptr_t *)cur_pd->page_tables_virt[pde])[pte];
-    phys_addr = get_tab_pure_addr((uintptr_t)phys_addr) + page_offset;
+    phys_addr = get_tab_pure_addr(phys_addr) + page_offset;
 
     return phys_addr;
 }
@@ -181,7 +181,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
         return ENOMEM;
     }
     
-    pd->page_tables_virt[pde] = to_uintptr(pt);
+    pd->page_tables_virt[pde] = to_uintptr(*pt);
     return 0;
 }
 

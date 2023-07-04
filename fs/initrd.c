@@ -94,6 +94,10 @@ size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
     struct initrd_node *rd_node = &rd_nodes[node->inode];
     uintptr_t start_paddr = page_align_down(to_phys_addr(rd_node->header));
 
+    klog("Inode %d\n", node->inode);
+    klog("Virt et phys map addr %x : %x\n", to_uintptr(rd_node->header),
+         to_phys_addr(rd_node->header));
+
     set_addrs(addrs, start_paddr, size, flags);
     for (unsigned int i = 0; i < size; i++) {
         addrs[i] = (start_paddr + (i * PAGE_SIZE)) | flags;
@@ -158,7 +162,7 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
             initrd_list->node.header = header;
-            /* klog("Initrd file name: %s %x\n", */
+            /* klog("Initrd file addr: %x\n", to_phys_addr((void *)initrd_addr)); */
                 /* header->name, next_addr - initrd_addr); */
         }
 
@@ -190,6 +194,8 @@ int initrd_build_fs(size_t nodes_n) {
         node->write = NULL;
         node->finddir = NULL;
         node->readdir = NULL;
+        node->mmap = &initrd_mmap;
+        node->inode = i;
 
         if (node->type == FS_DIR) {
             node->readdir = &initrd_readdir;
@@ -231,12 +237,15 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
 }
 
 int initrd_init(struct module_struct *modules, struct fs_node *root) {
-    uintptr_t initrd_addr;
+    uintptr_t *initrd_addr;
     size_t npages = (modules->mod_end - modules->mod_start) / PAGE_SIZE;
     struct initrd_entry *rd_list;
 
     int ret;
-    ret = knmmap(cur_pd, &initrd_addr, modules->mod_start, npages, R_W | PRESENT);
+    initrd_addr = kmalloc(npages * sizeof(*initrd_addr));
+    ret = knmmap(cur_pd, initrd_addr, modules->mod_start, npages, R_W | PRESENT);
+    klog("Parsed files num %x:\n", to_phys_addr((void *)*initrd_addr));
+
     
     if (ret) {
         klog_error("Initrd was overwritten\n");
@@ -249,12 +258,11 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
     size_t initrd_len =
         (modules->mod_end - modules->mod_start) / HEADER_BLOCK_SIZE;
 
-    unsigned int entry_num = tar_parse(&rd_list, initrd_addr, &initrd_len);
+    unsigned int entry_num = tar_parse(&rd_list, *initrd_addr, &initrd_len);
 
     rd_fs = kmalloc(entry_num * sizeof(*rd_fs));
 
     size_t node_num = initrd_build_tree(rd_list, entry_num);
-    /* klog("Parsed files num %u:\n", align_up(14, 3)); */
     slab_cache_destroy(initrd_cache);
     
 

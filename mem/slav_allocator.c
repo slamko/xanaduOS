@@ -276,7 +276,7 @@ void slab_free(struct slab_cache *cache, void *obj) {
             chunk_addr = slab_find_chunk(cache->slabs_full, obj_addr);
         }
 
-        klog("Chunk aligned addr: %p\n", chunk_addr);
+        /* klog("Chunk aligned addr: %p\n", chunk_addr); */
         if (!chunk_addr) {
             return;
         }
