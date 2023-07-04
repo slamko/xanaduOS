@@ -2,6 +2,7 @@
 #define INITRD_H
 
 #include <stdint.h>
+#include "fs/fs.h"
 
 struct module_struct {
     uintptr_t mod_start;
@@ -11,6 +12,6 @@ struct module_struct {
 } __attribute__((packed));
 
 
-int initrd_init(struct module_struct *modules);
+int initrd_init(struct module_struct *modules, struct fs_node *root);
 
 #endif

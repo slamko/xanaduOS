@@ -89,21 +89,12 @@ void *kmalloc_align(size_t siz, size_t alignment) {
     }
 
     struct block_header *header;
-    size_t aligned_alloc_size = siz - (siz % alignment);
+    size_t aligned_alloc_size = align_up(siz, alignment);
 
-    if (siz % alignment) {
-        aligned_alloc_size += alignment;
-    }
-    
-    for (header = heap_base_block;
-         ;
-         header = header->next_hole) {
-            /* fb_print_hex(header); */
+    for (header = heap_base_block; ; header = header->next_hole) {
         uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
-        if (data_base % alignment) {
-            data_base += (alignment - (data_base % alignment));
-        }
-
+        data_base = align_up(data_base, alignment);
+        
         if (header->is_hole
             && header->size >=
                 (aligned_alloc_size + (data_base - (uintptr_t)header))) {
@@ -125,7 +116,9 @@ void *kmalloc_align(size_t siz, size_t alignment) {
                 memset(new_block, 0, sizeof(*new_block));
                 new_block->magic_num = BLOCK_HEADER_MAGIC_NUM;
                 new_block->is_hole = true;
-                new_block->size = heap_end_addr - data_base - aligned_alloc_size;
+                new_block->size =
+                    heap_end_addr - data_base - aligned_alloc_size;
+
                 new_block->prev = header;
                 new_block->next = header->next;
                 new_block->next_hole = header->next_hole;

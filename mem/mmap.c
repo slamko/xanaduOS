@@ -20,7 +20,12 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
         return ret;
     }
 
-    ret = alloc_nframes(page_num, phys_addr, &pt[pte], flags);
+    if (phys_addr) {
+        ret = alloc_nframes(page_num, phys_addr, &pt[pte], flags);
+    } else {
+        ret = find_alloc_nframes(page_num, &pt[pte], flags);
+    }
+
     if (ret) {
         return ret;
     }
@@ -35,7 +40,10 @@ int kmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
 }
 
 int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, uint16_t flags) {
-    
+    size_t npages = page_align_up(node->size);
+    knmmap(cur_pd, virt_addr, 0, npages, flags);
+
+    return read_fs(node, 0, node->size, (uint8_t *)*virt_addr);
 }
 
 void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {

@@ -7,6 +7,7 @@
 #include "drivers/mouse.h"
 #include "drivers/pit.h"
 #include "drivers/serial.h"
+#include "fs/fs.h"
 #include "io.h"
 #include "ipc/pci.h"
 #include "kernel/syscall.h"
@@ -122,6 +123,9 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
 
 void rtl_master_bus(void);
 
+void run_init() {
+}
+
 void kernel_main(struct multiboot_meta *multiboot_data) {
     struct multiboot_meta hm_mb_data;
     memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data));
@@ -136,7 +140,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     paging_init(multiboot_data->mem_upper * 0x400);
     kmmap_init(SIZE_MAX);
 
-    initrd_init(&s);
+    initrd_init(&s, fs_root);
     /* map_alloc_pt(0, 0, 0); */
     /* klog("Modules addr: %x\n", s.mod_start); */
     /* buddy_test(0); */

@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct fs_node *fs_root;
+
 int read_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf) {
     if (!node || !node->read) {
         return EINVAL;

@@ -139,11 +139,7 @@ struct slab_cache *slab_cache_create_align(size_t size, size_t alignment) {
     }
     
     if (alignment) {
-        caches->size = size / alignment;
-        caches->size *= alignment;
-        if (size % alignment) {
-            caches->size += alignment;
-        }
+        caches->size = align_up(size, alignment);
     } else {
         caches->size = size;
     }
