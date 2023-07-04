@@ -11,6 +11,7 @@ struct module_struct {
     int reserved;
 } __attribute__((packed));
 
+struct fs_node *initrd_get_root(void);
 
 int initrd_init(struct module_struct *modules, struct fs_node *root);
 

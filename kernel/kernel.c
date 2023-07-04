@@ -145,6 +145,12 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* klog("Modules addr: %x\n", s.mod_start); */
     /* buddy_test(0); */
 
+    struct fs_node *root = initrd_get_root();
+    for (unsigned int i = 0; i < 2; i++) {
+        struct dirent *f = readdir_fs(root, i);
+        klog("Initrd filename: %s\n", f->name);
+    }
+
     serial_init();
 
     kbd_init();

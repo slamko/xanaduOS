@@ -35,16 +35,21 @@ struct tar_pax_header
 #define HEADER_SIZE 512
 #define HEADER_BLOCK_SIZE 1024
 
-struct initrd_entry {
-    struct tar_pax_header *header;
-    uintptr_t data;
-    struct initrd_entry *next;
-};
-
 struct initrd_node {
     struct tar_pax_header *header;
     uintptr_t data;
     size_t size;
+
+    uint32_t mode;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t type;
+
+};
+
+struct initrd_entry {
+    struct initrd_node node;
+    struct initrd_entry *next;
 };
 
 enum {
@@ -53,24 +58,26 @@ enum {
 };
 
 struct initrd_node *rd_nodes;
-struct initrd_node *nodes;
 struct fs_node *rd_fs;
 
 struct slab_cache *fs_cache;
 struct slab_cache *initrd_cache;
 
 size_t initrd_read(struct fs_node *node, uint32_t offset, size_t size, uint8_t *buf) {
-    unsigned int fd = i / 2;
-    initrd_list[fd].header = header;
-    initrd_list[fd].data = next_addr + HEADER_SIZE;
+}
 
-    rd_fs[fd].size = file_size;
-    rd_fs[fd].close = NULL;
-    rd_fs[fd].open = NULL;
-    rd_fs[fd].readdir = NULL;
-    rd_fs[fd].write = NULL;
-    rd_fs[fd].finddir = NULL;
-    rd_fs[fd].read = &initrd_read;
+struct dirent *initrd_readdir(struct fs_node *node, unsigned int id) {
+    struct dirent *dirent = kmalloc(sizeof *dirent);
+    inode_t ent_inode = node->inode + id + 1;
+    struct initrd_node *ent = &rd_nodes[ent_inode];
+
+    strcpy(dirent->name, ent->header->name, sizeof dirent->name);
+    dirent->inode = ent_inode;
+    return dirent;
+}
+
+struct fs_node *initrd_get_root(void) {
+    return &rd_fs[0];
 }
 
 unsigned int tar_parse(struct initrd_entry **rd_list,
@@ -84,21 +91,31 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
          header = (struct tar_pax_header *)next_addr) {
 
         size_t file_size = atoi(header->size, sizeof header->size, 8);
+        uint32_t gid = atoi(header->gid, sizeof header->gid, 8);
+        uint32_t uid = atoi(header->uid, sizeof header->uid, 8);
+        uint32_t mode = atoi(header->mode, sizeof header->mode, 8);
 
         if (i % 2) {
-            struct initrd_entry *next = *rd_list ? (*rd_list)->next : NULL;
+            struct initrd_entry *next = *rd_list;
             *rd_list = slab_alloc_from_cache(initrd_cache);
 
             struct initrd_entry *initrd_list = *rd_list;
             initrd_list->next = next;
-            initrd_list->data = to_uintptr(header) + HEADER_SIZE;
-            initrd_list->header = header;
+
+            initrd_list->node.size = file_size;
+            initrd_list->node.gid = gid;
+            initrd_list->node.uid = uid;
+            initrd_list->node.mode = mode;
+            initrd_list->node.type = FS_FILE;
+
+            initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
+            initrd_list->node.header = header;
+            klog("Initrd file name: %s %x\n",
+                header->name, next_addr - initrd_addr);
         }
 
         next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
 
-        klog("Initrd file name: %s %x\n",
-             header->name, next_addr - initrd_addr);
         
         i++;
     }
@@ -109,22 +126,43 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
 
 int initrd_build_fs(size_t nodes_n) {
     for (unsigned int i = 0; i < nodes_n; i++) {
-        rd_fs[i].size = rd_nodes[i].header->size;
-        rd_fs[i].close = NULL;
-        rd_fs[i].open = NULL;
-        rd_fs[i].readdir = NULL;
-        rd_fs[i].write = NULL;
-        rd_fs[i].finddir = NULL;
-        rd_fs[i].read = &initrd_read;
+        struct fs_node *node = &rd_fs[i];
+
+        strcpy(node->name, rd_nodes[i].header->name,
+               sizeof(rd_nodes[i].header->name));
+
+        node->gid = rd_nodes[i].gid;
+        node->uid = rd_nodes[i].uid;
+        node->type = rd_nodes[i].type;
+        node->mode = rd_nodes[i].mode;
+        node->size = rd_nodes[i].size;
+
+        node->close = NULL;
+        node->open = NULL;
+        node->write = NULL;
+        node->finddir = NULL;
+        node->readdir = NULL;
+
+        if (node->type == FS_DIR) {
+            node->readdir = &initrd_readdir;
+        }
+        node->read = &initrd_read;
+        node->this = node;
     }
+
+    return 0;
 }
 
 int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     unsigned int i = rd_len;
 
+    rd_nodes = kmalloc(i * sizeof(*rd_nodes));
+    klog("Create root node %x\n", rd_nodes);
+    kmalloc(32);
+
     foreach(ent, initrd_list,
-            rd_nodes[i].data = ent->data;
-            rd_nodes[i].header = ent->header;
+            memcpy(&rd_nodes[i], &ent->node, sizeof(ent->node));
+            klog("Initrd node name %s\n", ent->node.header->name);
 
             if (i == 1) {
                 break;
@@ -132,8 +170,12 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
 
             i--;
         );
+
+    struct initrd_node *root = &rd_nodes[0];
+    root->type = FS_DIR;
+    /* strcpy(root->header->name, "/", 1); */
     
-    return i;
+    return rd_len;
 }
 
 int initrd_init(struct module_struct *modules, struct fs_node *root) {
@@ -149,22 +191,22 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
         return ret;
     }
 
-    fs_cache = slab_cache_create(sizeof(struct fs_node));
+    /* fs_cache = slab_cache_create(sizeof(struct fs_node)); */
     initrd_cache = slab_cache_create(sizeof(struct initrd_entry));
    
     size_t initrd_len =
         (modules->mod_end - modules->mod_start) / HEADER_BLOCK_SIZE;
 
     unsigned int entry_num = tar_parse(&rd_list, initrd_addr, &initrd_len);
-    klog("Initrd file name: %u\n", entry_num);
 
-    rd_nodes = kmalloc(entry_num * sizeof(*rd_nodes));
     rd_fs = kmalloc(entry_num * sizeof(*rd_fs));
 
-    initrd_build_tree(rd_list, entry_num);
+    size_t node_num = initrd_build_tree(rd_list, entry_num);
+    /* klog("Parsed files num %u:\n", align_up(14, 3)); */
     slab_cache_destroy(initrd_cache);
     
-    initrd_build_fs();
+
+    initrd_build_fs(node_num);
 
     return ret;
 }

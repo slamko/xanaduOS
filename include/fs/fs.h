@@ -10,13 +10,13 @@ struct dirent;
 
 extern struct fs_node *fs_root;
 
-typedef size_t (*fs_read_f)(struct fs_node *, uint32_t, uint32_t, uint8_t *);
-typedef size_t (*fs_write_f)(struct fs_node *, uint32_t, uint32_t, uint8_t *);
+typedef size_t (*fs_read_f)(struct fs_node *, uint32_t, size_t size, uint8_t * buf);
+typedef size_t (*fs_write_f)(struct fs_node *, uint32_t, size_t size, uint8_t * buf);
 
 typedef void (*fs_open_f)(struct fs_node *);
 typedef void (*fs_close_f)(struct fs_node *);
 
-typedef struct dirent *(*fs_readdir_f)(struct fs_node *);
+typedef struct dirent *(*fs_readdir_f)(struct fs_node *, unsigned int id);
 typedef struct fs_node *(*fs_finddir_f)(struct fs_node *, char *name);
 
 struct fs_node {
@@ -47,7 +47,7 @@ int read_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf);
 
 int write_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf);
 
-struct dirent *readdir_fs(struct fs_node *node);
+struct dirent *readdir_fs(struct fs_node *node, unsigned int id);
 
 struct fs_node *finddir_fs(struct fs_node *node, char *name);
 

@@ -90,6 +90,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
 
     struct block_header *header;
     size_t aligned_alloc_size = align_up(siz, alignment);
+    /* klog("Aligned alloc size %u\n", aligned_alloc_size); */
 
     for (header = heap_base_block; ; header = header->next_hole) {
         uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
@@ -133,7 +134,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
             return (void *)data_base;
         }
     }
-    klog("not enough");
+    klog("not enough\n");
 
     heap_end_addr += PAGE_SIZE;
 

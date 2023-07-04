@@ -21,12 +21,12 @@ int write_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf) {
     return node->write(node, offset, len, buf);
 }
 
-struct dirent *readdir_fs(struct fs_node *node) {
+struct dirent *readdir_fs(struct fs_node *node, unsigned int id) {
     if (!node || !node->readdir) {
         return NULL;
     }
 
-    return node->readdir(node);
+    return node->readdir(node, id);
 }
 
 struct fs_node *finddir_fs(struct fs_node *node, char *name) {

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define INIT_HEAP_SIZE (PAGE_SIZE * PT_SIZE)
+#define INIT_HEAP_SIZE (PAGE_SIZE * PT_SIZE * 10)
 
 void *alloc_test(size_t size);
 
