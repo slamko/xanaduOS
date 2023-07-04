@@ -146,10 +146,16 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* buddy_test(0); */
 
     struct fs_node *root = initrd_get_root();
-    for (unsigned int i = 0; i < 2; i++) {
-        struct dirent *f = readdir_fs(root, i);
-        klog("Initrd filename: %s\n", f->name);
+    struct DIR *root_dir = opendir_fs(root);
+
+    for (struct dirent *ent = readdir_fs(root_dir);
+         ent;
+         ent = readdir_fs(root_dir)) {
+        
+        klog("Initrd filename: %s\n", ent->name);
     }
+
+    closedir_fs(root_dir);
 
     serial_init();
 

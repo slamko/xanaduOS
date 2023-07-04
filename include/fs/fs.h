@@ -16,7 +16,16 @@ typedef size_t (*fs_write_f)(struct fs_node *, uint32_t, size_t size, uint8_t * 
 typedef void (*fs_open_f)(struct fs_node *);
 typedef void (*fs_close_f)(struct fs_node *);
 
-typedef struct dirent *(*fs_readdir_f)(struct fs_node *, unsigned int id);
+struct DIR {
+    unsigned int ofset;
+    struct fs_node *node;
+    struct dirent *data;
+};
+
+typedef struct DIR *(*fs_opendir_f)(struct fs_node *);
+typedef void (*fs_closedir_f)(struct DIR *);
+
+typedef struct dirent *(*fs_readdir_f)(struct DIR*);
 typedef struct fs_node *(*fs_finddir_f)(struct fs_node *, char *name);
 
 struct fs_node {
@@ -32,8 +41,11 @@ struct fs_node {
     fs_write_f write;
     fs_open_f open;
     fs_close_f close;
+
     fs_readdir_f readdir;
     fs_finddir_f finddir;
+    fs_opendir_f opendir;
+    fs_closedir_f closedir;
 
     struct fs_node *this;
 };
@@ -47,7 +59,11 @@ int read_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf);
 
 int write_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf);
 
-struct dirent *readdir_fs(struct fs_node *node, unsigned int id);
+struct DIR *opendir_fs(struct fs_node *node);
+
+void closedir_fs(struct DIR *dir);
+
+struct dirent *readdir_fs(struct DIR *dir);
 
 struct fs_node *finddir_fs(struct fs_node *node, char *name);
 

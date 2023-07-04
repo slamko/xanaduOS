@@ -39,6 +39,7 @@ struct initrd_node {
     struct tar_pax_header *header;
     uintptr_t data;
     size_t size;
+    size_t sub_ent_num;
 
     uint32_t mode;
     uint32_t uid;
@@ -61,19 +62,44 @@ struct initrd_node *rd_nodes;
 struct fs_node *rd_fs;
 
 struct slab_cache *fs_cache;
+struct slab_cache *dir_cache;
 struct slab_cache *initrd_cache;
 
 size_t initrd_read(struct fs_node *node, uint32_t offset, size_t size, uint8_t *buf) {
 }
 
-struct dirent *initrd_readdir(struct fs_node *node, unsigned int id) {
-    struct dirent *dirent = kmalloc(sizeof *dirent);
-    inode_t ent_inode = node->inode + id + 1;
+struct DIR *initrd_opendir(struct fs_node *node) {
+    struct initrd_node *ent = &rd_nodes[node->inode];
+    size_t allocation = ent->sub_ent_num * sizeof(struct dirent);
+    struct DIR *dir = kmalloc(sizeof(*dir) + allocation);
+
+    dir->data = (struct dirent *)(void *)(to_uintptr(dir) + sizeof(*dir));
+    dir->node = node;
+    dir->ofset = 0;
+
+    return dir;
+}
+
+struct dirent *initrd_readdir(struct DIR *dir) {
+    inode_t ent_inode = dir->node->inode + dir->ofset + 1;
     struct initrd_node *ent = &rd_nodes[ent_inode];
+    struct initrd_node *dir_node = &rd_nodes[dir->node->inode];
+
+    if (dir->ofset >= dir_node->sub_ent_num) {
+        return NULL;
+    }
+
+    struct dirent *dirent = &dir->data[dir->ofset];
 
     strcpy(dirent->name, ent->header->name, sizeof dirent->name);
     dirent->inode = ent_inode;
+
+    dir->ofset++;
     return dirent;
+}
+
+void initrd_closedir(struct DIR *dir) {
+    kfree(dir);
 }
 
 struct fs_node *initrd_get_root(void) {
@@ -110,8 +136,8 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
             initrd_list->node.header = header;
-            klog("Initrd file name: %s %x\n",
-                header->name, next_addr - initrd_addr);
+            /* klog("Initrd file name: %s %x\n", */
+                /* header->name, next_addr - initrd_addr); */
         }
 
         next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
@@ -145,7 +171,10 @@ int initrd_build_fs(size_t nodes_n) {
 
         if (node->type == FS_DIR) {
             node->readdir = &initrd_readdir;
+            node->closedir = &initrd_closedir;
+            node->opendir = &initrd_opendir;
         }
+
         node->read = &initrd_read;
         node->this = node;
     }
@@ -156,13 +185,12 @@ int initrd_build_fs(size_t nodes_n) {
 int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     unsigned int i = rd_len;
 
-    rd_nodes = kmalloc(i * sizeof(*rd_nodes));
-    klog("Create root node %x\n", rd_nodes);
-    kmalloc(32);
+    rd_nodes = kmalloc((i + 1) * sizeof(*rd_nodes));
+    /* klog("Create root node %x\n", rd_nodes); */
 
     foreach(ent, initrd_list,
             memcpy(&rd_nodes[i], &ent->node, sizeof(ent->node));
-            klog("Initrd node name %s\n", ent->node.header->name);
+            /* klog("Initrd node name %s\n", ent->node.header->name); */
 
             if (i == 1) {
                 break;
@@ -173,7 +201,9 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
 
     struct initrd_node *root = &rd_nodes[0];
     root->type = FS_DIR;
-    /* strcpy(root->header->name, "/", 1); */
+    root->header = kmalloc(sizeof(*root->header));
+    root->sub_ent_num = 2;
+    strcpy(root->header->name, "/", 1);
     
     return rd_len;
 }
@@ -191,7 +221,7 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
         return ret;
     }
 
-    /* fs_cache = slab_cache_create(sizeof(struct fs_node)); */
+    /* dir_cache = slab_cache_create(sizeof(struct dirent)); */
     initrd_cache = slab_cache_create(sizeof(struct initrd_entry));
    
     size_t initrd_len =
@@ -210,3 +240,4 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
 
     return ret;
 }
+
