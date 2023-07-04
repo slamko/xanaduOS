@@ -10,19 +10,13 @@ struct dirent;
 
 extern struct fs_node *fs_root;
 
+struct DIR;
+
 typedef size_t (*fs_read_f)(struct fs_node *, uint32_t, size_t size, uint8_t * buf);
 typedef size_t (*fs_write_f)(struct fs_node *, uint32_t, size_t size, uint8_t * buf);
 
 typedef void (*fs_open_f)(struct fs_node *);
 typedef void (*fs_close_f)(struct fs_node *);
-
-struct DIR {
-    unsigned int ofset;
-    struct fs_node *node;
-    char data[] __attribute__((aligned(__alignof(long double))));
-    /* struct dirent *data; */
-};
-
 typedef struct DIR *(*fs_opendir_f)(struct fs_node *);
 typedef void (*fs_closedir_f)(struct DIR *);
 
@@ -55,6 +49,13 @@ struct dirent {
     char name[256];
     inode_t inode;
 };
+
+struct DIR {
+    unsigned int ofset;
+    struct fs_node *node;
+    struct dirent data[];
+};
+
 
 int read_fs(struct fs_node *node, uint32_t offset, size_t len, uint8_t *buf);
 

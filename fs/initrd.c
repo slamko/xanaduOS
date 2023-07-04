@@ -89,7 +89,7 @@ struct dirent *initrd_readdir(struct DIR *dir) {
         return NULL;
     }
 
-    struct dirent *dirent = (struct dirent *)&dir->data[dir->ofset];
+    struct dirent *dirent = &dir->data[dir->ofset];
 
     strcpy(dirent->name, ent->header->name, sizeof dirent->name);
     dirent->inode = ent_inode;
@@ -186,7 +186,6 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     unsigned int i = rd_len;
 
     rd_nodes = kmalloc((i + 1) * sizeof(*rd_nodes));
-    /* klog("Create root node %x\n", rd_nodes); */
 
     struct initrd_entry *ent = initrd_list;
     foreach(ent, 
