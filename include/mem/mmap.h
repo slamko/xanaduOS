@@ -2,6 +2,7 @@
 #define MMAP_H
 
 #include "mem/paging.h"
+#include "fs/fs.h"
 #include <stdint.h>
 
 
@@ -11,6 +12,8 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
 int kmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
           uint16_t flags);
  
+
+int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, uint16_t flags);
 
 void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num);
 

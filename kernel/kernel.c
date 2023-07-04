@@ -141,21 +141,30 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     kmmap_init(SIZE_MAX);
 
     initrd_init(&s, fs_root);
-    /* map_alloc_pt(0, 0, 0); */
-    /* klog("Modules addr: %x\n", s.mod_start); */
-    /* buddy_test(0); */
+    fs_root = initrd_get_root();
+    struct fs_node *user_main;
 
-    struct fs_node *root = initrd_get_root();
-    struct DIR *root_dir = opendir_fs(root);
+    struct DIR *root_dir = opendir_fs(fs_root);
+    /* strcmp(fs_root->name, "/"); */
 
     for (struct dirent *ent = readdir_fs(root_dir);
          ent;
          ent = readdir_fs(root_dir)) {
-        
-        klog("Initrd filename: %s\n", ent->name);
+
+        if (strcmp(ent->name, "main.o") == 0) {
+            user_main = ent->node;
+            klog("Initrd filename: %s\n", ent->name);
+        }
     }
 
     closedir_fs(root_dir);
+
+    uintptr_t user_addr;
+    kfsmmap(user_main, &user_addr, USER | R_W | PRESENT);
+
+    for (unsigned int i = 0; i < 0x100; i++) {
+        /* fb_print_hex(*(uint8_t *)(user_addr + i)); */
+    }
 
     serial_init();
 

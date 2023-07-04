@@ -64,7 +64,7 @@ uintptr_t to_phys_addr(void *virt_addr) {
     
     get_pde_pte((uintptr_t)virt_addr, &pde, &pte);
     uintptr_t phys_addr = ((uintptr_t *)cur_pd->page_tables_virt[pde])[pte];
-    phys_addr = get_tab_pure_addr((uintptr_t)phys_addr);
+    phys_addr = get_tab_pure_addr((uintptr_t)phys_addr) + page_offset;
 
     return phys_addr;
 }
@@ -169,8 +169,14 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     if (!pd || !pt) {
         return EINVAL;
     }
+
+    if (tab_present(pd->page_tables[pde])) {
+        *pt = pd->page_tables_virt;
+        return 0;
+    }
    
     pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
+    klog("PT %x\n", pd->page_tables[pde]);
     if (!pd->page_tables[pde]) {
         return ENOMEM;
     }
@@ -332,7 +338,7 @@ void page_fault(struct isr_handler_args args) {
 
     __asm__ volatile ("mov %%cr2, %0" : "=r" (fault_addr));
     if (fault_addr != last_fault_addr) {
-        klog_warn("Page fault at addr: %x\n", fault_addr); /*  */
+        klog_warn("Page fault at addr: %x\n", fault_addr); 
     }
     last_fault_addr = fault_addr;
 

@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "drivers/int.h"
+#include "kernel/error.h"
 #include "lib/slibc.h"
 #include "lib/kernel.h"
 #include "mem/allocator.h"
@@ -65,7 +66,15 @@ struct slab_cache *fs_cache;
 struct slab_cache *dir_cache;
 struct slab_cache *initrd_cache;
 
-size_t initrd_read(struct fs_node *node, uint32_t offset, size_t size, uint8_t *buf) {
+size_t initrd_read(struct fs_node *node, uint32_t offset,
+                   size_t size, uint8_t *buf) {
+    if (!buf) {
+        return 0;
+    }
+    
+    /* void *read_addr = (void *)(rd_nodes[node->inode].data + offset); */
+    /* memcpy(buf, read_addr, size); */
+    return node->size;
 }
 
 struct DIR *initrd_opendir(struct fs_node *node) {
@@ -80,6 +89,19 @@ struct DIR *initrd_opendir(struct fs_node *node) {
     return dir;
 }
 
+size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
+                   size_t size, uint16_t flags) {
+    struct initrd_node *rd_node = &rd_nodes[node->inode];
+    uintptr_t start_paddr = page_align_down(to_phys_addr(rd_node->header));
+
+    set_addrs(addrs, start_paddr, size, flags);
+    for (unsigned int i = 0; i < size; i++) {
+        addrs[i] = (start_paddr + (i * PAGE_SIZE)) | flags;
+    }
+
+    return rd_node->data - page_align_down(to_uintptr(rd_node->header));
+}
+
 struct dirent *initrd_readdir(struct DIR *dir) {
     inode_t ent_inode = dir->node->inode + dir->ofset + 1;
     struct initrd_node *ent = &rd_nodes[ent_inode];
@@ -92,7 +114,7 @@ struct dirent *initrd_readdir(struct DIR *dir) {
     struct dirent *dirent = &dir->data[dir->ofset];
 
     strcpy(dirent->name, ent->header->name, sizeof dirent->name);
-    dirent->inode = ent_inode;
+    dirent->node = &rd_fs[ent_inode];
 
     dir->ofset++;
     return dirent;

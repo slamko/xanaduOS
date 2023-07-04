@@ -15,9 +15,9 @@
 
 #define page_align_up(num) align_up(num, PAGE_SIZE) 
 
-#define align_down(num, alignment) (((num) - ((num) % (alignment)))
+#define align_down(num, alignment) ((num) - ((num) % (alignment)))
 
-#define page_align_down(num) align_down(num, PAGE_SIZE) 
+#define page_align_down(num) align_down((num), PAGE_SIZE) 
 
 typedef uint16_t pte_t;
 

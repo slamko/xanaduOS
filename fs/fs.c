@@ -68,3 +68,14 @@ void close_fs(struct fs_node *node) {
 
     node->close(node);
 }
+
+size_t mmap_fs(struct fs_node *node, uintptr_t *addrs, size_t size,
+               uint16_t flags) {
+    if (!node || !node->mmap) {
+        return 0;
+    }
+
+    return node->mmap(node, addrs, size, flags);
+}
+
+

@@ -42,10 +42,10 @@ int strcmp(const char *str, const char *cmp) {
 
     int diff = 0;
 
-    for(size_t i = 0; ; ) {
+    for(size_t i = 0; ; i++) {
         diff += str[i] - cmp[i];
-        if (str[i] <= 0 || cmp[i] <= 0) {
-            break;
+        if (!str[i] || !cmp[i]) {
+            return diff;
         }
     }
 

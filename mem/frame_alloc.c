@@ -31,7 +31,7 @@ void fa_test(size_t siz) {
     }
 
     for (unsigned int i = 0; i < 8; i++) {
-        fb_print_hex(af[i]);
+        /* fb_print_hex(af[i]); */
     }
 }
 
@@ -162,7 +162,7 @@ int find_frame_in_map(uint32_t frame_map, uintptr_t *alloc_addr,
     if ((frames[frame_map] & sub_frame_bitmap) == sub_frame_bitmap) {
         return 1;
     }
-    fb_print_hex(sub_frame_bitmap);
+    /* fb_print_hex(sub_frame_bitmap); */
 
     for (unsigned int j = MAX_BUDDY_SIZE * buddy;
          j < MAX_BUDDY_SIZE * (buddy + 1); j += nframes) {
