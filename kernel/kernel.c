@@ -150,7 +150,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     /* syscall_init(); */
 
-    /* spawn_init(&s); */
+    spawn_init(&s);
 
     while (1) {
         /* reboot(); */

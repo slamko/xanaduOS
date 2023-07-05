@@ -145,8 +145,8 @@ void pci_enumeration(void) {
                 klog("Subclass: %x\n", pci_read_reg(bus, dev, 0, 0x18));
 
                 if (header) {
-                    union bridge_bus_data bd;
-                    bd.data = pci_read_reg(bus, dev, 0, 0x18);
+                    /* union bridge_bus_data bd; */
+                    /* bd.data = pci_read_reg(bus, dev, 0, 0x18); */
                }
 
                 klog("Vendor ID bus %u, dev %u: %x, %x\n",

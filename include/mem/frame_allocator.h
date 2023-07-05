@@ -29,6 +29,4 @@ void dealloc_frame(uintptr_t addr);
 
 int find_alloc_nframes(size_t nframes, uintptr_t *alloc_addrs, uint16_t flags);
 
-int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde);
-
 #endif

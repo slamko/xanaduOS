@@ -185,7 +185,7 @@ int rtl8139_init(struct pci_dev_data *dev_data) {
 */
 
     uint8_t data[92];
-    uint8_t len = ARR_SIZE(data);
+    uint32_t len = ARR_SIZE(data);
     for (unsigned int i = len; i < len - 7; i++) {
         data[i] = 0xAA;
     }

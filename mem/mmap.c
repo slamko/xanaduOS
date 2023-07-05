@@ -1,5 +1,6 @@
 #include "mem/mmap.h"
 #include "kernel/error.h"
+#include "proc/proc.h"
 #include "mem/paging.h"
 #include "lib/kernel.h"
 #include "mem/frame_allocator.h"
@@ -15,14 +16,19 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     int ret = 0;
     page_table_t pt;
     uint16_t pde, pte;
+    struct buddy_alloc *buddy = kern_buddy;
 
-    if ((ret = buddy_alloc_frames(kern_buddy, virt_addr, page_num, 0))) {
+    if (flags & USER) {
+        buddy = user_buddy;
+    }
+
+    if ((ret = buddy_alloc_frames(buddy, virt_addr, page_num, 0))) {
         return ret;
     }
    
     get_pde_pte(*virt_addr, &pde, &pte);
 
-    ret = map_alloc_pt(pd, &pt, pde);
+    ret = map_alloc_pt(pd, &pt, pde, flags);
     if (ret) {
         return ret;
     }
@@ -32,7 +38,7 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     } else {
         ret = find_alloc_nframes(page_num, &pt[pte], flags);
     }
-    klog("Alloc phys addr %x\n", pd->page_tables[pde]);
+    klog("Alloc phys addr %x\n", (pd->page_tables_virt[pde])[pte]);
 
     if (ret) {
         return ret;
@@ -56,20 +62,26 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     int ret;
     uint16_t pde, pte;
     page_table_t pt;
+    struct buddy_alloc *buddy = kern_buddy;
+
+    if (flags & USER) {
+        buddy = user_buddy;
+    }
 
     size_t npages = (node->size / PAGE_SIZE);
     if (node->size % PAGE_SIZE) {
         npages++;
     }
+    npages *= 2;
 
-    if ((ret = buddy_alloc_frames(kern_buddy, virt_addr, npages, 0))) {
+    if ((ret = buddy_alloc_frames(buddy, virt_addr, npages, 0))) {
         return ret;
     }
 
     get_pde_pte(*virt_addr, &pde, &pte);
     klog("KFs virt addr %x\n", *virt_addr);
  
-    ret = map_alloc_pt(cur_pd, &pt, pde);
+    ret = map_alloc_pt(cur_pd, &pt, pde, flags);
     if (ret) {
         return ret;
     }

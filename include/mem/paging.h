@@ -82,7 +82,8 @@ int clone_cur_page_dir(struct page_dir *new_pd);
 
 int switch_page_dir(struct page_dir *pd);
 
-int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde);
+int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
+    uint16_t flags);
 
 int get_pde_pte(uintptr_t addr, uint16_t *pde_p, uint16_t *pte_p);
 

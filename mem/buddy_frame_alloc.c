@@ -173,7 +173,7 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
     struct free_list *free = buddy->free_area[order].free_list.next;
 
     if (buddy->free_area[order].num_free) {
-        debug_log("Free frame available\n");
+        /* debug_log("Free frame available\n"); */
         remove_free_head(buddy, order);
         set_addrs(addrs, free->addr, nframes, 0);
         set_frame_used(buddy, order, free->addr);
@@ -184,19 +184,19 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
         struct free_list *upper_fl = buddy->free_area[i].free_list.next;
         struct free_area *fa = &buddy->free_area[i];
 
-        debug_log("Search\n");
+        /* debug_log("Search\n"); */
         if (fa->num_free) {
-            klog("Found buddy %d\n", fa->num_free);
+            /* klog("Found buddy %d\n", fa->num_free); */
             remove_free_head(buddy, i);
             uintptr_t addr = buddy_slice(buddy, upper_fl->addr, i, order);
             set_addrs(addrs, addr, nframes, 0);
 
-            klog("Alloc addr %d\n", addrs[0]);
+            /* klog("Alloc addr %d\n", addrs[0]); */
             return 0;
         }
     }
     
-    klog("Divide frames\n");
+    /* klog("Divide frames\n"); */
     size_t nnof = nframes / 2;
     if (buddy_alloc_frames_max_order(buddy, addrs, nnof, flags)) {
         return ENOMEM;
@@ -225,7 +225,7 @@ int buddy_alloc_frames(struct buddy_alloc *buddy,
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
 
-        klog("Current number of frames %d\n", cur_nframes);
+        /* klog("Current number of frames %d\n", cur_nframes); */
         ret = buddy_alloc_frames_max_order(buddy,
                                            addrs + (i * MAX_BUDDY_NFRAMES),
                                            cur_nframes, flags);
@@ -312,7 +312,7 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     size_t map_offset = 0;
     for (unsigned int i = 0; i < MAX_ORDER; i++) {
         buddy->maps[i] = (uintptr_t *)&buddy->maps[MAX_ORDER + map_offset];
-        klog("Buddy map addr %x\n", buddy->maps[i]);
+        /* klog("Buddy map addr %x\n", buddy->maps[i]); */
         map_offset += mem_size
             / (PAGE_SIZE * MAP_SIZE * (1 << i) * sizeof (*buddy->maps));
     }

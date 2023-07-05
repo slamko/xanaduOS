@@ -5,7 +5,7 @@ CC=gcc
 INCLUDE=-I../include -Iinclude
 NUL_OPT=-O0
 OPT=$(NUL_OPT)
-C_ARGS=-c -std=c11 -nostdlib -fno-builtin -fno-stack-protector -Wall -Wno-unused-parameter -Wno-unused-function -Wextra  $(INCLUDE) 
+C_ARGS=-c -std=c11 -nostdlib -fno-builtin -fno-stack-protector -Wall -Wno-unused-variable -Werror -Wno-unused-parameter -Wno-unused-function -Wextra  $(INCLUDE) 
 START_FILE=start
 X86=i386
 X86_64=x86_64

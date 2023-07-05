@@ -1,5 +1,6 @@
 #include "proc/proc.h"
 #include "drivers/fb.h"
+#include "mem/buddy_alloc.h"
 #include "mem/frame_allocator.h"
 #include "lib/kernel.h"
 #include "mem/paging.h"
@@ -19,6 +20,8 @@ void usermode_main(void);
 
 static uintptr_t usermode_text_start;
 static uintptr_t usermode_text_end;
+
+struct buddy_alloc *user_buddy;
 
 #define USER_STACK_SIZE 4
 
@@ -66,8 +69,9 @@ int exec_init(void) {
 }
 
 void spawn_init(struct module_struct *mods) {
-
+    user_buddy = buddy_alloc_create(0x100000, 0x40000000);
     initrd_init(mods, fs_root);
+    
     fs_root = initrd_get_root();
     struct fs_node *user_main;
 
@@ -106,9 +110,13 @@ void spawn_init(struct module_struct *mods) {
 
     uintptr_t user_esp[USER_STACK_SIZE];
     knmmap(cur_pd, user_esp, 0, USER_STACK_SIZE, USER | R_W | PRESENT); 
-    user_esp[0] += (0x1000 - 0x100);
+    user_esp[0] += (USER_STACK_SIZE - 1) * 0x1000;
     klog("User stack pointer %x\n", user_esp[0]);
 
     klog("\nElf entry point %x\n", user_entry);
+
+    flush_tlb();
+    /* *(char *)(void *)user_esp[0] = 'a'; */
+    /* fb_putc(*(char *)(void *)user_esp[0]); */
     jump_usermode(user_entry, *user_esp);
 }
