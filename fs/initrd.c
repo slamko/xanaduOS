@@ -77,11 +77,19 @@ size_t initrd_read(struct fs_node *node, uint32_t offset,
     return node->size;
 }
 
+void print_node(struct fs_node *node) {
+    klog("Node name: %s\n", node->name);
+    klog("Node inode: %u\n", node->inode);
+    klog("Node sub entry num: %u\n", rd_nodes[node->inode].sub_ent_num);
+    klog("Node type: %d\n", node->type);
+}
+
 struct DIR *initrd_opendir(struct fs_node *node) {
     struct initrd_node *ent = &rd_nodes[node->inode];
     size_t allocation = ent->sub_ent_num * sizeof(struct dirent);
     struct DIR *dir = kmalloc(sizeof(*dir) + allocation);
 
+    klog("Root sub entry num %d\n", rd_nodes[0].sub_ent_num);
     /* dir->data = (struct dirent *)(void *)(to_uintptr(dir) + sizeof(*dir)); */
     dir->node = node;
     dir->ofset = 0;
@@ -94,14 +102,10 @@ size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
     struct initrd_node *rd_node = &rd_nodes[node->inode];
     uintptr_t start_paddr = page_align_down(to_phys_addr(rd_node->header));
 
-    klog("Inode %d\n", node->inode);
     klog("Virt et phys map addr %x : %x\n", to_uintptr(rd_node->header),
          to_phys_addr(rd_node->header));
 
     set_addrs(addrs, start_paddr, size, flags);
-    for (unsigned int i = 0; i < size; i++) {
-        addrs[i] = (start_paddr + (i * PAGE_SIZE)) | flags;
-    }
 
     return rd_node->data - page_align_down(to_uintptr(rd_node->header));
 }
@@ -111,13 +115,16 @@ struct dirent *initrd_readdir(struct DIR *dir) {
     struct initrd_node *ent = &rd_nodes[ent_inode];
     struct initrd_node *dir_node = &rd_nodes[dir->node->inode];
 
+    /* print_node(&rd_fs[ent_inode]); */
+    /* print_node(&rd_fs[dir->node->inode]); */
+    klog("Dir offset %d - %d\n", dir->node->inode, dir_node->sub_ent_num);
+
     if (dir->ofset >= dir_node->sub_ent_num) {
         return NULL;
     }
 
     struct dirent *dirent = &dir->data[dir->ofset];
-
-    strcpy(dirent->name, ent->header->name, sizeof dirent->name);
+    strcpy(dirent->name, ent->header->name, sizeof(ent->header->name));
     dirent->node = &rd_fs[ent_inode];
 
     dir->ofset++;
@@ -162,8 +169,6 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
             initrd_list->node.header = header;
-            /* klog("Initrd file addr: %x\n", to_phys_addr((void *)initrd_addr)); */
-                /* header->name, next_addr - initrd_addr); */
         }
 
         next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
@@ -203,6 +208,8 @@ int initrd_build_fs(size_t nodes_n) {
             node->opendir = &initrd_opendir;
         }
 
+        klog("FS Build node %d\n", rd_nodes[0].sub_ent_num);
+        klog("FS Build node %d\n", sizeof(*node));
         node->read = &initrd_read;
         node->this = node;
     }
@@ -218,7 +225,6 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     struct initrd_entry *ent = initrd_list;
     foreach(ent, 
             memcpy(&rd_nodes[i], &ent->node, sizeof(ent->node));
-            /* klog("Initrd node name %s\n", ent->node.header->name); */
 
             if (i == 1) {
                 break;
@@ -230,19 +236,29 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     struct initrd_node *root = &rd_nodes[0];
     root->type = FS_DIR;
     root->header = kmalloc(sizeof(*root->header));
-    root->sub_ent_num = 2;
+    root->sub_ent_num = rd_len;
     strcpy(root->header->name, "/", 1);
     
-    return rd_len;
+    klog("Initrd node name %x\n", root->sub_ent_num);
+    klog("Nodes num %d\n", rd_nodes[0].sub_ent_num);
+
+    return rd_len + 1;
 }
 
 int initrd_init(struct module_struct *modules, struct fs_node *root) {
     uintptr_t *initrd_addr;
-    size_t npages = (modules->mod_end - modules->mod_start) / PAGE_SIZE;
+    size_t mod_size = modules->mod_end - modules->mod_start;
+    size_t npages = mod_size / PAGE_SIZE;
+    if (mod_size % PAGE_SIZE) {
+        npages++;
+    }
+    
     struct initrd_entry *rd_list;
 
     int ret;
+    /* npages = 1; */
     initrd_addr = kmalloc(npages * sizeof(*initrd_addr));
+    klog("Page num %d\n", npages);
     ret = knmmap(cur_pd, initrd_addr, modules->mod_start, npages, R_W | PRESENT);
     klog("Parsed files num %x:\n", to_phys_addr((void *)*initrd_addr));
 
@@ -260,12 +276,10 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
 
     unsigned int entry_num = tar_parse(&rd_list, *initrd_addr, &initrd_len);
 
-    rd_fs = kmalloc(entry_num * sizeof(*rd_fs));
-
     size_t node_num = initrd_build_tree(rd_list, entry_num);
     slab_cache_destroy(initrd_cache);
     
-
+    rd_fs = kmalloc(node_num * sizeof(*rd_fs));
     initrd_build_fs(node_num);
 
     return ret;

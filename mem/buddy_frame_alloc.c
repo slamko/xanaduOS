@@ -99,8 +99,8 @@ static inline void remove_free_head(order_t order) {
     
     struct free_list *new_next = f_area->free_list.next->next;
 
-    /* fb_print_hex((uintptr_t)f_area->free_list.next); */
     kfree(f_area->free_list.next);
+    fb_print_hex((uintptr_t)f_area->free_list.next);
     f_area->free_list.next = new_next;
     f_area->num_free --;
 }
@@ -151,13 +151,13 @@ static uintptr_t buddy_slice(uintptr_t addr,
                 ((PAGE_SIZE * (1 << start)) / 2);
 
     insert_buddy(&next_order_fl, start - 1, sec_buddy_addr);
+    /* debug_log("Buddy addr %x\n", addr); */
    
     if (start - 1 > target) {
         return buddy_slice(addr, start - 1, target);
     }
     
     set_frame_used(target, addr);
-    /* debug_log("Buddy addr %x\n", addr); */
     return addr;
 }
 
@@ -168,7 +168,7 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
     struct free_list *free = free_area[order].free_list.next;
 
     if (free_area[order].num_free) {
-        /* debug_log("Free frame available\n"); */
+        debug_log("Free frame available\n");
         remove_free_head(order);
         set_addrs(addrs, free->addr, nframes, 0);
         set_frame_used(order, free->addr);
@@ -177,18 +177,18 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
 
     for (unsigned int i = order + 1; i < MAX_ORDER; i++) {
         struct free_list *upper_fl = free_area[i].free_list.next;
-        /* debug_log("Search\n"); */
         struct free_area *fa = &free_area[i];
 
         if (fa->num_free) {
             remove_free_head(i);
+            /* debug_log("Search\n"); */
             uintptr_t addr = buddy_slice(upper_fl->addr, i, order);
             set_addrs(addrs, addr, nframes, 0);
             return 0;
         }
     }
     
-    /* klog("Divide frames\n"); */
+    klog("Divide frames\n");
     size_t nnof = nframes / 2;
     if (buddy_alloc_frames_max_order(addrs, nnof, flags)) {
         return ENOMEM;
@@ -215,8 +215,8 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
         if (cur_nframes > MAX_BUDDY_NFRAMES) {
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
-        /* klog("Current number of frames %d\n", cur_nframes); */
 
+        klog("Current number of frames %d\n", cur_nframes);
         ret = buddy_alloc_frames_max_order(addrs + (i * MAX_BUDDY_NFRAMES),
                                            cur_nframes, flags);
 

@@ -25,6 +25,7 @@
 #include "drivers/initrd.h"
 #include "mem/mmap.h"
 #include <stdint.h>
+#include <elf.h>
 
 void jump_usermode(void);
 void usermode_main(void);
@@ -151,18 +152,19 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
          ent;
          ent = readdir_fs(root_dir)) {
 
-        if (strcmp(ent->name, "main.o") == 0) {
+        if (strcmp(ent->name, "hello") == 0) {
             user_main = ent->node;
-            klog("Initrd filename: %s\n", ent->name);
         }
     }
 
     closedir_fs(root_dir);
 
-    uintptr_t user_addr[4096];
+    klog("Initrd filename: %s\n", user_main->name);
+    uintptr_t user_addr[64];
+    kfsmmap(user_main, user_addr,R_W | PRESENT);
     klog("Modules addr: %x\n", s.mod_start);
-    kfsmmap(user_main, user_addr, USER | R_W | PRESENT);
-    klog("Main user file inode %u\n", user_main->inode);
+    /* klog("Main user file inode %u\n", user_main->inode); */
+    /* while(1); */
 
     for (unsigned int i = 0; i < 0x100; i++) {
         /* fb_print_hex(*(uint8_t *)(*user_addr + i)); */

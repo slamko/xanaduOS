@@ -57,21 +57,27 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, uint16_t flags) {
     uint16_t pde, pte;
     page_table_t pt;
 
-    size_t npages = page_align_up(node->size);
+    size_t npages = (node->size / PAGE_SIZE);
+    if (node->size % PAGE_SIZE) {
+        npages++;
+    }
+
     if ((ret = buddy_alloc_frames(virt_addr, npages, 0))) {
         return ret;
     }
+    klog("File map addr %x\n", *virt_addr);
 
     get_pde_pte(*virt_addr, &pde, &pte);
-    klog("File map addr %x\n", *virt_addr);
  
     ret = map_alloc_pt(cur_pd, &pt, pde);
     if (ret) {
         return ret;
     }
 
-    mmap_fs(node, pt + pte, npages, flags);
-    klog("Mapped phys addr %x\n", pt[pte]);
+    /* cur_pd->page_tables_virt[pde] = pt; */
+    mmap_fs(node, &pt[pte], npages, flags);
+    klog("Mapped virt addr %x %x\n", ((page_table_t)cur_pd->page_tables_virt[pde])[pte], pt[pte + 1]);
+    /* ((page_table_t)cur_pd->page_tables_virt[pde])[pte] = pt[pte]; */
 
     flush_pages(*virt_addr, npages);
     klog("Map fs file %s with size %u\n", node->name, node->size);

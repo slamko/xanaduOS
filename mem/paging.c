@@ -160,7 +160,7 @@ uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     uintptr_t phys_addr;
     *new_pt = slab_alloc_from_cache(slab_cache);
     phys_addr = to_phys_addr(*new_pt);
-    memset(*new_pt, 0, PAGE_SIZE);
+    memset(*new_pt, 0x0, PAGE_SIZE);
 
     return phys_addr | flags;
 }
@@ -171,7 +171,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     }
 
     if (tab_present(pd->page_tables[pde])) {
-        *pt = pd->page_tables_virt;
+        *pt = &pd->page_tables_virt[pde];
         return 0;
     }
    
@@ -182,6 +182,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     }
     
     pd->page_tables_virt[pde] = to_uintptr(*pt);
+    /* *pt = (page_table_t)pd->page_tables_virt[pde]; */
     return 0;
 }
 
@@ -309,6 +310,7 @@ void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte) {
 
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(cur_pd, pde)) {
+        klog_warn("Page table not present\n");
         int ret;
         page_table_t pt;
 
@@ -324,6 +326,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
 
         flush_page(get_ident_phys_page_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
+        klog_warn("Page not present\n");
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
         find_alloc_frame(pt_entry, R_W | PRESENT | USER);
     }
