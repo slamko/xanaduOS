@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-unsigned int i = 0;
+struct buddy_alloc *kern_buddy;
 
 int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
            size_t page_num, uint16_t flags) {
@@ -16,7 +16,7 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     page_table_t pt;
     uint16_t pde, pte;
 
-    if ((ret = buddy_alloc_frames(virt_addr, page_num, 0))) {
+    if ((ret = buddy_alloc_frames(kern_buddy, virt_addr, page_num, 0))) {
         return ret;
     }
    
@@ -62,7 +62,7 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
         npages++;
     }
 
-    if ((ret = buddy_alloc_frames(virt_addr, npages, 0))) {
+    if ((ret = buddy_alloc_frames(kern_buddy, virt_addr, npages, 0))) {
         return ret;
     }
 
@@ -83,7 +83,7 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
 }
 
 void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {
-    buddy_free_frames(virt_addr, page_num);
+    buddy_free_frames(kern_buddy, virt_addr, page_num);
 
     uint16_t pde, pte;
     get_pde_pte(virt_addr, &pde, &pte);
@@ -102,7 +102,7 @@ void kmunmap(struct page_dir *pd, uintptr_t virt_addr) {
 int kmmap_init(size_t mem_limit) {
     int ret = 0;
     
-    ret = buddy_alloc_init(0x100000, mem_limit);
+    kern_buddy = buddy_alloc_create(0xD0000000, 0xFFFFFFFF);
     if (ret) {
         return ret;
     }

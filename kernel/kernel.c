@@ -146,9 +146,11 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     apic_init();
     rtc_init();
 
-    syscall_init();
+    /* buddy_test(0); */
 
-    spawn_init(&s);
+    /* syscall_init(); */
+
+    /* spawn_init(&s); */
 
     while (1) {
         /* reboot(); */

@@ -127,7 +127,6 @@ void paging_init(size_t pmem_limit) {
 
     heap_init(pt_base_addr);
     slab_alloc_init(pt_base_addr);
-    /* ret = buddy_alloc_init(pmem_limit); */
     ret = frame_alloc_init(pmem_limit);
 
     if (ret) {

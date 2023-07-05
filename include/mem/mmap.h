@@ -20,4 +20,6 @@ void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num);
 
 int kmmap_init(size_t mem_limit);
 
+extern struct buddy_alloc *kern_buddy;
+
 #endif

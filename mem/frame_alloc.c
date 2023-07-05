@@ -226,7 +226,7 @@ int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
     }
 
     page_dir->page_tables[pde] = alloc_pt(&pt, flags);
-    page_dir->page_tables_virt[pde] = to_uintptr(pt);
+    page_dir->page_tables_virt[pde] = pt;
     
     for (unsigned int i = 0; i < PT_SIZE; i++) {
         ret = map_frame(pt, i, flags);

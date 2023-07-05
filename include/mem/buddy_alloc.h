@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include "mem/paging.h"
 
+struct buddy_alloc;
+
 void buddy_test(size_t mem);
 
 static inline void set_addrs(uintptr_t *addrs, uintptr_t base,
@@ -14,17 +16,15 @@ static inline void set_addrs(uintptr_t *addrs, uintptr_t base,
     }
 }
 
-int buddy_alloc_init(size_t mem_start, size_t mem_limit);
+void buddy_free_frames(struct buddy_alloc *buddy, uintptr_t addr, size_t nframes);
 
-int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags);
+int buddy_alloc_frames(struct buddy_alloc *buddy,
+                        uintptr_t *addrs, size_t nframes, uint16_t flags);
 
-int buddy_alloc_frame(uintptr_t *addr, uint16_t flags);
+void buddy_free_frame(struct buddy_alloc *buddy, uintptr_t addr);
 
-int buddy_alloc_at_addr(uintptr_t base, uintptr_t *addrs, size_t nframes,
-                        uint16_t flags);
+int buddy_alloc_frame(struct buddy_alloc *buddy, uintptr_t *addr, uint16_t flags);
 
-void buddy_free_frames(uintptr_t addr, size_t nframes);
-
-void buddy_free_frame(uintptr_t addr);
+struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit);
 
 #endif
