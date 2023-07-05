@@ -1,47 +1,16 @@
-section .data
-    syscall_msg db "In kernel", 10, 0
-    legacy_msg db "Using legacy int", 10, 0
 
 section .bss
     _sysenter_avl resb 1
 
-section .usermode.data
-    usermsg db "Hello", 10, 0
-    
-section .usermode.text
-extern kernel_int_stack_end
-global sysenter
-global usermode_main
-extern sysenter
-extern sys_write
-    
-usermode_main:
-    ret
-    jmp userloop
-    push 0
-    push 0
-    push 0
-    push 6
-    push usermsg
-    push sys_write
-    push 2
-    call sysenter
-    
-userloop:
-    jmp userloop
-    
-    
 section .text
 
-extern SYSCALL_MAX_ARGS_NUM
-extern fb_newline
-extern fb_print_num
+extern kernel_int_stack_end
+
 usermode_bootstrap:
     mov eax, cs
     and eax, 0x3
     jz loop
 
-    ;; int 0x80
     call usermode
     
 loop:
@@ -52,24 +21,27 @@ SYSENTER_ESP equ 0x175
 SYSENTER_EIP equ 0x176
 EFLAGS_ID    equ 0x200000
 
+extern syscall_exec
+
 get_eip:
     mov eax, [esp]
     ret
 
-extern syscall_handler
 scall_wrapper:
     push ecx
     push edx
 
     lea ebp, [ecx + 5*4 + 4]
-    mov edi, [ebp]
+    mov edi, [ebp + 4]              ; store number of arguments
 
 _push_args:
     push dword [ebp + edi*4 + 4]
     dec edi
-    jnz _push_args
+    jnz _push_args              ; push variadic args
 
-    call [ebp + 4] 
+    push dword [ebp]              ; syscall number
+    call syscall_exec
+    add esp, 4
     push eax
 
     mov eax, 4
@@ -121,37 +93,6 @@ _sysenter_setup:
 _legacy_setup:
     ret
 
-sysenter:
-    test byte [_sysenter_avl], 0
-    jnz _legacy
-
-    push ebx
-    push esp
-    push ebp
-    push esi
-    push edi
-
-    mov ecx, esp
-    mov edx, _after
-    sysenter
-
-    push legacy_msg
-    call fb_print_black
-    
-    jmp _after
-
-_legacy:
-    ret
-    ;; int 0x80
-    
-_after:
-    pop edi
-    pop esi
-    pop ebp
-    pop esp
-    pop ebx
-    ret
-
 global jump_usermode
 extern usermode
 extern fb_print_black    
@@ -175,8 +116,6 @@ jump_usermode:
     sti
     push usermode_bootstrap
     iret
-    ;; call fb_print_hex 
-    ;; ret
 
 global ltr
 ltr:
