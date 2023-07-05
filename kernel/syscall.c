@@ -1,4 +1,5 @@
 #include "kernel/syscall.h"
+#include "lib/kernel.h"
 #include "drivers/fb.h"
 #include "drivers/keyboard.h"
 #include <stdarg.h>
@@ -59,6 +60,7 @@ int syscall_exec(int num, ...) {
 
     int ret = syscall_table[num](args);
 
+    /* klog("Syscall return status: %d\n", ret); */
     va_end(args);
     return ret;
 }

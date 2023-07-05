@@ -4,6 +4,14 @@
 #include "lib/kernel.h"
 #include "mem/paging.h"
 #include "mem/allocator.h"
+#include "fs/fs.h"
+#include "lib/kernel.h"
+#include "lib/slibc.h"
+#include "mem/mmap.h"
+#include "drivers/initrd.h"
+#include "kernel/syscall.h"
+
+#include <elf.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -11,8 +19,6 @@ void usermode_main(void);
 
 static uintptr_t usermode_text_start;
 static uintptr_t usermode_text_end;
-
-void jump_usermode(void);
 
 uintptr_t proc_esp;
 
@@ -55,4 +61,52 @@ int exec_init(void) {
     proc_esp = get_ident_phys_page_addr(pde, end_pte + 1);
     
     return ret;
+}
+
+void spawn_init(struct module_struct *mods) {
+
+    initrd_init(mods, fs_root);
+    fs_root = initrd_get_root();
+    struct fs_node *user_main;
+
+    struct DIR *root_dir = opendir_fs(fs_root);
+    /* strcmp(fs_root->name, "/"); */
+
+    for (struct dirent *ent = readdir_fs(root_dir);
+         ent;
+         ent = readdir_fs(root_dir)) {
+
+        if (strcmp(ent->name, "init") == 0) {
+            klog("Initrd filename: %s\n", ent->name);
+            user_main = ent->node;
+        }
+    }
+
+    closedir_fs(root_dir);
+
+    uintptr_t user_addr[64];
+    size_t data_off;
+
+    if (kfsmmap(user_main, user_addr, &data_off, USER | R_W | PRESENT)) {
+        klog_error("Failed to map init executable into memory\n");
+    }
+
+    klog("Modules addr: %x\n", mods->mod_start);
+
+    for (unsigned int i = 0; i < 0x100; i++) {
+        fb_print_hex(*(uint8_t *)(*user_addr + i + data_off));
+    }
+    fb_print_black((char *)(*user_addr + data_off));
+
+    Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
+    klog("Elf entry point %x\n", elf->e_entry);
+    uintptr_t user_eip = elf->e_entry;
+
+    uintptr_t user_esp;
+    kmmap(cur_pd, &user_esp, 0, USER | R_W | PRESENT); 
+    user_esp += (0x1000 - 0x100);
+    klog("User stack pointer %x\n", user_esp);
+
+
+    /* jump_usermode(user_eip, user_esp); */
 }

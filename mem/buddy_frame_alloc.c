@@ -100,7 +100,7 @@ static inline void remove_free_head(order_t order) {
     struct free_list *new_next = f_area->free_list.next->next;
 
     kfree(f_area->free_list.next);
-    fb_print_hex((uintptr_t)f_area->free_list.next);
+    /* fb_print_hex((uintptr_t)f_area->free_list.next); */
     f_area->free_list.next = new_next;
     f_area->num_free --;
 }
@@ -216,7 +216,7 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
 
-        klog("Current number of frames %d\n", cur_nframes);
+        /* klog("Current number of frames %d\n", cur_nframes); */
         ret = buddy_alloc_frames_max_order(addrs + (i * MAX_BUDDY_NFRAMES),
                                            cur_nframes, flags);
 

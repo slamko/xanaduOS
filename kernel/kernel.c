@@ -24,11 +24,11 @@
 #include "net/ethernet/rtl8139.h"
 #include "drivers/initrd.h"
 #include "mem/mmap.h"
+#include "kernel/error.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <elf.h>
 
-void jump_usermode(void);
 void usermode_main(void);
 void apic_init(void);
 void lookup_pci_dev(void);
@@ -123,11 +123,6 @@ void print_multi_boot_data(struct multiboot_meta *mb) {
     /* fb_print_hex(mb->cmdline); */
 }
 
-void rtl_master_bus(void);
-
-void run_init() {
-}
-
 void kernel_main(struct multiboot_meta *multiboot_data) {
     struct multiboot_meta hm_mb_data;
     memcpy(&hm_mb_data, multiboot_data, sizeof(hm_mb_data));
@@ -141,42 +136,6 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     paging_init(multiboot_data->mem_upper * 0x400);
     kmmap_init(SIZE_MAX);
-
-    initrd_init(&s, fs_root);
-    fs_root = initrd_get_root();
-    struct fs_node *user_main;
-
-    struct DIR *root_dir = opendir_fs(fs_root);
-    /* strcmp(fs_root->name, "/"); */
-
-    for (struct dirent *ent = readdir_fs(root_dir);
-         ent;
-         ent = readdir_fs(root_dir)) {
-
-        if (strcmp(ent->name, "hello") == 0) {
-            user_main = ent->node;
-        }
-    }
-
-    closedir_fs(root_dir);
-
-    klog("Initrd filename: %s\n", user_main->name);
-    uintptr_t user_addr[64];
-    size_t data_off;
-    if (kfsmmap(user_main, user_addr, &data_off, R_W | PRESENT)) {
-
-    }
-
-    klog("Modules addr: %x\n", s.mod_start);
-
-    for (unsigned int i = 0; i < 0x100; i++) {
-        /* fb_print_hex(*(uint8_t *)(*user_addr + i)); */
-    }
-    /* fb_print_black((char *)(*user_addr + data_off)); */
-
-    Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
-    klog("Elf entry point %x\n", elf->e_entry);
-
     serial_init();
 
     kbd_init();
@@ -188,25 +147,8 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     rtc_init();
 
     syscall_init();
-    /* buddy_test(64); */
-/*
-    void * a = alloc_test(4);
-    void *b = alloc_test(8245);
-    kfree(a);
-    a = alloc_test(1025);
-    kfree(b);
 
-    slab_test(); */
-        /* pci_enumeration(); */
-
-    /* initrd_init(NULL); */
-    /* floppy_init(); */
-    /* slab_test(); */
-
-    /* ata_init(); */
-    /* shell_start(); */
-
-    jump_usermode();
+    spawn_init(&s);
 
     while (1) {
         /* reboot(); */

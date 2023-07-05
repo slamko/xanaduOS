@@ -175,13 +175,12 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     }
    
     pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
-    klog("PT %x\n", pd->page_tables[pde]);
+    /* klog("PT %x\n", pd->page_tables[pde]); */
     if (!pd->page_tables[pde]) {
         return ENOMEM;
     }
     
     pd->page_tables_virt[pde] = *pt;
-    /* *pt = (page_table_t)pd->page_tables_virt[pde]; */
     return 0;
 }
 
@@ -209,7 +208,7 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
 
         if (pt[i] & USER && pt[i] & PRESENT) {
             if (find_alloc_frame(&new_pt[i], flags)) {
-                klog("alloc frame failed\n");
+                klog_error("Frame allocation failed\n");
                 return ENOMEM;
             }
             

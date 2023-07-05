@@ -3,6 +3,7 @@
 
 #include "drivers/int.h"
 #include <stddef.h>
+#include <stdint.h>
 
 extern const unsigned int SYSCALL_MAX_ARGS_NUM;
 
@@ -13,6 +14,8 @@ enum {
     SYS_READ = 0,
     SYS_WRITE = 1,
 };
+
+void jump_usermode(uintptr_t eip, uintptr_t esp);
 
 int syscall_handler(int ecx, int edx, unsigned int num, ...);
 int syscall(unsigned int num, ...);

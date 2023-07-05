@@ -11,8 +11,6 @@ usermode_bootstrap:
     and eax, 0x3
     jz loop
 
-    call usermode
-    
 loop:
     jmp loop
 
@@ -45,7 +43,7 @@ _push_args:
     push eax
 
     mov eax, 4
-    mul dword [ebp]
+    mul dword [ebp + 4]         ; number of args
     add esp, eax
 
     pop eax
@@ -101,6 +99,8 @@ extern fb_print_hex
 extern proc_esp
 
 jump_usermode:
+    mov ebp, esp
+    
     cli
     mov ax, 0x23
     mov ds, ax
@@ -108,13 +108,12 @@ jump_usermode:
     mov fs, ax
     mov gs, ax
 
-    mov eax, esp
     push dword 0x23
-    push eax
+    push dword [ebp + 8]
     pushfd
     push 0x1B
     sti
-    push usermode_bootstrap
+    push dword [ebp + 4]
     iret
 
 global ltr

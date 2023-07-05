@@ -208,8 +208,7 @@ int initrd_build_fs(size_t nodes_n) {
             node->opendir = &initrd_opendir;
         }
 
-        klog("FS Build node %d\n", rd_nodes[0].sub_ent_num);
-        klog("FS Build node %d\n", sizeof(*node));
+        /* klog("FS Build node %d\n", rd_nodes[0].sub_ent_num); */
         node->read = &initrd_read;
         node->this = node;
     }
@@ -239,9 +238,6 @@ int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     root->sub_ent_num = rd_len;
     strcpy(root->header->name, "/", 1);
     
-    klog("Initrd node name %x\n", root->sub_ent_num);
-    klog("Nodes num %d\n", rd_nodes[0].sub_ent_num);
-
     return rd_len + 1;
 }
 
@@ -258,7 +254,8 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
     int ret;
     /* npages = 1; */
     initrd_addr = kmalloc(npages * sizeof(*initrd_addr));
-    klog("Page num %d\n", npages);
+    klog("Initrd map page num %d\n", npages);
+
     ret = knmmap(cur_pd, initrd_addr, modules->mod_start, npages, R_W | PRESENT);
     klog("Parsed files num %x:\n", to_phys_addr((void *)*initrd_addr));
 

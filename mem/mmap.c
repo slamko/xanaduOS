@@ -16,6 +16,7 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     page_table_t pt;
     uint16_t pde, pte;
 
+    klog("Alloc phys addr %x\n", page_num);
     if ((ret = buddy_alloc_frames(virt_addr, page_num, 0))) {
         return ret;
     }
@@ -32,8 +33,6 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     } else {
         ret = find_alloc_nframes(page_num, &pt[pte], flags);
     }
-
-    klog("ARRA Page addr: %x\n", pt[pte]);
 
     if (ret) {
         return ret;
@@ -66,7 +65,6 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     if ((ret = buddy_alloc_frames(virt_addr, npages, 0))) {
         return ret;
     }
-    klog("File map addr %x\n", *virt_addr);
 
     get_pde_pte(*virt_addr, &pde, &pte);
  
