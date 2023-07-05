@@ -169,13 +169,13 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
         return EINVAL;
     }
 
+    klog("PT %x\n", pd->page_tables[pde]);
     if (tab_present(pd->page_tables[pde])) {
         *pt = pd->page_tables_virt[pde];
         return 0;
     }
    
     pd->page_tables[pde] = alloc_pt(pt, R_W | PRESENT);
-    /* klog("PT %x\n", pd->page_tables[pde]); */
     if (!pd->page_tables[pde]) {
         return ENOMEM;
     }

@@ -28,9 +28,11 @@ struct free_area {
     size_t num_free;
 };
 
-struct free_area free_area[MAX_ORDER];
+/* struct buddy_alloc { */
+    struct free_area free_area[MAX_ORDER];
 
-uint32_t *buddy_maps[MAX_ORDER];
+    uint32_t *buddy_maps[MAX_ORDER];
+/* }; */
 
 static inline uint8_t get_buddy_order(size_t nframes) {
     if (nframes > MAX_BUDDY_NFRAMES) {
@@ -188,7 +190,7 @@ int buddy_alloc_frames_max_order(uintptr_t *addrs, size_t nframes,
         }
     }
     
-    klog("Divide frames\n");
+    /* klog("Divide frames\n"); */
     size_t nnof = nframes / 2;
     if (buddy_alloc_frames_max_order(addrs, nnof, flags)) {
         return ENOMEM;
@@ -216,7 +218,7 @@ int buddy_alloc_frames(uintptr_t *addrs, size_t nframes, uint16_t flags) {
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
 
-        /* klog("Current number of frames %d\n", cur_nframes); */
+        klog("Current number of frames %d\n", cur_nframes);
         ret = buddy_alloc_frames_max_order(addrs + (i * MAX_BUDDY_NFRAMES),
                                            cur_nframes, flags);
 

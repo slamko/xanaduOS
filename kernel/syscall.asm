@@ -114,6 +114,7 @@ jump_usermode:
     push 0x1B
     sti
     push dword [ebp + 4]
+    call fb_print_hex
     iret
 
 global ltr
