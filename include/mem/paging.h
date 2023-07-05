@@ -38,7 +38,7 @@ typedef uintptr_t * page_table_t;
 struct page_dir {
     uintptr_t *page_tables;
 
-    uintptr_t *page_tables_virt;
+    page_table_t *page_tables_virt;
 
     uintptr_t pd_phys_addr;
 };

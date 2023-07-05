@@ -37,7 +37,7 @@ struct page_dir init_pd;
 struct page_dir *cur_pd;
 
 static uintptr_t init_page_tables[PT_SIZE] __attribute__((aligned(PAGE_SIZE)));
-static uintptr_t init_page_tables_virt[PT_SIZE]; 
+static page_table_t init_page_tables_virt[PT_SIZE]; 
 
 static uintptr_t kernel_page_table[KERNEL_INIT_PT_COUNT * PT_SIZE]
     __attribute__((aligned(PAGE_SIZE)));
@@ -102,8 +102,7 @@ int page_tables_init(void) {
             | USER
             ;
 
-        init_pd.page_tables_virt[768 + i] =
-            (uintptr_t)&kernel_page_table[PT_SIZE * i];
+        init_pd.page_tables_virt[768 + i] = &kernel_page_table[PT_SIZE * i];
     }
 
     ret = add_isr_handler(14, &page_fault, 0);
@@ -171,7 +170,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
     }
 
     if (tab_present(pd->page_tables[pde])) {
-        *pt = &pd->page_tables_virt[pde];
+        *pt = pd->page_tables_virt[pde];
         return 0;
     }
    
@@ -181,7 +180,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde) {
         return ENOMEM;
     }
     
-    pd->page_tables_virt[pde] = to_uintptr(*pt);
+    pd->page_tables_virt[pde] = *pt;
     /* *pt = (page_table_t)pd->page_tables_virt[pde]; */
     return 0;
 }
@@ -257,7 +256,7 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
             }
             
             new_pd->page_tables[i] = new_pt_paddr;
-            new_pd->page_tables_virt[i] = to_uintptr(new_pt);
+            new_pd->page_tables_virt[i] = new_pt;
         } else {
             new_pd->page_tables_virt[i] = pd->page_tables_virt[i];
             new_pd->page_tables[i] = pd->page_tables[i];

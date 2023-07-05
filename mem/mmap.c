@@ -48,7 +48,8 @@ int kmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     return knmmap(pd, virt_addr, phys_addr, 1, flags);
 }
 
-int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, uint16_t flags) {
+int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
+            uint16_t flags) {
     if (!node) {
         return -1;
     }
@@ -74,10 +75,8 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, uint16_t flags) {
         return ret;
     }
 
-    /* cur_pd->page_tables_virt[pde] = pt; */
-    mmap_fs(node, &pt[pte], npages, flags);
+    *off = mmap_fs(node, &pt[pte], npages, flags);
     klog("Mapped virt addr %x %x\n", ((page_table_t)cur_pd->page_tables_virt[pde])[pte], pt[pte + 1]);
-    /* ((page_table_t)cur_pd->page_tables_virt[pde])[pte] = pt[pte]; */
 
     flush_pages(*virt_addr, npages);
     klog("Map fs file %s with size %u\n", node->name, node->size);

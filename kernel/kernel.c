@@ -24,6 +24,7 @@
 #include "net/ethernet/rtl8139.h"
 #include "drivers/initrd.h"
 #include "mem/mmap.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <elf.h>
 
@@ -161,15 +162,20 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     klog("Initrd filename: %s\n", user_main->name);
     uintptr_t user_addr[64];
-    kfsmmap(user_main, user_addr,R_W | PRESENT);
+    size_t data_off;
+    if (kfsmmap(user_main, user_addr, &data_off, R_W | PRESENT)) {
+
+    }
+
     klog("Modules addr: %x\n", s.mod_start);
-    /* klog("Main user file inode %u\n", user_main->inode); */
-    /* while(1); */
 
     for (unsigned int i = 0; i < 0x100; i++) {
         /* fb_print_hex(*(uint8_t *)(*user_addr + i)); */
     }
-    fb_print_black((char *)*user_addr);
+    /* fb_print_black((char *)(*user_addr + data_off)); */
+
+    Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
+    klog("Elf entry point %x\n", elf->e_entry);
 
     serial_init();
 
@@ -200,7 +206,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* ata_init(); */
     /* shell_start(); */
 
-    /* jump_usermode(); */
+    jump_usermode();
 
     while (1) {
         /* reboot(); */

@@ -42,7 +42,7 @@ usermode_bootstrap:
     jz loop
 
     ;; int 0x80
-    ;; call usermode
+    call usermode
     
 loop:
     jmp loop
