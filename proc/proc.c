@@ -79,7 +79,6 @@ void spawn_init(struct module_struct *mods) {
     struct fs_node *user_main;
 
     struct DIR *root_dir = opendir_fs(fs_root);
-    /* strcmp(fs_root->name, "/"); */
 
     for (struct dirent *ent = readdir_fs(root_dir);
          ent;
