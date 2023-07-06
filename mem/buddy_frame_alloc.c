@@ -183,7 +183,7 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
     struct free_list *free = buddy->free_area[order].free_list.next;
 
     if (buddy->free_area[order].num_free) {
-        debug_log("Free frame available\n");
+        /* debug_log("Free frame available\n"); */
         remove_free_head(buddy, order);
         set_addrs(addrs, free->addr, nframes, 0);
         set_frame_used(buddy, order, free->addr);
@@ -340,7 +340,7 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
         *cur_free = slab_alloc_from_cache(buddy->fl_slab);
 
         if (!*cur_free) {
-            klog("Ret null\n");
+            /* klog("Ret null\n"); */
             return NULL;
         }
 
@@ -390,9 +390,7 @@ void buddy_test(size_t mem) {
         klog("Buddy alloc at %x\n", addrs[i]);
     }
     
-    return;
     if (buddy_alloc_frames(buddy, addrs, 1, 0)) {
-
         klog("ALloc error\n");
     }
 

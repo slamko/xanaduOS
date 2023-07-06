@@ -149,6 +149,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* syscall_init(); */
 
     buddy_test(0);
+    /* slab_test(); */
 
     /* spawn_init(&s); */
 

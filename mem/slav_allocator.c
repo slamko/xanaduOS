@@ -23,15 +23,15 @@ struct slab {
     struct slab *next;
     struct slab *prev;
     struct slab_chunk base_chunk;
-    struct slab_chunk chunks[];
+    struct slab_chunk *chunks;
 };
 
 struct slab_cache {
     struct slab_cache *next;
     struct slab_cache *prev;
-    struct slab *slabs_free;
-    struct slab *slabs_full;
-    struct slab *slabs_partial;
+    struct slab slabs_free;
+    struct slab slabs_full;
+    struct slab slabs_partial;
     size_t size;
     size_t alignment;
 };
@@ -40,26 +40,37 @@ typedef struct slab_chunk slab_chunk_t;
 
 #define SLAB_CAPACITY 16
 
-static uintptr_t slab_heap_addr;
 struct slab_cache *caches;
 
 #define to_chunk_ptr(uint_ptr) ((struct slab_chunk *)(void *)(uint_ptr))
 
-static inline int slab_remove_from_cache(struct slab **slab_list) {
-    if (!*slab_list) {
-        return 1;
+static inline int slab_remove_from_cache(struct slab *slab) {
+    if (!slab) {
+        return EINVAL;
     }
     
-    *slab_list = (*slab_list)->next; 
+    if (slab->next) {
+        slab->next->prev = slab->prev;
+    }
+    slab->prev->next = slab->next; 
     return 0;
 }
 
-static inline int slab_insert_in_cache(struct slab **slab_list,
+static inline int slab_insert_in_cache(struct slab *slab_list,
     struct slab *slab) {
 
-    struct slab *next = *slab_list;
-    *slab_list = slab; 
-    (*slab_list)->next = next;
+    if (!slab_list) {
+        return EINVAL;
+    }
+
+    struct slab *next = slab_list->next;
+    slab_list->next = slab; 
+    slab->prev = slab_list;
+    slab->next = next;
+
+    if (next) {
+        next->prev = slab;
+    }
     return 0;
 }
 
@@ -85,7 +96,8 @@ int slab_alloc_slab_align(struct slab_cache *cache, size_t align) {
     }
 
     uintptr_t slab_chunks_addr = to_uintptr(new_slab) + sizeof(*new_slab);
-    struct slab_chunk **cur_chunk = (struct slab_chunk **)&new_slab->chunks;
+    new_slab->chunks = to_chunk_ptr(slab_chunks_addr);
+    struct slab_chunk **cur_chunk = &new_slab->chunks;
     struct slab_chunk *prev_chunk = &new_slab->base_chunk;
     /* klog("Slab alloc\n"); */
 
@@ -113,7 +125,7 @@ int slab_alloc_slab_align(struct slab_cache *cache, size_t align) {
             }
 
             ch = *cur_chunk;
-            ch->data_addr = chunk_addr;
+            ch->data_addr = chunk_addr + sizeof(*ch);
             ch->next =
                 to_chunk_ptr(chunk_addr + chunk_meta_size);
         }
@@ -190,26 +202,25 @@ void slab_cache_destroy(struct slab_cache *cache) {
         cache->next->prev = cache->prev;
     }
 
-    slab_destroy_slab(cache, cache->slabs_free);
-    slab_destroy_slab(cache, cache->slabs_partial);
-    slab_destroy_slab(cache, cache->slabs_full);
+    slab_destroy_slab(cache, cache->slabs_free.next);
+    slab_destroy_slab(cache, cache->slabs_partial.next);
+    slab_destroy_slab(cache, cache->slabs_full.next);
 
     kfree(cache);
 }
 
 static void print_all_slabs(struct slab_cache *cache) {
 
-    if (cache->slabs_partial) {
-        klog("Partial slabs %x\n", cache->slabs_partial);
-        klog("Partial slabs next %x\n", cache->slabs_partial->next);
+    if (cache->slabs_partial.next) {
+        klog("Partial slabs %x\n", cache->slabs_partial.next);
     }
-    if (cache->slabs_free) {
-        klog("Free slabs next %x\n", cache->slabs_free->next);
-        klog("Free slabs %x\n", cache->slabs_free);
+    if (cache->slabs_free.next) {
+        klog("Free slabs  %x\n", cache->slabs_free.next);
+        klog("Free slabs next %x\n", cache->slabs_free.next->next);
     }
-    if (cache->slabs_full) {
-        klog("Full slabs next %x\n", cache->slabs_full->next);
-        klog("Full slabs %x\n", cache->slabs_full);
+    if (cache->slabs_full.next) {
+        klog("Full slabs %x\n", cache->slabs_full.next);
+        klog("Full slabs next%x\n", cache->slabs_full.next->next);
     }
 }
 
@@ -218,11 +229,11 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         return NULL;
     }
 
-    struct slab *non_full_slabs = cache->slabs_partial;
+    struct slab *non_full_slabs = cache->slabs_partial.next;
     
     if (!non_full_slabs) {
         /* debug_log("No partially full slabs\n"); */
-        non_full_slabs = cache->slabs_free;
+        non_full_slabs = cache->slabs_free.next;
     }
 
     // no more free or partially free slabs
@@ -231,12 +242,12 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
             return NULL;
         }
 
-        non_full_slabs = cache->slabs_free;
-        debug_log("Alloc new slab %x\n", non_full_slabs);
+        non_full_slabs = cache->slabs_free.next;
+        /* debug_log("Alloc new slab %x\n", non_full_slabs); */
     }
 
     struct slab_chunk **free_chunk = &non_full_slabs->base_chunk.next_free;
-    /* klog("Slab alloc%x\n", (*free_chunk)->data_addr); */
+    /* klog("Slab alloc%x\n", (*free_chunk)->slab); */
     uintptr_t free_addr = ((*free_chunk)->data_addr);
 
     if ((*free_chunk)->next_free) {
@@ -248,14 +259,14 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
     // it was the last free chunk in the slab
     // adding the slab to full slabs linked list
     if (non_full_slabs->num_free == 0) {
-        klog("Last free chunk %x\n", non_full_slabs);
-        slab_remove_from_cache(&cache->slabs_partial);
+        /* klog("Last free chunk %x\n", non_full_slabs); */
+        slab_remove_from_cache(cache->slabs_partial.next);
         slab_insert_in_cache(&cache->slabs_full, non_full_slabs);
-        print_all_slabs(cache);
+        /* print_all_slabs(cache); */
     } else if (non_full_slabs->num_free == SLAB_CAPACITY - 1) {
-        slab_remove_from_cache(&cache->slabs_free);
+        slab_remove_from_cache(cache->slabs_free.next);
         slab_insert_in_cache(&cache->slabs_partial, non_full_slabs);
-        print_all_slabs(cache);
+        /* print_all_slabs(cache); */
     }
     
     return (void *)free_addr;
@@ -286,18 +297,16 @@ uintptr_t slab_find_chunk(struct slab *slab, uintptr_t seek_addr) {
 void slab_free(struct slab_cache *cache, void *obj) {
     uintptr_t chunk_addr = 0;
     uintptr_t obj_addr = (uintptr_t)obj;
-    klog_warn("Slab free was called\n");
 
     if (!cache->alignment) {
         chunk_addr = obj_addr - sizeof(struct slab_chunk);
     } else {
-        chunk_addr = slab_find_chunk(cache->slabs_partial, obj_addr);
+        chunk_addr = slab_find_chunk(cache->slabs_partial.next, obj_addr);
 
         if (!chunk_addr) {
-            chunk_addr = slab_find_chunk(cache->slabs_full, obj_addr);
+            chunk_addr = slab_find_chunk(cache->slabs_full.next, obj_addr);
         }
 
-        /* klog("Chunk aligned addr: %p\n", chunk_addr); */
         if (!chunk_addr) {
             return;
         }
@@ -308,12 +317,12 @@ void slab_free(struct slab_cache *cache, void *obj) {
     chunk->slab->num_free++;
 
     if (chunk->slab->num_free == 1) {
-        debug_log("FREE: move to partial list\n");
-        slab_remove_from_cache(&cache->slabs_full);
+        /* debug_log("FREE: move to partial list\n"); */
+        slab_remove_from_cache(chunk->slab);
         slab_insert_in_cache(&cache->slabs_partial, chunk->slab);
     } else if (chunk->slab->num_free == SLAB_CAPACITY) {
-        debug_log("FREE: add free slab list\n");
-        slab_remove_from_cache(&cache->slabs_partial);
+        /* debug_log("FREE: add free slab list\n"); */
+        slab_remove_from_cache(chunk->slab);
         slab_insert_in_cache(&cache->slabs_free, chunk->slab);
     }
     
@@ -367,7 +376,7 @@ void slab_test(void) {
 
     slab_cache_destroy(cache);
 */
-    struct slab_cache *cache = slab_cache_create_align(0x1000, 0x1000);
+    struct slab_cache *cache = slab_cache_create(0x100);
     void *ps[20];
    /* return; */
     /* ps[0] = slab_alloc_from_cache(cache); */
@@ -385,7 +394,7 @@ void slab_test(void) {
 
     slab_free(cache, ps[15]);
     ps[15] = slab_alloc_from_cache(cache);
-    /* klog("Slab alloc: %p\n", ps[15]); */
+    klog("Slab alloc: %p\n", ps[15]);
 
     slab_cache_destroy(cache);
     /* klog("Hello"); */
