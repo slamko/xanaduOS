@@ -68,8 +68,11 @@ int exec_init(void) {
     return ret;
 }
 
+void usermode() {
+    while(1);
+}
+
 void spawn_init(struct module_struct *mods) {
-    user_buddy = buddy_alloc_create(0x100000, 0x40000000);
     initrd_init(mods, fs_root);
     
     fs_root = initrd_get_root();
@@ -98,21 +101,21 @@ void spawn_init(struct module_struct *mods) {
     }
 
     klog("Modules addr: %x\n", mods->mod_start);
-
-    for (unsigned int i = 0; i < 0x100; i++) {
-        /* fb_print_hex(*(uint8_t *)(*user_addr + i + data_off)); */
-    }
     fb_print_black((char *)(*user_addr + data_off));
 
     Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
     uintptr_t user_eip = elf->e_entry;
-    uintptr_t user_entry = *user_addr + data_off + user_eip;
+    uintptr_t user_entry = *user_addr + data_off + user_eip + 0x100A;
 
     uintptr_t user_esp[USER_STACK_SIZE];
     knmmap(cur_pd, user_esp, 0, USER_STACK_SIZE, USER | R_W | PRESENT); 
     user_esp[0] += (USER_STACK_SIZE - 1) * 0x1000;
     klog("User stack pointer %x\n", user_esp[0]);
 
+    for (unsigned int i = 0; i < 0x100; i++) {
+        /* fb_print_hex(*(uint8_t *)(user_entry + i)); */
+    }
+ 
     klog("\nElf entry point %x\n", user_entry);
 
     flush_tlb();

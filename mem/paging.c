@@ -317,7 +317,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         int ret;
         page_table_t pt;
 
-        ret = map_alloc_pt(cur_pd, &pt, pde, R_W | PRESENT);
+        ret = map_alloc_pt(cur_pd, &pt, pde, USER | R_W | PRESENT);
         if (ret) {
             return ret;
         }

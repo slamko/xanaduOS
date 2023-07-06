@@ -18,7 +18,9 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off, uint16_t fl
 
 void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num);
 
-int kmmap_init(size_t mem_limit);
+int kmmap_init();
+
+extern struct buddy_alloc *user_buddy;
 
 extern struct buddy_alloc *kern_buddy;
 

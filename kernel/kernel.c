@@ -135,7 +135,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     idt_init();
 
     paging_init(multiboot_data->mem_upper * 0x400);
-    kmmap_init(SIZE_MAX);
+    kmmap_init();
     serial_init();
 
     kbd_init();
@@ -146,9 +146,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     apic_init();
     rtc_init();
 
-    /* buddy_test(0); */
-
-    /* syscall_init(); */
+    syscall_init();
 
     spawn_init(&s);
 

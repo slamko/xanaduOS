@@ -111,10 +111,11 @@ void kmunmap(struct page_dir *pd, uintptr_t virt_addr) {
     knmunmap(pd, virt_addr, 1);
 }
 
-int kmmap_init(size_t mem_limit) {
+int kmmap_init() {
     int ret = 0;
     
     kern_buddy = buddy_alloc_create(0xD0000000, 0xFFFFFFFF);
+    user_buddy = buddy_alloc_create(0x100000, 0x40000000);
     if (ret) {
         return ret;
     }
