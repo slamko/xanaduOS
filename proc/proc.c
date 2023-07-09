@@ -24,18 +24,27 @@ void usermode_main(void);
 uintptr_t proc_esp;
 uintptr_t user_entry;
 
-struct task;
+struct task {
+    struct page_dir *pd;
+    uintptr_t eip;
+    uintptr_t esp;
+};
+
+struct task *task;
 
 int fork(void) {
     int ret;
-    struct page_dir new_pd;
+
+    task = kmalloc(sizeof(*task));
+    task->pd = kzalloc(0, sizeof *task->pd);
+    /* klog("FIrst pd addr: %x\n", task->pd->page_tables[0]); */
     
-    if (clone_cur_page_dir(&new_pd)) {
+    if (clone_cur_page_dir(task->pd)) {
         klog("error");
         return 1;
     }
 
-    ret = switch_page_dir(&new_pd);
+    ret = switch_page_dir(task->pd);
 
     if (ret) {
         klog_error("Switch directory failed\n");
@@ -70,6 +79,9 @@ int execve(const char *exec) {
 
     fork();
 
+    /* return 0; */
+    /* klog("Modules addr: %x\n", task->pd->page_tables[0]); */
+
     uintptr_t user_addr[64];
     size_t data_off;
 
@@ -77,7 +89,6 @@ int execve(const char *exec) {
         panic("Failed to map init executable into memory\n", ENOMEM);
     }
 
-    /* klog("Modules addr: %x\n", mods->mod_start); */
 
     Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
     uintptr_t user_eip = elf->e_entry;

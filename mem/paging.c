@@ -52,30 +52,35 @@ static uintptr_t last_fault_addr;
 
 static struct slab_cache *slab_cache;
 
-uintptr_t to_phys_addr(uintptr_t virt_addr) {
+uintptr_t to_phys_addr(struct page_dir *pd, uintptr_t virt_addr) {
     pte_t pde;
     pte_t pte;
     pte_t page_offset = virt_addr & 0xfff;
 
-    if (!cur_pd) {
+    if (!pd) {
         return virt_addr -
             (virt_kernel_addr ? virt_kernel_addr : VADDR);
     }
     
     get_pde_pte(virt_addr, &pde, &pte);
-    if (!cur_pd->page_tables_virt[pde]) {
+    if (!pd->page_tables_virt[pde]) {
         klog_error("Requested virtual address not mapped %x\n", virt_addr);
         return 0;
     }
     
-    uintptr_t phys_addr = cur_pd->page_tables_virt[pde][pte];
+    uintptr_t phys_addr = pd->page_tables_virt[pde][pte];
     phys_addr = get_tab_pure_addr(phys_addr) + page_offset;
 
+    /* klog("Pddd: %x\n", cur_pd->page_tables_virt[768]); */
     return phys_addr;
 }
 
-uintptr_t ptr_to_phys_addr(void *ptr) {
-    return to_phys_addr(to_uintptr(ptr));
+/* uintptr_t to_phys_addr(uintptr_t virt_addr) { */
+
+
+
+uintptr_t ptr_to_phys_addr(struct page_dir *pd, void *ptr) {
+    return to_phys_addr(pd, to_uintptr(ptr));
 }
 
 void flush_pages(uintptr_t *virt_addr, size_t npages) {
@@ -110,7 +115,7 @@ int page_tables_init(void) {
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
         init_pd.page_tables[768 + i] =
-            to_phys_addr(to_uintptr(&kernel_page_table[PT_SIZE * i]))
+            ptr_to_phys_addr(cur_pd, &kernel_page_table[PT_SIZE * i])
             | PRESENT
             | R_W
             | GLOBAL
@@ -134,8 +139,8 @@ void paging_init(size_t pmem_limit) {
     __asm__ volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
 
     int ret;
-    rodata_start = to_phys_addr(rodata_start);
-    rodata_end = to_phys_addr(rodata_end);
+    rodata_start = to_phys_addr(cur_pd, rodata_start);
+    rodata_end = to_phys_addr(cur_pd, rodata_end);
 
     pt_base_addr = kernel_end_addr + (PAGE_SIZE * 1);
 
@@ -149,7 +154,7 @@ void paging_init(size_t pmem_limit) {
 
     init_pd.page_tables_virt = init_page_tables_virt;
     init_pd.page_tables = init_page_tables;
-    init_pd.pd_phys_addr = to_phys_addr(to_uintptr(&init_page_tables));
+    init_pd.pd_phys_addr = to_phys_addr(cur_pd, to_uintptr(&init_page_tables));
 
     ret = page_tables_init();
     cur_pd = &init_pd;
@@ -167,7 +172,7 @@ void paging_init(size_t pmem_limit) {
 uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     uintptr_t phys_addr;
     *new_pt = slab_alloc_from_cache(slab_cache);
-    phys_addr = to_phys_addr(to_uintptr(*new_pt));
+    phys_addr = ptr_to_phys_addr(cur_pd, *new_pt);
     memset(*new_pt, 0x0, PAGE_SIZE);
 
     return phys_addr | flags;
@@ -201,7 +206,8 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
 
 int copy_page_data(uintptr_t src, uintptr_t dest);
 
-int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
+int clone_page_table(struct page_dir *pd,
+                     page_table_t pt, page_table_t *new_pt_ptr,
                      uintptr_t *new_pt_phys_addr) {
     page_table_t new_pt;
     
@@ -211,7 +217,7 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
     
     /* *new_pt_ptr = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, new_pt_phys_addr); */
     *new_pt_ptr = slab_alloc_from_cache(slab_cache);
-    *new_pt_phys_addr = to_phys_addr(to_uintptr(*new_pt_ptr));
+    *new_pt_phys_addr = ptr_to_phys_addr(pd, *new_pt_ptr);
     new_pt = *new_pt_ptr;
 
     if (!new_pt) {
@@ -247,10 +253,10 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     }
 
     new_pd->page_tables = slab_alloc_from_cache(slab_cache);
-    ptables_phys = to_phys_addr(to_uintptr(new_pd->page_tables));
+    ptables_phys = ptr_to_phys_addr(pd, new_pd->page_tables);
     new_pd->page_tables_virt = slab_alloc_from_cache(slab_cache);
 
-    klog("Slab allocaed page tables\n");
+    /* klog("Slab allocaed page tables\n"); */
     
     if (!new_pd->page_tables || !new_pd->page_tables_virt) {
         return ENOMEM;
@@ -259,7 +265,7 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     new_pd->pd_phys_addr = ptables_phys;
 
     for (unsigned int i = 0; i < PT_SIZE; i++) {
-        if (pd->page_tables[i] & USER && pd->page_tables[i] & PRESENT) {
+        if (pd->page_tables[i] & USER && tab_present(pd->page_tables[i])) {
             int ret;
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
@@ -267,7 +273,7 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
 
             klog("Clone the page table\n");
 
-            ret = clone_page_table(pt, &new_pt, &new_pt_paddr);
+            ret = clone_page_table(pd, pt, &new_pt, &new_pt_paddr);
 
             if (ret) {
                 return ret;
@@ -278,6 +284,9 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
         } else {
             new_pd->page_tables_virt[i] = pd->page_tables_virt[i];
             new_pd->page_tables[i] = pd->page_tables[i];
+
+            /* klog("cl Pddd: %x\n", cur_pd->page_tables_virt[768][1]); */
+            /* klog("Clone pt %x\n", new_pd->page_tables[i]); */
         }
     }
 
@@ -291,7 +300,7 @@ int clone_cur_page_dir(struct page_dir *new_pd) {
 int switch_page_dir_asm(uintptr_t pd);
 
 int switch_page_dir(struct page_dir *pd) {
-    fb_print_hex(pd->pd_phys_addr);
+    /* fb_print_hex(pd->pd_phys_addr); */
     cur_pd = pd;
     switch_page_dir_asm(pd->pd_phys_addr);
     return 0;

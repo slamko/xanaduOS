@@ -99,9 +99,10 @@ size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
                    size_t size, uint16_t flags) {
     struct initrd_node *rd_node = &rd_nodes[1];
 
-    klog("Virt et phys map addr %x\n", rd_node->header);
-    uintptr_t start_paddr = page_align_down(ptr_to_phys_addr(rd_node->header));
+    uintptr_t start_paddr = page_align_down(
+        ptr_to_phys_addr(cur_pd, rd_node->header));
 
+    klog("Virt et phys map addr %x\n", size);
     set_addrs(addrs, start_paddr, size, flags);
 
     return rd_node->data - page_align_down(to_uintptr(rd_node->header));

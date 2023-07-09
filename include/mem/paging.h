@@ -43,8 +43,6 @@ struct page_dir {
     uintptr_t pd_phys_addr;
 };
 
-uintptr_t to_phys_addr(uintptr_t virt_addr);
-
 void paging_init(size_t pmem_amount);
 
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd);
@@ -71,9 +69,6 @@ void flush_tlb(void);
 
 void flush_page(uintptr_t virt_addr);
 
-int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
-                     uintptr_t *pt_phys_addr);
-
 int clone_cur_page_dir(struct page_dir *new_pd);
 
 int switch_page_dir(struct page_dir *pd);
@@ -89,13 +84,18 @@ void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte);
 
 extern struct page_dir *cur_pd;
 
-
-uintptr_t ptr_to_phys_addr(void *ptr);
-
 void page_fault(struct isr_handler_args *args);
 
 void flush_pages(uintptr_t *virt_addr, size_t npages);
 
 void flush_pages_contiguous(uintptr_t virt_addr, size_t npages);
+
+uintptr_t to_phys_addr(struct page_dir *pd, uintptr_t virt_addr);
+
+uintptr_t ptr_to_phys_addr(struct page_dir *pd, void *ptr);
+
+int clone_page_table(struct page_dir *pd,
+                     page_table_t pt, page_table_t *new_pt_ptr,
+uintptr_t *new_pt_phys_addr);
 
 #endif

@@ -109,7 +109,7 @@ void rtl_handler(struct isr_handler_args *args) {
 }
 
 void rtl_send(uint32_t *buf, size_t size) {
-    uintptr_t phys_addr = ptr_to_phys_addr(buf);
+    uintptr_t phys_addr = ptr_to_phys_addr(cur_pd, buf);
     uint16_t stat_port = dev->io_addr + RTL_TX_STAT + (tx_d * 0x4);
 
     while(!(inl(stat_port) & TX_OWN));

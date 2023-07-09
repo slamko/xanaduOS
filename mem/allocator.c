@@ -176,14 +176,14 @@ void *kmalloc(size_t siz) {
 
 void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys) {
     void *virt = kmalloc_align(siz, align);
-    *phys = ptr_to_phys_addr(virt);
+    *phys = ptr_to_phys_addr(cur_pd, virt);
 
     return virt;
 }
 
 void *kmalloc_phys(size_t siz, uintptr_t *phys) {
     void *virt = kmalloc(siz);
-    *phys = ptr_to_phys_addr(virt);
+    *phys = ptr_to_phys_addr(cur_pd, virt);
 
     return virt;
 }
