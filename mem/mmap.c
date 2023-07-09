@@ -11,6 +11,9 @@
 #include <stdint.h>
 
 struct buddy_alloc *kern_buddy;
+
+struct buddy_alloc *user_buddy;
+
 int knmmap_table(struct page_dir *pd, uintptr_t **pt_ptr,
                  uintptr_t *virt_addr, size_t page_num, uint16_t flags) {
     int ret = 0;
@@ -29,10 +32,10 @@ int knmmap_table(struct page_dir *pd, uintptr_t **pt_ptr,
     get_pde_pte(*virt_addr, &pde, &pte);
 
     ret = map_alloc_pt(pd, &pt, pde, flags);
+    klog("Alloc phys addr %x\n", (pd->page_tables_virt[pde])[pte]);
     if (ret) {
         return ret;
     }
-    klog("Alloc phys addr %x\n", (pd->page_tables_virt[pde])[pte]);
 
     *pt_ptr = &pt[pte];
 

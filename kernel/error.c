@@ -22,15 +22,24 @@ __attribute__((weak)) void reboot() {
 }
 
 // non fatal error occured
-void error(const char *msg, struct error_state stat) {
+
+void error(const char *msg, err_t type) {
     klog_error(msg);
     klog_error("Error type: ");
-    fb_print_num(stat.err);
+    fb_print_num(type);
 }
 
-// fatal error occured. Can not continue
-int panic(const char *msg, struct error_state stat) {
+// fatal error occured. Can not proceed
+
+int panic(const char *msg, err_t type) {
+    klog_error("\nPANIC\n");
     klog_error(msg);
+
+    while(1) {
+        cli();
+        halt();
+    }
+
     reboot();
 
     return 0;

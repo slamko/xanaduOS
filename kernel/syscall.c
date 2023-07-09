@@ -1,8 +1,9 @@
 #include "kernel/syscall.h"
-#include "drivers/int.h"
-#include "lib/kernel.h"
 #include "drivers/fb.h"
+#include "drivers/int.h"
 #include "drivers/keyboard.h"
+#include "lib/kernel.h"
+#include "proc/proc.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -14,13 +15,20 @@ void scall_wrapper(struct isr_handler_args *args);
 
 typedef int (*syscall_f)(va_list args);
 
-#define SYSCALL_DEFINE1(name, type1, type2)                                    \
+#define SYSCALL_DEFINE0(name)                                                  \
+    int STRCAT(name, _v)(va_list args) {                                       \
+        (void)args;                                                            \
+        int ret = name();                                                      \
+        return ret;                                                            \
+    }
+
+#define SYSCALL_DEFINE1(name, type1)                                           \
     int STRCAT(name, _v)(va_list args) {                                       \
         va_list sc_args;                                                       \
         va_copy(sc_args, args);                                                \
         type1 STRCAT(arg, 1) = va_arg(sc_args, type1);                         \
                                                                                \
-        int ret = name(STRCAT(arg, 1));                        \
+        int ret = name(STRCAT(arg, 1));                                        \
         va_end(sc_args);                                                       \
         return ret;                                                            \
     }
@@ -37,7 +45,7 @@ typedef int (*syscall_f)(va_list args);
         return ret;                                                            \
     }
 
-#define SYSCALL_DEFINE3(name, type1, type2, type3)                            \
+#define SYSCALL_DEFINE3(name, type1, type2, type3)                             \
     int STRCAT(name, _v)(va_list args) {                                       \
         va_list sc_args;                                                       \
         va_copy(sc_args, args);                                                \
@@ -45,15 +53,16 @@ typedef int (*syscall_f)(va_list args);
         type2 STRCAT(arg, 2) = va_arg(sc_args, type2);                         \
         type3 STRCAT(arg, 3) = va_arg(sc_args, type2);                         \
                                                                                \
-        int ret = name(STRCAT(arg, 1), STRCAT(arg, 2), STRCAT(arg, 3)); \
+        int ret = name(STRCAT(arg, 1), STRCAT(arg, 2), STRCAT(arg, 3));        \
         va_end(sc_args);                                                       \
         return ret;                                                            \
     }
 
-
 SYSCALL_DEFINE2(sys_write, const char *, size_t);
 
 SYSCALL_DEFINE2(sys_read, void *, size_t);
+
+SYSCALL_DEFINE0(sys_fork);
 
 syscall_f syscall_table[] = {
     &sys_read_v,
@@ -64,6 +73,8 @@ int sys_write(const char *msg, size_t len) {
     fb_nprint_black(msg, len);
     return len;
 }
+
+int sys_fork(void) { return fork(); }
 
 int sys_read(void *buf, size_t count) {
     uint32_t *read_buf = (uint32_t *)buf;
@@ -92,9 +103,7 @@ int syscall_exec(int num, ...) {
     return ret;
 }
 
-void scall_s(struct isr_handler_args *a) {
-    klog("Int 0x80 %x\n", a->esp);
-}
+void scall_s(struct isr_handler_args *a) { klog("Int 0x80 %x\n", a->esp); }
 
 void syscall_init(void) {
     add_isr_handler(0x80, &scall_wrapper, IDTD_RING3 | IDTD_DEFAULT);

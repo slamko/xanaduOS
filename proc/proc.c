@@ -1,5 +1,6 @@
 #include "proc/proc.h"
 #include "drivers/fb.h"
+#include "kernel/error.h"
 #include "mem/buddy_alloc.h"
 #include "mem/frame_allocator.h"
 #include "lib/kernel.h"
@@ -18,18 +19,15 @@
 
 void usermode_main(void);
 
-static uintptr_t usermode_text_start;
-static uintptr_t usermode_text_end;
-
-struct buddy_alloc *user_buddy;
-
 #define USER_STACK_SIZE 4
 
 uintptr_t proc_esp;
 uintptr_t user_entry;
 
-int exec_init(void) {
-    int ret = 0;
+struct task;
+
+int fork(void) {
+    int ret;
     struct page_dir new_pd;
     
     if (clone_cur_page_dir(&new_pd)) {
@@ -39,65 +37,44 @@ int exec_init(void) {
 
     ret = switch_page_dir(&new_pd);
 
-    __asm__ volatile ("mov $_usermode_text_start, %0" : "=r"(usermode_text_start));
-    __asm__ volatile ("mov $_usermode_text_end, %0" : "=r"(usermode_text_end));
-
-    uint16_t pde, pte; 
-    uint16_t end_pde, end_pte; 
-    get_pde_pte(usermode_text_start, &pde, &pte);
-    get_pde_pte(usermode_text_end, &end_pde, &end_pte);
-
-    fb_print_hex(pde);
-    fb_print_hex(pte);
-    
-    page_table_t user_pt;
-    new_pd.page_tables[pde] = alloc_pt(&user_pt, USER | R_W | PRESENT);
-
-    uintptr_t frame_addr = get_ident_phys_page_addr(pde, pte);
-    size_t frames_n = end_pte - pte + 2;
-
-    if (alloc_nframes(frames_n, frame_addr, &user_pt[pte], USER | R_W | PRESENT)) {
-        return 1;
+    if (ret) {
+        klog_error("Switch directory failed\n");
     }
 
-    fb_print_num(frames_n);
-    for (unsigned int i = pte; i <= end_pte + 1u; i++) {
-        fb_print_hex(user_pt[i]);
-    }
-    proc_esp = get_ident_phys_page_addr(pde, end_pte + 1);
-    
+    klog("Switched page dir\n");
+
     return ret;
 }
 
-void usermode() {
-    while(1);
-}
+int execve(const char *exec) {
+    int ret = 0;
 
-void spawn_init(struct module_struct *mods) {
-    initrd_init(mods, fs_root);
-    
-    fs_root = initrd_get_root();
-    struct fs_node *user_main;
-
+    struct fs_node *exec_node;
     struct DIR *root_dir = opendir_fs(fs_root);
 
     for (struct dirent *ent = readdir_fs(root_dir);
          ent;
          ent = readdir_fs(root_dir)) {
 
-        if (strcmp(ent->name, "init") == 0) {
-            klog("Initrd filename: %s\n", ent->name);
-            user_main = ent->node;
+        if (strcmp(ent->name, exec) == 0) {
+            klog("Execve filename: %s\n", ent->name);
+            exec_node = ent->node;
         }
     }
 
     closedir_fs(root_dir);
 
+    if (!exec_node) {
+        return -ENOENT;
+    }
+
+    fork();
+
     uintptr_t user_addr[64];
     size_t data_off;
 
-    if (kfsmmap(user_main, user_addr, &data_off, USER | R_W | PRESENT)) {
-        klog_error("Failed to map init executable into memory\n");
+    if (kfsmmap(exec_node, user_addr, &data_off, USER | R_W | PRESENT)) {
+        panic("Failed to map init executable into memory\n", ENOMEM);
     }
 
     /* klog("Modules addr: %x\n", mods->mod_start); */
@@ -116,7 +93,19 @@ void spawn_init(struct module_struct *mods) {
     for (unsigned int i = 0; i < 0x100; i++) {
         fb_print_hex(*(uint8_t *)(user_entry + i));
     }
- 
 
     jump_usermode(user_entry, *user_esp);
+    return ret;
+}
+
+void spawn_init(struct module_struct *mods) {
+    initrd_init(mods, fs_root);
+    
+    fs_root = initrd_get_root();
+
+    if (execve("init")) {
+        panic("Failed to launch init process\n", 0);
+    }
+
+    return;
 }

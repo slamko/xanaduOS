@@ -5,6 +5,7 @@ enum ErrorType {
     EIO         = 0x1, 
     EINVAL      = 0x2, 
     ENOMEM      = 0x3, 
+    ENOENT      = 0x4,
 };
 
 struct error_state {
@@ -12,8 +13,10 @@ struct error_state {
     enum ErrorType err;
 };
 
-int panic(const char *msg, struct error_state);
+typedef enum ErrorType err_t;
 
-void error(const char *msg, struct error_state stat);
+int panic(const char *msg, err_t type);
+
+void error(const char *msg, err_t type);
 
 #endif

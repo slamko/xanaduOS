@@ -24,6 +24,8 @@ int sys_write(const char *msg, size_t len);
 
 int sys_read(void *buf, size_t count);
 
+int sys_fork(void);
+
 void syscall_init(void);
 
 #endif

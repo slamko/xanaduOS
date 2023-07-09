@@ -64,7 +64,7 @@ uintptr_t to_phys_addr(uintptr_t virt_addr) {
     
     get_pde_pte(virt_addr, &pde, &pte);
     if (!cur_pd->page_tables_virt[pde]) {
-        klog_error("Requested virtual address not mapped\n");
+        klog_error("Requested virtual address not mapped %x\n", virt_addr);
         return 0;
     }
     
@@ -99,7 +99,7 @@ int page_tables_init(void) {
 
     for (unsigned int i = 0x0; i < KERNEL_INIT_PT_COUNT * PT_SIZE; i++) {
         uintptr_t paddr = i * 0x1000;
-        uint16_t flags = USER | R_W | PRESENT;
+        uint16_t flags =  R_W | PRESENT;
 
         /* if (paddr >= rodata_end || paddr < rodata_start) { */
             /* flags |= R_W; */
@@ -114,7 +114,6 @@ int page_tables_init(void) {
             | PRESENT
             | R_W
             | GLOBAL
-            | USER
             ;
 
         init_pd.page_tables_virt[768 + i] = &kernel_page_table[PT_SIZE * i];
@@ -145,9 +144,7 @@ void paging_init(size_t pmem_limit) {
     ret = frame_alloc_init(pmem_limit);
 
     if (ret) {
-        struct error_state err;
-        err.err = ret;
-        panic("Frame allocator initialization failed\n", err);
+        panic("Frame allocator initialization failed\n", ret);
     }
 
     init_pd.page_tables_virt = init_page_tables_virt;
@@ -157,9 +154,7 @@ void paging_init(size_t pmem_limit) {
     ret = page_tables_init();
     cur_pd = &init_pd;
     if (ret) {
-        struct error_state err;
-        err.err = ret;
-        panic("Paging data structures initialization failed\n", err);
+        panic("Paging data structures initialization failed\n", ret);
     }
 
     slab_cache = slab_cache_create_align(PAGE_SIZE, PAGE_SIZE);
@@ -254,6 +249,8 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     new_pd->page_tables = slab_alloc_from_cache(slab_cache);
     ptables_phys = to_phys_addr(to_uintptr(new_pd->page_tables));
     new_pd->page_tables_virt = slab_alloc_from_cache(slab_cache);
+
+    klog("Slab allocaed page tables\n");
     
     if (!new_pd->page_tables || !new_pd->page_tables_virt) {
         return ENOMEM;
@@ -268,6 +265,8 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
             uintptr_t new_pt_paddr;
             page_table_t pt = (uintptr_t *)(void *)pd->page_tables_virt[i];
 
+            klog("Clone the page table\n");
+
             ret = clone_page_table(pt, &new_pt, &new_pt_paddr);
 
             if (ret) {
@@ -279,7 +278,6 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
         } else {
             new_pd->page_tables_virt[i] = pd->page_tables_virt[i];
             new_pd->page_tables[i] = pd->page_tables[i];
-            /* fb_print_hex(new_pd->page_tables[i]); */
         }
     }
 
@@ -332,12 +330,12 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
         int ret;
         page_table_t pt;
 
-        ret = map_alloc_pt(cur_pd, &pt, pde, USER | R_W | PRESENT);
+        ret = map_alloc_pt(cur_pd, &pt, pde, R_W | PRESENT);
         if (ret) {
             return ret;
         }
         
-        ret = find_alloc_frame(&pt[pte], USER | R_W | PRESENT);
+        ret = find_alloc_frame(&pt[pte], R_W | PRESENT);
         if (ret) {
             return ret;
         }
@@ -346,7 +344,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     } else if (!page_present(cur_pd, pde, pte)) {
         /* klog_warn("Page not present\n"); */
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
-        find_alloc_frame(pt_entry, R_W | PRESENT | USER);
+        find_alloc_frame(pt_entry, R_W | PRESENT);
     }
 
     return 1;
