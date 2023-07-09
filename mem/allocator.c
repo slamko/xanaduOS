@@ -170,21 +170,20 @@ void *kmalloc_align(size_t siz, size_t alignment) {
 
     return (void *)data_base;
 }
-
 void *kmalloc(size_t siz) {
     return kmalloc_align(siz, HEAP_ALIGN);
 }
 
 void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys) {
     void *virt = kmalloc_align(siz, align);
-    *phys = to_phys_addr(virt);
+    *phys = ptr_to_phys_addr(virt);
 
     return virt;
 }
 
 void *kmalloc_phys(size_t siz, uintptr_t *phys) {
     void *virt = kmalloc(siz);
-    *phys = to_phys_addr(virt);
+    *phys = ptr_to_phys_addr(virt);
 
     return virt;
 }
@@ -253,6 +252,23 @@ void kfree(void *addr) {
             header->next->prev = header->prev;
         }
     }
+}
+
+size_t check_block_size(void *addr) {
+    if (!addr) return 0;
+
+    if ((uintptr_t)addr > heap_end_addr || (uintptr_t)addr < heap_base_addr) {
+        return 0;
+    }
+    
+    void *block_addr = get_block_header_addr(addr);
+    struct block_header *header = (struct block_header *)block_addr;
+    
+    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM) return 0;
+
+    if (header->is_hole) return 0;
+
+    return header->size;
 }
 
 void ktest() {

@@ -25,8 +25,10 @@ get_eip:
     mov eax, [esp]
     ret
 
+extern user_entry
 scall_wrapper:
     push ecx
+    add edx, [user_entry]
     push edx
 
     lea ebp, [ecx + 5*4 + 4]

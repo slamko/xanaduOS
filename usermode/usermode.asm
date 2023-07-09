@@ -30,7 +30,7 @@ usr_sysenter:
     jmp _after
 
 _legacy:
-    int 0x80
+    ;; int 0x80
     ret
     
 _after:

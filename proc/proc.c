@@ -26,6 +26,7 @@ struct buddy_alloc *user_buddy;
 #define USER_STACK_SIZE 4
 
 uintptr_t proc_esp;
+uintptr_t user_entry;
 
 int exec_init(void) {
     int ret = 0;
@@ -95,17 +96,17 @@ void spawn_init(struct module_struct *mods) {
     uintptr_t user_addr[64];
     size_t data_off;
 
-    print_header(1);
     if (kfsmmap(user_main, user_addr, &data_off, USER | R_W | PRESENT)) {
         klog_error("Failed to map init executable into memory\n");
     }
+    /* return; */
 
     klog("Modules addr: %x\n", mods->mod_start);
     fb_print_black((char *)(*user_addr + data_off));
 
     Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
     uintptr_t user_eip = elf->e_entry;
-    uintptr_t user_entry = *user_addr + data_off + user_eip + 0x100A;
+    user_entry = *user_addr + data_off + user_eip + 0x100A;
 
     uintptr_t user_esp[USER_STACK_SIZE];
     knmmap(cur_pd, user_esp, 0, USER_STACK_SIZE, USER | R_W | PRESENT); 
@@ -113,7 +114,7 @@ void spawn_init(struct module_struct *mods) {
     klog("User stack pointer %x\n", user_esp[0]);
 
     for (unsigned int i = 0; i < 0x100; i++) {
-        /* fb_print_hex(*(uint8_t *)(user_entry + i)); */
+        fb_print_hex(*(uint8_t *)(user_entry + i));
     }
  
     klog("\nElf entry point %x\n", user_entry);
@@ -121,5 +122,5 @@ void spawn_init(struct module_struct *mods) {
     flush_tlb();
     /* *(char *)(void *)user_esp[0] = 'a'; */
     /* fb_putc(*(char *)(void *)user_esp[0]); */
-    /* jump_usermode(user_entry, *user_esp); */
+    jump_usermode(user_entry, *user_esp);
 }

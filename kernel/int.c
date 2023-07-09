@@ -83,7 +83,8 @@ void isr_x86(struct isr_full_stack isr) {
         (struct isr_handler_args) {
             .int_id = isr.int_num,
             .error = isr.error_code,
-            .eip = isr.eip
+            .eip = isr.eip,
+            /* .cs = isr.cs, */
         });
 
     /* fb_print_num(isr.eip); */

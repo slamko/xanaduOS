@@ -82,6 +82,7 @@ struct isr_handler_args {
     uint32_t int_id;
     uint32_t error;
     uintptr_t eip;
+    /* uint32_t cs; */
 };
 
 static inline void cli(void) {

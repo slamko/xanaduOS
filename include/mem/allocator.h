@@ -26,4 +26,6 @@ void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys);
 
 void kfree(void *addr);
 
+size_t check_block_size(void *addr);
+
 #endif

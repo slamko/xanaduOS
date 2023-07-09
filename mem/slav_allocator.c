@@ -1,5 +1,7 @@
 #include "mem/slab_allocator.h"
+#include "drivers/initrd.h"
 #include "kernel/error.h"
+#include "drivers/fb.h"
 #include "lib/kernel.h"
 #include "mem/allocator.h"
 #include "mem/paging.h"
@@ -43,6 +45,7 @@ typedef struct slab_chunk slab_chunk_t;
 struct slab_cache *caches;
 
 #define to_chunk_ptr(uint_ptr) ((struct slab_chunk *)(void *)(uint_ptr))
+int i;
 
 static inline int slab_remove_from_cache(struct slab *slab) {
     if (!slab) {
@@ -80,7 +83,8 @@ int slab_alloc_slab_align(struct slab_cache *cache, size_t align) {
     size_t chunk_meta_size;
     size_t slab_data_size;
     void *slab_data;
-    
+
+   
     if (align) {
         size_t slab_chunks_size = (SLAB_CAPACITY + 1) * sizeof(slab_chunk_t);
         chunk_meta_size = cache->size;
@@ -89,10 +93,12 @@ int slab_alloc_slab_align(struct slab_cache *cache, size_t align) {
         new_slab = kmalloc(sizeof(*new_slab) + slab_chunks_size);
         slab_data = kmalloc_align(slab_data_size, align);
     } else {
-        chunk_meta_size = (cache->size + sizeof(struct slab_chunk));
+       chunk_meta_size = (cache->size + sizeof(struct slab_chunk));
 
         slab_data_size = ((SLAB_CAPACITY + 1) * chunk_meta_size) - cache->size;
         new_slab = kmalloc(sizeof(*new_slab) + slab_data_size);
+        /* fb_print_num(i); */
+        /* print_header(1); */
     }
 
     uintptr_t slab_chunks_addr = to_uintptr(new_slab) + sizeof(*new_slab);
@@ -184,7 +190,12 @@ struct slab_cache *slab_cache_create(size_t size) {
 }
 
 void slab_destroy_slab(struct slab_cache *cache, struct slab *slabs) {
-    for (; slabs; slabs = slabs->next) {
+    if (!slabs) {
+        return;
+    }
+    
+    for (struct slab *next = NULL; slabs; slabs = next) {
+        next = slabs->next;
         kfree(slabs);
 
         if (cache->alignment) {
@@ -228,7 +239,6 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
     if (!cache) {
         return NULL;
     }
-
     struct slab *non_full_slabs = cache->slabs_partial.next;
     
     if (!non_full_slabs) {
@@ -246,7 +256,9 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
         /* debug_log("Alloc new slab %x\n", non_full_slabs); */
     }
 
+    /* i++; */
     struct slab_chunk **free_chunk = &non_full_slabs->base_chunk.next_free;
+
     /* klog("Slab alloc%x\n", (*free_chunk)->slab); */
     uintptr_t free_addr = ((*free_chunk)->data_addr);
 
@@ -256,7 +268,7 @@ void *slab_alloc_from_cache(struct slab_cache *cache) {
     *free_chunk = (*free_chunk)->next_free;
     non_full_slabs->num_free--;
 
-    // it was the last free chunk in the slab
+   // it was the last free chunk in the slab
     // adding the slab to full slabs linked list
     if (non_full_slabs->num_free == 0) {
         /* klog("Last free chunk %x\n", non_full_slabs); */

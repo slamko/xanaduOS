@@ -43,7 +43,7 @@ struct page_dir {
     uintptr_t pd_phys_addr;
 };
 
-uintptr_t to_phys_addr(void *virt_addr);
+uintptr_t to_phys_addr(uintptr_t virt_addr);
 
 void paging_init(size_t pmem_amount);
 
@@ -93,5 +93,7 @@ void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte);
 
 extern struct page_dir *cur_pd;
 
+
+uintptr_t ptr_to_phys_addr(void *ptr);
 
 #endif

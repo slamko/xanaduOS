@@ -52,26 +52,30 @@ static uintptr_t last_fault_addr;
 
 static struct slab_cache *slab_cache;
 
-uintptr_t to_phys_addr(void *virt_addr) {
+uintptr_t to_phys_addr(uintptr_t virt_addr) {
     pte_t pde;
     pte_t pte;
-    pte_t page_offset = (uintptr_t)virt_addr & 0xfff;
+    pte_t page_offset = virt_addr & 0xfff;
 
     if (!cur_pd) {
-        return (uintptr_t)virt_addr -
+        return virt_addr -
             (virt_kernel_addr ? virt_kernel_addr : VADDR);
     }
     
-    get_pde_pte((uintptr_t)virt_addr, &pde, &pte);
+    get_pde_pte(virt_addr, &pde, &pte);
     if (!cur_pd->page_tables_virt[pde]) {
         klog_error("Requested virtual address not mapped\n");
         return 0;
     }
     
-    uintptr_t phys_addr = ((uintptr_t *)cur_pd->page_tables_virt[pde])[pte];
+    uintptr_t phys_addr = cur_pd->page_tables_virt[pde][pte];
     phys_addr = get_tab_pure_addr(phys_addr) + page_offset;
 
     return phys_addr;
+}
+
+uintptr_t ptr_to_phys_addr(void *ptr) {
+    return to_phys_addr(to_uintptr(ptr));
 }
 
 void flush_pages(uintptr_t virt_addr, size_t npages) {
@@ -100,7 +104,7 @@ int page_tables_init(void) {
 
     for (unsigned int i = 0; i < KERNEL_INIT_PT_COUNT; i++) {
         init_pd.page_tables[768 + i] =
-            to_phys_addr(&kernel_page_table[PT_SIZE * i])
+            to_phys_addr(to_uintptr(&kernel_page_table[PT_SIZE * i]))
             | PRESENT
             | R_W
             | GLOBAL
@@ -125,8 +129,8 @@ void paging_init(size_t pmem_limit) {
     __asm__ volatile ("mov $_rodata_end, %0" : "=r" (rodata_end));
 
     int ret;
-    rodata_start = to_phys_addr((void *)rodata_start);
-    rodata_end = to_phys_addr((void *)rodata_end);
+    rodata_start = to_phys_addr(rodata_start);
+    rodata_end = to_phys_addr(rodata_end);
 
     pt_base_addr = kernel_end_addr + (PAGE_SIZE * 1);
 
@@ -142,7 +146,7 @@ void paging_init(size_t pmem_limit) {
 
     init_pd.page_tables_virt = init_page_tables_virt;
     init_pd.page_tables = init_page_tables;
-    init_pd.pd_phys_addr = to_phys_addr(&init_page_tables);
+    init_pd.pd_phys_addr = to_phys_addr(to_uintptr(&init_page_tables));
 
     ret = page_tables_init();
     cur_pd = &init_pd;
@@ -162,7 +166,7 @@ void paging_init(size_t pmem_limit) {
 uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     uintptr_t phys_addr;
     *new_pt = slab_alloc_from_cache(slab_cache);
-    phys_addr = to_phys_addr(*new_pt);
+    phys_addr = to_phys_addr(to_uintptr(*new_pt));
     memset(*new_pt, 0x0, PAGE_SIZE);
 
     return phys_addr | flags;
@@ -206,7 +210,7 @@ int clone_page_table(page_table_t pt, page_table_t *new_pt_ptr,
     
     /* *new_pt_ptr = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, new_pt_phys_addr); */
     *new_pt_ptr = slab_alloc_from_cache(slab_cache);
-    *new_pt_phys_addr = to_phys_addr(*new_pt_ptr);
+    *new_pt_phys_addr = to_phys_addr(to_uintptr(*new_pt_ptr));
     new_pt = *new_pt_ptr;
 
     if (!new_pt) {
@@ -242,7 +246,7 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     }
 
     new_pd->page_tables = slab_alloc_from_cache(slab_cache);
-    ptables_phys = to_phys_addr(new_pd->page_tables);
+    ptables_phys = to_phys_addr(to_uintptr(new_pd->page_tables));
     new_pd->page_tables_virt = slab_alloc_from_cache(slab_cache);
     
     if (!new_pd->page_tables || !new_pd->page_tables_virt) {
@@ -318,7 +322,7 @@ void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte) {
 
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(cur_pd, pde)) {
-        klog_warn("Page table not present\n");
+        /* klog_warn("Page table not present\n"); */
         int ret;
         page_table_t pt;
 
@@ -334,7 +338,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
 
         flush_page(get_ident_phys_page_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
-        klog_warn("Page not present\n");
+        /* klog_warn("Page not present\n"); */
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
         find_alloc_frame(pt_entry, R_W | PRESENT | USER);
     }
@@ -342,15 +346,21 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     return 1;
 }
 
+
+unsigned int a;
+
 void page_fault(struct isr_handler_args args) {
     uintptr_t fault_addr;
     uint16_t pde;
     uint16_t pte;
 
     __asm__ volatile ("mov %%cr2, %0" : "=r" (fault_addr));
-    if (fault_addr != last_fault_addr) {
+
+    if (a < 5 && fault_addr != last_fault_addr) {
         klog_warn("Page fault at addr: %x\n", fault_addr); 
     }
+    a++;
+
     last_fault_addr = fault_addr;
 
     pde = fault_addr >> 22;

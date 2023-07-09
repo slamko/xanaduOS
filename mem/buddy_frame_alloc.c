@@ -1,3 +1,4 @@
+#include "drivers/initrd.h"
 #include "mem/buddy_alloc.h"
 #include "lib/slibc.h"
 #include "drivers/fb.h"
@@ -58,10 +59,9 @@ static int insert_buddy(struct buddy_alloc *buddy,
     if (!fl) {
         return EINVAL;
     }
-    
     struct free_list *old_head = fl->next;
-    /* fl->next = slab_alloc_from_cache(buddy->fl_slab); */
-    fl->next = kmalloc(sizeof(*fl->next));
+    fl->next = slab_alloc_from_cache(buddy->fl_slab);
+        /* fl->next = kmalloc(sizeof(*fl->next)); */
 
     if (!fl->next) {
         klog_error("Slab allocation failed %x\n", buddy->fl_slab);
@@ -97,8 +97,8 @@ static inline void remove_free_frame(struct buddy_alloc *buddy,
     struct free_list *new_next = (*fl)->next;
 
     /* fb_print_hex((uintptr_t)f_area->free_list.next); */
-    /* slab_free(buddy->fl_slab, *fl); */
-    kfree(*fl);
+    slab_free(buddy->fl_slab, *fl);
+    /* kfree(*fl); */
     (*prev_fl)->next = new_next;
     f_area->num_free -= 1;
 }
@@ -111,8 +111,8 @@ static inline void remove_free_head(struct buddy_alloc *buddy, order_t order) {
     
     struct free_list *new_next = f_area->free_list.next->next;
 
-    /* slab_free(buddy->fl_slab, f_area->free_list.next); */
-    kfree(f_area->free_list.next);
+    slab_free(buddy->fl_slab, f_area->free_list.next);
+    /* kfree(f_area->free_list.next); */
     /* fb_print_hex((uintptr_t)f_area->free_list.next); */
     f_area->free_list.next = new_next;
     f_area->num_free --;
@@ -160,7 +160,7 @@ static inline void set_map_used(struct buddy_alloc *buddy,
 static int buddy_slice(struct buddy_alloc *buddy, uintptr_t addr,
                              uintptr_t *res, order_t start, order_t target) {
     set_frame_used(buddy, start, addr);
-    
+   
     /* debug_log("Buddy addr %x\n", addr); */
     struct free_list *next_order_fl = &buddy->free_area[start - 1].free_list;
     uintptr_t sec_buddy_addr = addr +
@@ -169,7 +169,7 @@ static int buddy_slice(struct buddy_alloc *buddy, uintptr_t addr,
     if (insert_buddy(buddy, next_order_fl, start - 1, sec_buddy_addr)) {
         return 1;
     }
-   
+
     if (start - 1 > target) {
         return buddy_slice(buddy, addr, res, start - 1, target);
     }
@@ -184,6 +184,8 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
 
     order_t order = get_buddy_order(nframes);
     struct free_list *free = buddy->free_area[order].free_list.next;
+
+    print_header(1);
 
     if (buddy->free_area[order].num_free) {
         /* debug_log("Free frame available\n"); */
@@ -234,6 +236,7 @@ int buddy_alloc_frames(struct buddy_alloc *buddy,
     if (nframes % MAX_BUDDY_NFRAMES) {
         rep_limit ++;
     }
+
     
     for (unsigned int i = 0; i < rep_limit; i++) {
         size_t cur_nframes = nframes - (i * MAX_BUDDY_NFRAMES);
@@ -340,8 +343,8 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     buddy->free_area[MAX_ORDER - 1].num_free = max_map_size;
 
     for (unsigned int i = 0; i < max_map_size; i++) {
-        /* *cur_free = slab_alloc_from_cache(buddy->fl_slab); */
-        *cur_free = kmalloc(sizeof(**cur_free));
+        *cur_free = slab_alloc_from_cache(buddy->fl_slab);
+        /* *cur_free = kmalloc(sizeof(**cur_free)); */
 
         if (!*cur_free) {
             /* klog("Ret null\n"); */
