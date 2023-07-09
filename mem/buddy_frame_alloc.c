@@ -185,8 +185,6 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
     order_t order = get_buddy_order(nframes);
     struct free_list *free = buddy->free_area[order].free_list.next;
 
-    print_header(1);
-
     if (buddy->free_area[order].num_free) {
         /* debug_log("Free frame available\n"); */
         remove_free_head(buddy, order);

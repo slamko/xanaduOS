@@ -78,7 +78,13 @@ uintptr_t ptr_to_phys_addr(void *ptr) {
     return to_phys_addr(to_uintptr(ptr));
 }
 
-void flush_pages(uintptr_t virt_addr, size_t npages) {
+void flush_pages(uintptr_t *virt_addr, size_t npages) {
+    for (unsigned int i = 0; i < npages; i++) {
+        flush_page(virt_addr[i]);
+    }
+}
+
+void flush_pages_contiguous(uintptr_t virt_addr, size_t npages) {
     for (unsigned int i = 0; i < npages; i++) {
         flush_page(virt_addr + (i * 0x1000));
     }
@@ -183,7 +189,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
     }
 
     if (tab_present(pd->page_tables[pde])) {
-        klog("PT already mapped %x\n", pd->page_tables[pde]);
+        klog("Page Table already mapped %x\n", pd->page_tables[pde]);
         pd->page_tables[pde] |= flags;
         *pt = pd->page_tables_virt[pde];
         return 0;

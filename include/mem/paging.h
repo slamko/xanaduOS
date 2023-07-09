@@ -49,8 +49,6 @@ void paging_init(size_t pmem_amount);
 
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd);
 
-void flush_pages(uintptr_t virt_addr, size_t npages);
-
 static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
     return (pde * 0x400000) + (pte * PAGE_SIZE);
 }
@@ -95,5 +93,9 @@ extern struct page_dir *cur_pd;
 uintptr_t ptr_to_phys_addr(void *ptr);
 
 void page_fault(struct isr_handler_args *args);
+
+void flush_pages(uintptr_t *virt_addr, size_t npages);
+
+void flush_pages_contiguous(uintptr_t virt_addr, size_t npages);
 
 #endif

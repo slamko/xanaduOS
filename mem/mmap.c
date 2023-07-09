@@ -11,12 +11,11 @@
 #include <stdint.h>
 
 struct buddy_alloc *kern_buddy;
-
-int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
-           size_t page_num, uint16_t flags) {
+int knmmap_table(struct page_dir *pd, uintptr_t **pt_ptr,
+                 uintptr_t *virt_addr, size_t page_num, uint16_t flags) {
     int ret = 0;
-    page_table_t pt;
     uint16_t pde, pte;
+    page_table_t pt;
     struct buddy_alloc *buddy = kern_buddy;
 
     if (flags & USER) {
@@ -33,19 +32,36 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     if (ret) {
         return ret;
     }
+    klog("Alloc phys addr %x\n", (pd->page_tables_virt[pde])[pte]);
+
+    *pt_ptr = &pt[pte];
+
+    return ret;
+}
+
+int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
+           size_t page_num, uint16_t flags) {
+    int ret = 0;
+    page_table_t pt;
+
+    ret = knmmap_table(pd, &pt, virt_addr, page_num, flags);
+    if (ret) {
+        return ret;
+    }
 
     if (phys_addr) {
-        ret = alloc_nframes(page_num, phys_addr, &pt[pte], flags);
+        ret = alloc_nframes(page_num, phys_addr, pt, flags);
     } else {
-        ret = find_alloc_nframes(page_num, &pt[pte], flags);
+        ret = find_alloc_nframes(page_num, pt, flags);
     }
-    klog("Alloc phys addr %x\n", (pd->page_tables_virt[pde])[pte]);
+
+    klog("Mmap: Alloc phys addr %x\n", *pt);
 
     if (ret) {
         return ret;
     }
 
-    flush_pages(*virt_addr, page_num);
+    flush_pages(virt_addr, page_num);
     return ret;
 }
 
@@ -61,13 +77,8 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     }
     
     int ret;
-    uint16_t pde, pte;
     page_table_t pt;
-    struct buddy_alloc *buddy = kern_buddy;
 
-    if (flags & USER) {
-        buddy = user_buddy;
-    }
 
     size_t npages = (node->size / PAGE_SIZE);
     if (node->size % PAGE_SIZE) {
@@ -75,25 +86,17 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     }
     npages *= 2;
 
-    print_header(1);
-    if ((ret = buddy_alloc_frames(buddy, virt_addr, npages, 0))) {
-        return ret;
-    }
-
-    get_pde_pte(*virt_addr, &pde, &pte);
-    klog("KFs virt addr %x\n", *virt_addr);
- 
-    ret = map_alloc_pt(cur_pd, &pt, pde, flags);
+    ret = knmmap_table(cur_pd, &pt, virt_addr, npages, flags);
     if (ret) {
         return ret;
     }
+    
+    *off = mmap_fs(node, pt, npages, flags);
+    /* klog("Fsmap Alloc phys addr %x\n", *pt); */
 
-    *off = mmap_fs(node, &pt[pte], npages, flags);
-    klog("Mapped virt addr %x %x\n", ((page_table_t)cur_pd->page_tables_virt[pde])[pte], cur_pd->page_tables[pde]);
-
-    flush_pages(*virt_addr, npages);
-    klog("Map fs file %s with size %u\n", node->name, node->size);
-    return 0;
+    flush_pages(virt_addr, npages);
+    /* klog("Map fs file %s with size %u\n", node->name, node->size); */
+    return ret;
 }
 
 void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {
@@ -106,7 +109,7 @@ void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {
         unmap_page(pd, pde, pte + i);
     }
     
-    flush_pages(virt_addr, page_num);
+    flush_pages_contiguous(virt_addr, page_num);
 }
 
 void kmunmap(struct page_dir *pd, uintptr_t virt_addr) {

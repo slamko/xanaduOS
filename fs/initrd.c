@@ -99,8 +99,7 @@ size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
                    size_t size, uint16_t flags) {
     struct initrd_node *rd_node = &rd_nodes[1];
 
-    klog("INitrd faul%x\n", node->inode);
-    klog("Virt et phys map addr %x\n", rd_node->header);
+    /* klog("Virt et phys map addr %x\n", rd_node->header); */
     uintptr_t start_paddr = page_align_down(ptr_to_phys_addr(rd_node->header));
 
     set_addrs(addrs, start_paddr, size, flags);
@@ -216,7 +215,7 @@ int initrd_build_fs(size_t nodes_n) {
             node->opendir = &initrd_opendir;
         }
 
-        klog("FS Build node %x\n", rd_nodes[i].header);
+        /* klog("FS Build node %x\n", rd_nodes[i].header); */
         node->read = &initrd_read;
         node->this = node;
     }
@@ -260,13 +259,10 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
     struct initrd_entry *rd_list;
 
     int ret;
-    /* npages = 1; */
     initrd_addr = kmalloc(npages * sizeof(*initrd_addr));
-    klog("Initrd map page num %d\n", npages);
+    klog("Initrd map page number %d\n", npages);
 
     ret = knmmap(cur_pd, initrd_addr, modules->mod_start, npages, R_W | PRESENT);
-    klog("Parsed files num %x:\n", to_phys_addr(*initrd_addr));
-
     
     if (ret) {
         klog_error("Initrd was overwritten\n");
