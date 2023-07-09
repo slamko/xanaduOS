@@ -38,6 +38,7 @@ enum {
 };
 
 
+
 struct idt_entry {
     uint16_t isr_low;
     uint16_t cs;
@@ -81,15 +82,18 @@ struct isr_full_stack {
 struct isr_handler_args {
     uint32_t int_id;
     uint32_t error;
+    uint32_t cs;
+    uint32_t esp;
     uintptr_t eip;
-    /* uint32_t cs; */
 };
+
+void void_handler(struct isr_handler_args *);
 
 static inline void cli(void) {
     __asm__ volatile ("cli");
 }
 
-typedef void (*isr_handler_t)(struct isr_handler_args);
+typedef void (*isr_handler_t)(struct isr_handler_args *);
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler);
 int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags);
@@ -109,6 +113,6 @@ static inline void halt(void) {
 }
 
 /* void isr_x86(struct x86_cpu_state, uint32_t int_num, struct isr_stack);  */
-void isr_x86 (struct isr_full_stack);
+void isr_x86(uint32_t esp, struct isr_full_stack isr);
 
 #endif

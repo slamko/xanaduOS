@@ -25,7 +25,7 @@ void ps2_write_cmd(uint8_t cmd) {
     io_wait();
 }
 
-void ps2_handler(struct isr_handler_args args) {
+void ps2_handler(struct isr_handler_args *args) {
     fb_print_black("mouse");
     uint8_t stat = inb(KBD_STATUS_PORT);
 

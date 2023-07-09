@@ -20,7 +20,7 @@ enum COM_Ports {
 
 typedef enum COM_Ports port_t;
 
-void serial_interrupt(struct isr_handler_args args);
+void serial_interrupt(struct isr_handler_args *args);
 
 void serial_send(enum COM_Ports port, char data);
 char serial_read(enum COM_Ports port);

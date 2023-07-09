@@ -46,7 +46,9 @@ isr_%1:
 common_isr:
     pushad
 
+    push ecx
     call isr_x86
+    add esp, 4
     
     popad
     add esp, 8

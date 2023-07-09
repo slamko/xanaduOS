@@ -13,5 +13,6 @@ void sleep_ms(uint32_t delay);
 
 void sleep_sec(uint32_t delay);
 
-void pit_handler(struct isr_handler_args);
+void pit_handler(struct isr_handler_args *args);
+
 #endif

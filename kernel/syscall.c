@@ -1,4 +1,5 @@
 #include "kernel/syscall.h"
+#include "drivers/int.h"
 #include "lib/kernel.h"
 #include "drivers/fb.h"
 #include "drivers/keyboard.h"
@@ -9,6 +10,7 @@
 const unsigned int SYSCALL_MAX_ARGS_NUM = 5;
 
 void syscall_setup(void);
+void scall_wrapper(struct isr_handler_args *args);
 
 typedef int (*syscall_f)(va_list args);
 
@@ -85,9 +87,16 @@ int syscall_exec(int num, ...) {
 
     int ret = syscall_table[num](args);
 
-    klog("Syscall return status: %d\n", ret);
+    /* klog("Syscall return status: %d\n", ret); */
     va_end(args);
     return ret;
 }
 
-void syscall_init(void) { syscall_setup(); }
+void scall_s(struct isr_handler_args *a) {
+    klog("Int 0x80 %x\n", a->esp);
+}
+
+void syscall_init(void) {
+    add_isr_handler(0x80, &scall_wrapper, IDTD_RING3 | IDTD_DEFAULT);
+    syscall_setup();
+}

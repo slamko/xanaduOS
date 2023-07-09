@@ -283,7 +283,7 @@ void floppy_detect(void) {
     floppy_base = 0x3F0;
 }
 
-void floppy_handler(struct isr_handler_args args) {
+void floppy_handler(struct isr_handler_args *args) {
     klog("Floppy\n");
     floppy_irq_tick++;
 }

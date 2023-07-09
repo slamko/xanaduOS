@@ -139,7 +139,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     kbd_init();
     ps2_init();
-    /* pci_init(); */
+    pci_init();
     
     pit_init(0);
     apic_init();

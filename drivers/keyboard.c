@@ -54,7 +54,7 @@ void kbd_add_receiver(receiver f) {
     receiver_num++;
 }
 
-void kbd_interrupt(struct isr_handler_args args) {
+void kbd_interrupt(struct isr_handler_args *args) {
     uint8_t stat = ps2_read_status();
 
     if (stat & (1 << 0)) {

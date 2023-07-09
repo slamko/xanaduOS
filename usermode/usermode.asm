@@ -10,11 +10,45 @@ section .data
 section .text
 
 global usr_sysenter
+global usr_intx80
+
 extern sysenter
 extern sys_write
    
 extern SYSCALL_MAX_ARGS_NUM
 extern syscall_handler
+
+extern main
+extern userloop
+   
+_after:
+
+    ;; add esp, 4
+    ;; jmp userloop
+    pop edx
+    pop ecx
+    pop edi
+    pop esi
+    pop ebp
+    pop esp
+    pop ebx
+    ret
+
+usr_intx80:
+    push ebx
+    push esp
+    push ebp
+    push esi
+    push edi
+    push ecx
+    push edx
+
+    ;; push dword 42
+    mov ecx, esp
+    mov edx, _after 
+    int 0x80
+
+    jmp _after
 
 usr_sysenter:
     push ebx
@@ -22,22 +56,12 @@ usr_sysenter:
     push ebp
     push esi
     push edi
+    push ecx
+    push edx
 
     mov ecx, esp
-    mov edx, _after
+    mov edx, _after 
     sysenter
 
     jmp _after
-
-_legacy:
-    ;; int 0x80
-    ret
-    
-_after:
-    pop edi
-    pop esi
-    pop ebp
-    pop esp
-    pop ebx
-    ret
 

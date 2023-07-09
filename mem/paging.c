@@ -23,7 +23,7 @@ struct virt_addr {
     uintptr_t p_offset : 12;
 } __attribute__((packed));
 
-void page_fault(struct isr_handler_args args);
+void page_fault(struct isr_handler_args *args);
 
 void load_page_dir(uintptr_t dir);
 void enable_paging(void);
@@ -349,7 +349,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
 
 unsigned int a;
 
-void page_fault(struct isr_handler_args args) {
+void page_fault(struct isr_handler_args *args) {
     uintptr_t fault_addr;
     uint16_t pde;
     uint16_t pte;
@@ -368,9 +368,9 @@ void page_fault(struct isr_handler_args args) {
     pte = (fault_addr >> 12) & 0x3ff;
     /* fb_print_hex(pte); */
 
-    if (args.error ^ PRESENT) {
+    if (args->error ^ PRESENT) {
         non_present_page_hanler(pde, pte);
-    } else if (args.error ^ R_W) {
+    } else if (args->error ^ R_W) {
 
     }
         

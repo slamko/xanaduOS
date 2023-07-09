@@ -27,7 +27,7 @@ enum {
     PIT_MODE_REG    = 0x43,
 };
 
-void pit_handler(struct isr_handler_args args) {
+void pit_handler(struct isr_handler_args *args) {
     tick++;
 }
 

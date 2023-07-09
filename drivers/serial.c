@@ -85,9 +85,9 @@ void serial_write(port_t port, const char *buf, size_t len) {
     wait_serial_send(port, buf[0]);
 }
 
-void serial_interrupt(struct isr_handler_args args) {
+void serial_interrupt(struct isr_handler_args *args) {
     port_t port = COM1;
-    UNUSED(args);
+    /* UNUSED(args); */
     
     if (tx_free(port) && cur_pos != write_pos) {
         cur_pos++;

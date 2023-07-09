@@ -20,12 +20,13 @@ enum SPEC_CODES {
 
 typedef int (*receiver)(uint32_t);
 
-void kbd_interrupt(struct isr_handler_args);
 void kbd_add_receiver(receiver f);
 
 void kbd_init(void);
 uint32_t kbd_read(void);
 
 extern receiver receiver_f[KBD_INT_REC_NUM];
+
+void kbd_interrupt(struct isr_handler_args *args);
 
 #endif

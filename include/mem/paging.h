@@ -47,8 +47,6 @@ uintptr_t to_phys_addr(uintptr_t virt_addr);
 
 void paging_init(size_t pmem_amount);
 
-void page_fault(struct isr_handler_args args);
-
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd);
 
 void flush_pages(uintptr_t virt_addr, size_t npages);
@@ -95,5 +93,7 @@ extern struct page_dir *cur_pd;
 
 
 uintptr_t ptr_to_phys_addr(void *ptr);
+
+void page_fault(struct isr_handler_args *args);
 
 #endif

@@ -92,7 +92,7 @@ void rtl_rx_tx_config(uint16_t io_addr) {
     outl(io_addr + RTL_COMMAND_REG, CMD_RX_EN | CMD_TX_EN);
 }
 
-void rtl_handler(struct isr_handler_args args) {
+void rtl_handler(struct isr_handler_args *args) {
     klog("RTL isr\n");
     uint16_t isr = inw(dev->io_addr + RTL_ISR);
 

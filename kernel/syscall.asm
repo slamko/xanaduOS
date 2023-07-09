@@ -26,18 +26,78 @@ get_eip:
     ret
 
 extern user_entry
-scall_wrapper:
+global scall_wrapper    
+global senter_wrapper
+
+scall_wrapper:  
+    push edx
+    push ecx
+    push ebx
+    
+    mov edx, [esp + 8]
+    mov ecx, [edx + 12]
+
+    ;; add edx, [user_entry]
+    ;; push edx
+
+    ;; push edi
+    ;; call fb_print_hex
+    ;; add esp, 4
+
+    ;; pop edx
+    ;; ret
+
+    lea ebx, [ecx + 7*4 + 4]
+    mov edi, [ebx + 4]
+                                ; store number of arguments
+_scall_push_args:
+    push dword [ebx + edi*4 + 4]
+    dec edi
+    jnz _scall_push_args              ; push variadic args
+
+    push dword [ebx]              ; syscall number
+    call syscall_exec
+    add esp, 4
+    push eax
+    
+
+    mov eax, 4
+    mul dword [ebx + 4]         ; number of args
+    add esp, eax
+
+    pop eax
+
+    pop ebx
+    pop ecx
+    pop edx
+
+    ret
+
+    push dword 0x23
+    push ecx
+    pushfd
+    push 0x1B
+    sti
+    push edx
+    iret
+
+senter_wrapper:
+    
     push ecx
     add edx, [user_entry]
     push edx
 
-    lea ebp, [ecx + 5*4 + 4]
-    mov edi, [ebp + 4]              ; store number of arguments
+    lea ebp, [ecx + 7*4 + 4]
+    mov edi, [ebp + 4]
+                                ; store number of arguments
+    push dword [ebp - 4]
+    call fb_print_hex
+    add esp, 4
 
-_push_args:
+_senter_push_args:
     push dword [ebp + edi*4 + 4]
     dec edi
-    jnz _push_args              ; push variadic args
+    jnz _senter_push_args              ; push variadic args
 
     push dword [ebp]              ; syscall number
     call syscall_exec

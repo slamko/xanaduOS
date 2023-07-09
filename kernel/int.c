@@ -35,7 +35,7 @@ static int idt_set_entry(uint8_t idt_id, void *isr, uint8_t flags) {
     return 0;
 }
 
-static void void_handler(struct isr_handler_args args) {
+void void_handler(struct isr_handler_args *args) {
     general_handler(args, "Unknown interrupt: ");
 }
 
@@ -73,19 +73,24 @@ int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
     return 0;
 }
 
-void isr_x86(struct isr_full_stack isr) {
+void isr_x86(uint32_t esp, struct isr_full_stack isr) {
     /* pic_eoi(isr.int_num); */
     /* fb_newline(); */
     /* fb_print_num(isr.cs); */
+
+    struct isr_handler_args args;
+    args.int_id = isr.int_num;
+    args.error = isr.error_code;
+    args.eip = isr.eip;
+    args.esp = esp;
+    args.cs = isr.cs;
+
+    if (isr.cs > 0x1B) {
+        klog("Cs :%x\n", isr.cpu_st.esp);
+    }
     
     count++;
-    isr_handlers[isr.int_num](
-        (struct isr_handler_args) {
-            .int_id = isr.int_num,
-            .error = isr.error_code,
-            .eip = isr.eip,
-            /* .cs = isr.cs, */
-        });
+    isr_handlers[isr.int_num](&args);
 
     /* fb_print_num(isr.eip); */
 }
