@@ -13,7 +13,6 @@
 #include "kernel/syscall.h"
 #include "lib/slibc.h"
 #include "mem/allocator.h"
-#include "mem/flat.h"
 #include "mem/paging.h"
 #include "mem/slab_allocator.h"
 #include "proc/proc.h"
@@ -135,7 +134,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     idt_init();
 
     paging_init(multiboot_data->mem_upper * 0x400);
-    /* kmmap_init(); */
+    kmmap_init();
     serial_init();
 
     kbd_init();
@@ -148,10 +147,10 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
 
     /* syscall_init(); */
 
-    buddy_test(0);
+    /* buddy_test(0); */
     /* slab_test(); */
 
-    /* spawn_init(&s); */
+    spawn_init(&s);
 
     while (1) {
         /* reboot(); */

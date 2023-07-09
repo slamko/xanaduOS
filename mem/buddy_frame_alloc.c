@@ -60,7 +60,8 @@ static int insert_buddy(struct buddy_alloc *buddy,
     }
     
     struct free_list *old_head = fl->next;
-    fl->next = slab_alloc_from_cache(buddy->fl_slab);
+    /* fl->next = slab_alloc_from_cache(buddy->fl_slab); */
+    fl->next = kmalloc(sizeof(*fl->next));
 
     if (!fl->next) {
         klog_error("Slab allocation failed %x\n", buddy->fl_slab);
@@ -96,7 +97,8 @@ static inline void remove_free_frame(struct buddy_alloc *buddy,
     struct free_list *new_next = (*fl)->next;
 
     /* fb_print_hex((uintptr_t)f_area->free_list.next); */
-    slab_free(buddy->fl_slab, *fl);
+    /* slab_free(buddy->fl_slab, *fl); */
+    kfree(*fl);
     (*prev_fl)->next = new_next;
     f_area->num_free -= 1;
 }
@@ -109,7 +111,8 @@ static inline void remove_free_head(struct buddy_alloc *buddy, order_t order) {
     
     struct free_list *new_next = f_area->free_list.next->next;
 
-    slab_free(buddy->fl_slab, f_area->free_list.next);
+    /* slab_free(buddy->fl_slab, f_area->free_list.next); */
+    kfree(f_area->free_list.next);
     /* fb_print_hex((uintptr_t)f_area->free_list.next); */
     f_area->free_list.next = new_next;
     f_area->num_free --;
@@ -337,7 +340,8 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     buddy->free_area[MAX_ORDER - 1].num_free = max_map_size;
 
     for (unsigned int i = 0; i < max_map_size; i++) {
-        *cur_free = slab_alloc_from_cache(buddy->fl_slab);
+        /* *cur_free = slab_alloc_from_cache(buddy->fl_slab); */
+        *cur_free = kmalloc(sizeof(**cur_free));
 
         if (!*cur_free) {
             /* klog("Ret null\n"); */

@@ -72,8 +72,8 @@ size_t initrd_read(struct fs_node *node, uint32_t offset,
         return 0;
     }
     
-    /* void *read_addr = (void *)(rd_nodes[node->inode].data + offset); */
-    /* memcpy(buf, read_addr, size); */
+    void *read_addr = (void *)(rd_nodes[node->inode].data + offset);
+    memcpy(buf, read_addr, size);
     return node->size;
 }
 
@@ -90,7 +90,6 @@ struct DIR *initrd_opendir(struct fs_node *node) {
     struct DIR *dir = kmalloc(sizeof(*dir) + allocation);
 
     klog("Root sub entry num %d\n", rd_nodes[0].sub_ent_num);
-    /* dir->data = (struct dirent *)(void *)(to_uintptr(dir) + sizeof(*dir)); */
     dir->node = node;
     dir->ofset = 0;
 
@@ -99,11 +98,11 @@ struct DIR *initrd_opendir(struct fs_node *node) {
 
 size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
                    size_t size, uint16_t flags) {
-    struct initrd_node *rd_node = &rd_nodes[node->inode];
-    uintptr_t start_paddr = page_align_down(to_phys_addr(rd_node->header));
+    struct initrd_node *rd_node = &rd_nodes[1];
 
-    klog("Virt et phys map addr %x : %x\n", to_uintptr(rd_node->header),
-         to_phys_addr(rd_node->header));
+    klog("INitrd faul%x\n", node->inode);
+    klog("Virt et phys map addr %x\n", rd_node->header);
+    uintptr_t start_paddr = page_align_down(to_phys_addr(rd_node->header));
 
     set_addrs(addrs, start_paddr, size, flags);
 
@@ -117,7 +116,7 @@ struct dirent *initrd_readdir(struct DIR *dir) {
 
     /* print_node(&rd_fs[ent_inode]); */
     /* print_node(&rd_fs[dir->node->inode]); */
-    klog("Dir offset %d - %d\n", dir->node->inode, dir_node->sub_ent_num);
+    klog("Dir offset %x\n", ent->header);
 
     if (dir->ofset >= dir_node->sub_ent_num) {
         return NULL;
@@ -131,8 +130,15 @@ struct dirent *initrd_readdir(struct DIR *dir) {
     return dirent;
 }
 
+void print_header(int inode) {
+    klog("Print header close %x\n", rd_nodes[inode].header);
+}
+
 void initrd_closedir(struct DIR *dir) {
+    inode_t ent_inode = dir->node->inode + dir->ofset;
+    struct initrd_node *ent = &rd_nodes[ent_inode];
     kfree(dir);
+    klog("Dir offset close %x\n", ent->header);
 }
 
 struct fs_node *initrd_get_root(void) {
@@ -169,6 +175,7 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
             initrd_list->node.header = header;
+            klog("Initrd header location %x\n", header);
         }
 
         next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
@@ -208,7 +215,7 @@ int initrd_build_fs(size_t nodes_n) {
             node->opendir = &initrd_opendir;
         }
 
-        /* klog("FS Build node %d\n", rd_nodes[0].sub_ent_num); */
+        klog("FS Build node %x\n", rd_nodes[i].header);
         node->read = &initrd_read;
         node->this = node;
     }

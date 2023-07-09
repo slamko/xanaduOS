@@ -63,6 +63,11 @@ uintptr_t to_phys_addr(void *virt_addr) {
     }
     
     get_pde_pte((uintptr_t)virt_addr, &pde, &pte);
+    if (!cur_pd->page_tables_virt[pde]) {
+        klog_error("Requested virtual address not mapped\n");
+        return 0;
+    }
+    
     uintptr_t phys_addr = ((uintptr_t *)cur_pd->page_tables_virt[pde])[pte];
     phys_addr = get_tab_pure_addr(phys_addr) + page_offset;
 

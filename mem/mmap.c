@@ -1,4 +1,5 @@
 #include "mem/mmap.h"
+#include "drivers/initrd.h"
 #include "kernel/error.h"
 #include "proc/proc.h"
 #include "mem/paging.h"
@@ -74,6 +75,7 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     }
     npages *= 2;
 
+    print_header(1);
     if ((ret = buddy_alloc_frames(buddy, virt_addr, npages, 0))) {
         return ret;
     }
@@ -116,6 +118,7 @@ int kmmap_init() {
     
     kern_buddy = buddy_alloc_create(0xD0000000, 0xFFFFFFFF);
     user_buddy = buddy_alloc_create(0x100000, 0x40000000);
+
     if (ret) {
         return ret;
     }

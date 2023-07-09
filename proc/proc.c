@@ -95,6 +95,7 @@ void spawn_init(struct module_struct *mods) {
     uintptr_t user_addr[64];
     size_t data_off;
 
+    print_header(1);
     if (kfsmmap(user_main, user_addr, &data_off, USER | R_W | PRESENT)) {
         klog_error("Failed to map init executable into memory\n");
     }
@@ -120,5 +121,5 @@ void spawn_init(struct module_struct *mods) {
     flush_tlb();
     /* *(char *)(void *)user_esp[0] = 'a'; */
     /* fb_putc(*(char *)(void *)user_esp[0]); */
-    jump_usermode(user_entry, *user_esp);
+    /* jump_usermode(user_entry, *user_esp); */
 }

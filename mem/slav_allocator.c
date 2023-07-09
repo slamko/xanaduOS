@@ -1,5 +1,5 @@
-#include "kernel/error.h"
 #include "mem/slab_allocator.h"
+#include "kernel/error.h"
 #include "lib/kernel.h"
 #include "mem/allocator.h"
 #include "mem/paging.h"

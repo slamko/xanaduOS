@@ -15,4 +15,5 @@ struct fs_node *initrd_get_root(void);
 
 int initrd_init(struct module_struct *modules, struct fs_node *root);
 
+void print_header(int inode);
 #endif
