@@ -17,4 +17,6 @@ int fork_task(struct task *new_task);
 
 void exit(int code);
 
+int execve(const char *exec);
+
 #endif

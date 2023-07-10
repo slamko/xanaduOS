@@ -66,10 +66,13 @@ SYSCALL_DEFINE0(sys_fork);
 
 SYSCALL_DEFINE1(sys_exit, int);
 
+SYSCALL_DEFINE1(sys_execve, const char *);
+
 syscall_f syscall_table[] = {
     [0]   = &sys_read_v,
     [1]   = &sys_write_v,
     [2]   = &sys_fork_v,
+    [59]  = &sys_execve_v,
     [60]  = &sys_exit_v,
 };
 
@@ -93,6 +96,10 @@ int sys_read(void *buf, size_t count) {
         read_buf[i] = kbd_read();
     }
     return i;
+}
+
+int sys_execve(const char *exec_name) {
+    return execve(exec_name);
 }
 
 int sys_echo(int len) {

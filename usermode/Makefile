@@ -6,5 +6,11 @@ include ../build.mk
 
 i386:
 	mkdir -p ../build/usermode/
-	ld -T userlink.ld -Map=userlink.map \
-		-melf_$(ARCH) $(BUILD_OBJS) -o ../build/usermode/init
+	ld -T userlink.ld -Map=userlink.map -melf_$(ARCH) build/usermode_asm.o build/main.o \
+		-o ../build/usermode/init
+	ld -T userlink.ld -Map=userlink.map -melf_$(ARCH) build/usermode_asm.o build/usershell.o \
+		-o ../build/usermode/shell
+
+# $(foreach user_obj, $(BUILD_OBJS), ld -T userlink.ld -Map=userlink.map \
+# -melf_$(ARCH) $(user_bj) \
+# -o ../build/usermode/$(basename $(user_obj));)

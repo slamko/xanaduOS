@@ -102,7 +102,21 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     return ret;
 }
 
-void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {
+void knmunmap(struct page_dir *pd, uintptr_t *virt_addrs,
+                         size_t page_num) {
+    buddy_free_frames(kern_buddy, *virt_addrs, page_num);
+
+    for (unsigned int i = 0; i < page_num; i ++) {
+        uint16_t pde, pte;
+        get_pde_pte(virt_addrs[i], &pde, &pte);
+        unmap_page(pd, pde, pte + i);
+    }
+    
+    flush_pages(virt_addrs, page_num);
+}
+
+void knmunmap_contiguous(struct page_dir *pd, uintptr_t virt_addr,
+                         size_t page_num) {
     buddy_free_frames(kern_buddy, virt_addr, page_num);
 
     uint16_t pde, pte;
@@ -116,7 +130,7 @@ void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num) {
 }
 
 void kmunmap(struct page_dir *pd, uintptr_t virt_addr) {
-    knmunmap(pd, virt_addr, 1);
+    knmunmap_contiguous(pd, virt_addr, 1);
 }
 
 int kmmap_init() {

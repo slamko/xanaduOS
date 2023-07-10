@@ -35,6 +35,7 @@ void disable_paging(void);
 
 struct page_dir init_pd;
 struct page_dir *cur_pd;
+struct page_dir *kernel_pd;
 
 static uintptr_t init_page_tables[PT_SIZE] __attribute__((aligned(PAGE_SIZE)));
 static page_table_t init_page_tables_virt[PT_SIZE]; 
@@ -157,7 +158,9 @@ void paging_init(size_t pmem_limit) {
     init_pd.pd_phys_addr = to_phys_addr(cur_pd, to_uintptr(&init_page_tables));
 
     ret = page_tables_init();
-    cur_pd = &init_pd;
+    kernel_pd = &init_pd;
+    cur_pd = kernel_pd;
+
     if (ret) {
         panic("Paging data structures initialization failed\n", ret);
     }
@@ -243,6 +246,16 @@ int clone_page_table(struct page_dir *pd,
     }
 
     return 0;
+}
+
+void free_pd(struct page_dir *pd) {
+    if (!pd) {
+        return;
+    }
+    
+    slab_free(slab_cache, pd->page_tables);
+    slab_free(slab_cache, pd->page_tables_virt);
+    kfree(pd);
 }
 
 int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
@@ -360,8 +373,6 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
 }
 
 
-unsigned int a;
-
 void page_fault(struct isr_handler_args *args) {
     uintptr_t fault_addr;
     uint16_t pde;
@@ -369,10 +380,9 @@ void page_fault(struct isr_handler_args *args) {
 
     __asm__ volatile ("mov %%cr2, %0" : "=r" (fault_addr));
 
-    if (a < 5 && fault_addr != last_fault_addr) {
+    if (fault_addr != last_fault_addr) {
         klog_warn("Page fault at addr: %x\n", fault_addr); 
     }
-    a++;
 
     last_fault_addr = fault_addr;
 

@@ -40,8 +40,11 @@ struct task {
     struct page_dir *pd;
     uintptr_t eip;
     uintptr_t esp;
+    uintptr_t *map_addr;
+    size_t map_page_num;
     enum task_state state;
 
+    struct buddy_alloc *buddy;
     struct fs_node *exec_node;
     struct task *next;
     struct task *prev;
@@ -52,7 +55,8 @@ struct task *cur_task;
 
 int load_elf(struct task *task, struct fs_node *exec_node) {
     uintptr_t *user_addr;
-    user_addr = kmalloc(page_align_up(exec_node->size));
+    size_t map_npages = page_align_up(exec_node->size);
+    user_addr = kmalloc(map_npages);
     
     size_t data_off;
 
@@ -70,6 +74,8 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
 
     task->eip = user_entry;
     task->esp = user_esp[0];
+    task->map_addr = user_addr;
+    task->map_page_num = map_npages;
 
     klog("User process stack pointer %x\n", user_esp[0]);
     klog("\nElf entry point %x\n", user_entry);
@@ -104,16 +110,30 @@ void kern() {
     while(1);
 }
 
+void free_task(struct task *task) {
+    free_pd(task->pd);
+    /* knmunmap(task->pd, task->map_addr, task->map_page_num); */
+    slab_free(task_slab, task);
+}
+
+static inline void switch_task(struct task *switch_task) {
+    switch_page_dir(switch_task->pd);
+    free_task(cur_task);
+    run_task(switch_task);
+}
+
 void exit(int code) {
     doubly_ll_remove(&task_list, cur_task);
 
     if (!task_list) {
+        switch_page_dir(kernel_pd);
+        free_task(cur_task);
         kern();
         // jump to kernel code
     }
 
     if (task_list->state == IDLE) {
-        run_task(task_list);
+        switch_task(task_list);
     }
 }
 
@@ -173,7 +193,9 @@ int execve(const char *exec) {
         return ret;
     }
 
+    klog("Add task to list\n");
     new_task->exec_node = exec_node;
+    new_task->state = EMPTY;
     doubly_ll_insert(task_list, new_task);
 
     recover_int(eflags);

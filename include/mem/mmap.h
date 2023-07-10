@@ -16,7 +16,9 @@ int kmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
 
 int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off, uint16_t flags);
 
-void knmunmap(struct page_dir *pd, uintptr_t virt_addr, size_t page_num);
+void knmunmap(struct page_dir *pd, uintptr_t *virt_addr, size_t page_num);
+
+void knmunmap_contiguous(struct page_dir *pd, uintptr_t virt_addr, size_t page_num);
 
 int kmmap_init();
 

@@ -30,4 +30,6 @@ void syscall_init(void);
 
 int sys_exit(int code);
 
+int sys_execve(const char *exec_name);
+
 #endif
