@@ -27,4 +27,8 @@ int buddy_alloc_frame(struct buddy_alloc *buddy, uintptr_t *addr, uint16_t flags
 
 struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit);
 
+struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy);
+
+void buddy_alloc_clean(struct buddy_alloc *buddy);
+
 #endif

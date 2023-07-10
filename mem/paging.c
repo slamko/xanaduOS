@@ -1,6 +1,7 @@
 #include "mem/paging.h"
 #include "drivers/initrd.h"
 #include "mem/allocator.h"
+#include "mem/mmap.h"
 #include "mem/slab_allocator.h"
 #include "mem/buddy_alloc.h"
 #include "kernel/error.h"
@@ -207,12 +208,18 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
     return 0;
 }
 
-int copy_page_data(uintptr_t src, uintptr_t dest);
+void copy_page(uintptr_t dest_phys, uintptr_t src_virt) {
+    uintptr_t v_map_addr;
+    kmmap(kern_buddy, kernel_pd, &v_map_addr, dest_phys, R_W | PRESENT);
 
-int clone_page_table(struct page_dir *pd,
-                     page_table_t pt, page_table_t *new_pt_ptr,
+    memcpy((void *)v_map_addr, (void *)src_virt, PAGE_SIZE); 
+}
+
+int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
                      uintptr_t *new_pt_phys_addr) {
+
     page_table_t new_pt;
+    page_table_t pt = pd->page_tables_virt[pde];
     
     if (!new_pt_phys_addr || !new_pt_ptr) {
         return EINVAL;
@@ -236,10 +243,10 @@ int clone_page_table(struct page_dir *pd,
                 return ENOMEM;
             }
             
-            uintptr_t paddr_pt = get_tab_pure_addr(pt[i]);
             uintptr_t paddr_new_pt = get_tab_pure_addr(new_pt[i]);
             fb_print_hex(pt[i]);
-            copy_page_data(paddr_pt, paddr_new_pt);
+
+            copy_page(paddr_new_pt, get_ident_phys_page_addr(pde, i));
         } else {
             new_pt[i] = pt[i];
         }
@@ -282,11 +289,10 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
             int ret;
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
-            page_table_t pt = (uintptr_t *)(void *)pd->page_tables_virt[i];
 
             klog("Clone the page table\n");
 
-            ret = clone_page_table(pd, pt, &new_pt, &new_pt_paddr);
+            ret = clone_page_table(pd, i, &new_pt, &new_pt_paddr);
 
             if (ret) {
                 return ret;

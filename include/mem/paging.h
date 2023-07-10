@@ -96,10 +96,9 @@ uintptr_t to_phys_addr(struct page_dir *pd, uintptr_t virt_addr);
 
 uintptr_t ptr_to_phys_addr(struct page_dir *pd, void *ptr);
 
-int clone_page_table(struct page_dir *pd,
-                     page_table_t pt, page_table_t *new_pt_ptr,
-uintptr_t *new_pt_phys_addr);
-
 void free_pd(struct page_dir *pd);
+
+int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
+                     uintptr_t *new_pt_phys_addr);
 
 #endif

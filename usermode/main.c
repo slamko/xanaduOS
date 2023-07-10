@@ -18,10 +18,12 @@ int main(void) {
     res = usr_intx80(1, 2, "Hello\n", 6);
     res = usr_intx80(1, 2, "Hello\n", 6);
     /* res = usr_intx80(1, 2, "Hello\n", 6); */
+
+    usr_intx80(2, 1, 0);
     /* res = usr_intx80(59, 1, "shell"); */
     /* res = usr_sysenter(1, 2, "Hello\n", 6); */
 
-    usr_intx80(60, 1, 0);
+    /* usr_intx80(60, 1, 0); */
     while(1);
     
     return res;

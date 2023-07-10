@@ -147,10 +147,6 @@ void exit(int code) {
     switch_task(task_list);
 }
 
-int fork(void) {
-    return 0;
-}
-
 int fork_task(struct task *new_task) {
     int ret;
 
@@ -178,6 +174,14 @@ int fork_task(struct task *new_task) {
    return ret;
 }
 
+int fork(void) {
+    struct task *new_task = slab_alloc_from_cache(task_slab);
+
+    fork_task(new_task);
+    new_task->buddy = buddy_alloc_clone(cur_task->buddy);
+    return 0;
+}
+
 int execve(const char *exec) {
     int ret = 0;
     struct fs_node *exec_node = root_get_node_fs(exec);
@@ -186,6 +190,7 @@ int execve(const char *exec) {
         return -ENOENT;
     }
 
+    buddy_alloc_clean(cur_task->buddy);
     cur_task->exec_node = exec_node;
     cur_task->state = EMPTY;
     cur_task->buddy = buddy_alloc_create(0x100000, 0x40000000);
