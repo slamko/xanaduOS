@@ -1,8 +1,10 @@
 #include "proc/proc.h"
 #include "drivers/fb.h"
+#include "drivers/int.h"
 #include "drivers/pit.h"
 #include "kernel/error.h"
 #include "mem/buddy_alloc.h"
+#include "mem/slab_allocator.h"
 #include "mem/frame_allocator.h"
 #include "lib/kernel.h"
 #include "mem/paging.h"
@@ -24,6 +26,8 @@ void usermode_main(void);
 
 uintptr_t proc_esp;
 uintptr_t user_entry;
+
+struct slab_cache *task_slab;
 
 enum task_state {
     EMPTY           = 0,
@@ -90,19 +94,21 @@ void schedule(void) {
         );
 }
 
-int fork() {
+int fork(void) {
+    return 0;
+}
+
+int fork_task(struct task *new_task) {
     int ret;
 
-    cli();
-    cur_task = kmalloc(sizeof(*cur_task));
-    cur_task->pd = kzalloc(0, sizeof *cur_task->pd);
+    new_task->pd = kzalloc(0, sizeof *new_task->pd);
     
-    if (clone_cur_page_dir(cur_task->pd)) {
+    if (clone_cur_page_dir(new_task->pd)) {
         klog("error");
         return 1;
     }
 
-    ret = switch_page_dir(cur_task->pd);
+    ret = switch_page_dir(new_task->pd);
 
     if (ret) {
         klog_error("Switch directory failed\n");
@@ -135,14 +141,19 @@ int execve(const char *exec) {
         return -ENOENT;
     }
 
-    if ((ret = fork())) {
+    uint32_t eflags = disable_int();
+    struct task *new_task = slab_alloc_from_cache(task_slab);
+    
+    if ((ret = fork_task(new_task))) {
         klog_error("Fork failed\n");
 
         return ret;
     }
 
-    cur_task->exec_node = exec_node;
-    sti();
+    new_task->exec_node = exec_node;
+    single_ll_insert(cur_task, new_task);
+
+    recover_int(eflags);
     return ret;
 }
 
@@ -159,6 +170,8 @@ void spawn_init(struct module_struct *mods) {
 }
 
 int multiproc_init(void) {
+    task_slab = slab_cache_create(sizeof(struct task));
     pit_add_callback(&schedule, 0, 8);
+    
     return 0;
 }

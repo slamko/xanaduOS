@@ -18,6 +18,8 @@ void sleep_sec(uint32_t delay);
 
 void pit_handler(struct isr_handler_args *args);
 
-void pit_add_callback(pit_callback_t cb, unsigned int priority, size_t period);
+void pit_add_callback(pit_callback_t, unsigned int priority, size_t period_ms);
+
+void pit_event_loop(void);
 
 #endif

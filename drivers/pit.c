@@ -4,6 +4,7 @@
 #include "drivers/pic.h"
 #include "lib/kernel.h"
 #include "lib/slibc.h"
+#include "mem/allocator.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -21,8 +22,18 @@ enum PIT_channels{
 
 typedef enum PIT_channels pit_channel_t;
 
+struct pit_event {
+    pit_callback_t cb;
+    unsigned int priority;
+    size_t period_ms;
+    tick_t last_call_tick;
 
-static pit_callback_t callbacks[4];
+    struct pit_event *next;
+    struct pit_event *next_in_queue;
+};
+
+struct pit_event *events;
+struct pit_event *event_queue;
 
 enum {
     SQUARE_WAVE     = 0x6,
@@ -30,20 +41,31 @@ enum {
     PIT_MODE_REG    = 0x43,
 };
 
-size_t last_reset;
-size_t cb_period;
+void insert_invent_in_queue(struct pit_event *event) {
+    struct pit_event *next = event_queue;
+    event_queue = event;
+    event->next_in_queue = next;
+}
+
+void remove_event_from_queue(struct pit_event *event) {
+    event_queue = event->next_in_queue;
+}
 
 void pit_handler(struct isr_handler_args *args) {
-    for (size_t i = 0; i < ARR_SIZE(callbacks); i++) {
-        if (last_reset <= cb_period * 10) break;
-        
-        if (callbacks[i]) {
-            callbacks[i]();
-        }
-    }
+    (void)args;
+    struct pit_event *event = events;
+
+    foreach(event,
+            if (!event->cb) continue;
+
+            if(tick - event->last_call_tick > event->period_ms * 100) {
+                /* insert_invent_in_queue(event); */
+                event->cb();
+                event->last_call_tick = tick;
+            }
+        );
     
     tick += 2;
-    last_reset += 2;
 }
 
 uint16_t get_pit_count(pit_channel_t ch) {
@@ -73,8 +95,24 @@ void wait_ticks(tick_t delay) {
 }
 
 void pit_add_callback(pit_callback_t cb, unsigned int priority, size_t period) {
-    cb_period = period;
-    callbacks[priority] = cb;
+    struct pit_event *new_event;
+    new_event = kmalloc(sizeof *new_event);
+    new_event->cb = cb;
+    new_event->last_call_tick = 0;
+    new_event->next_in_queue = NULL;
+    new_event->period_ms = period;
+    new_event->priority = priority;
+
+    single_ll_insert(events, new_event);
+}
+
+void pit_event_loop(void) {
+    struct pit_event *eiq = event_queue;
+
+    for(; eiq; eiq = eiq->next_in_queue) {
+        eiq->cb();
+        remove_event_from_queue(eiq);
+    }
 }
 
 void sleep_us(uint32_t delay) {

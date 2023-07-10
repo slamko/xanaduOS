@@ -15,6 +15,12 @@
         action;                                                                \
     }
 
+#define single_ll_insert(list, member)                                         \
+    void *next = list;                                                         \
+    list = member;                                                      \
+    member->next = next;
+
+
 void outb(uint16_t port, uint8_t data);
 
 uint8_t inb(uint16_t port);
