@@ -19,7 +19,9 @@ int main(void) {
     res = usr_intx80(1, 2, "Hello\n", 6);
     /* res = usr_sysenter(1, 2, "Hello\n", 6); */
 
-    while(1);
+    /* while(1); */
+    usr_intx80(60, 1, 0);
+    
     return res;
 }
 

@@ -28,4 +28,6 @@ int sys_fork(void);
 
 void syscall_init(void);
 
+int sys_exit(int code);
+
 #endif

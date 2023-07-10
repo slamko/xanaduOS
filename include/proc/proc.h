@@ -15,4 +15,6 @@ int fork(void);
 
 int fork_task(struct task *new_task);
 
+void exit(int code);
+
 #endif

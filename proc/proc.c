@@ -32,7 +32,8 @@ struct slab_cache *task_slab;
 enum task_state {
     EMPTY           = 0,
     RUNNING         = 1,
-    DEAD            = 2,
+    IDLE            = 2,
+    DEAD            = 3,
 };
 
 struct task {
@@ -43,8 +44,10 @@ struct task {
 
     struct fs_node *exec_node;
     struct task *next;
+    struct task *prev;
 };
 
+struct task *task_list;
 struct task *cur_task;
 
 int load_elf(struct task *task, struct fs_node *exec_node) {
@@ -79,11 +82,12 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
 }
 
 void run_task(struct task *task) {
+    cur_task = task;
     jump_usermode(task->eip, task->esp);
 }
 
 void schedule(void) {
-    struct task *task = cur_task;
+    struct task *task = task_list;
 
     foreach(task,
             if (task->state == EMPTY) {
@@ -92,6 +96,25 @@ void schedule(void) {
                 run_task(task);
             }
         );
+}
+
+void kern() {
+    klog("Again in kernel \n");
+
+    while(1);
+}
+
+void exit(int code) {
+    doubly_ll_remove(&task_list, cur_task);
+
+    if (!task_list) {
+        kern();
+        // jump to kernel code
+    }
+
+    if (task_list->state == IDLE) {
+        run_task(task_list);
+    }
 }
 
 int fork(void) {
@@ -151,7 +174,7 @@ int execve(const char *exec) {
     }
 
     new_task->exec_node = exec_node;
-    single_ll_insert(cur_task, new_task);
+    doubly_ll_insert(task_list, new_task);
 
     recover_int(eflags);
     return ret;

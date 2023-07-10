@@ -15,11 +15,30 @@
         action;                                                                \
     }
 
+#define doubly_ll_remove(list, member)                                         \
+    if (member->next) {                                                        \
+        member->next->prev = member->prev;                                     \
+    }                                                                          \
+    if (member->prev) {                                                        \
+        member->prev->next = member->next;                                     \
+    }                                                                          \
+    if (*list == member) {                                                     \
+        *list = NULL;                                                          \
+    }
+
+#define doubly_ll_insert(list, member)                                         \
+    void *next = list;                                                         \
+    list = member;                                                             \
+    member->next = next;                                                       \
+    if (member->next) {                                                        \
+        member->next->prev = member;                                           \
+    }                                                                          \
+    member->prev = NULL;
+
 #define single_ll_insert(list, member)                                         \
     void *next = list;                                                         \
-    list = member;                                                      \
+    list = member;                                                             \
     member->next = next;
-
 
 void outb(uint16_t port, uint8_t data);
 

@@ -152,6 +152,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     /* slab_test(); */
 
     spawn_init(&s);
+    /* klog("Kernel gain\n"); */
 
     while (1) {
         /* reboot(); */

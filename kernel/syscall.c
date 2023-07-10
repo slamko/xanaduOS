@@ -64,14 +64,23 @@ SYSCALL_DEFINE2(sys_read, void *, size_t);
 
 SYSCALL_DEFINE0(sys_fork);
 
+SYSCALL_DEFINE1(sys_exit, int);
+
 syscall_f syscall_table[] = {
-    &sys_read_v,
-    &sys_write_v,
+    [0]   = &sys_read_v,
+    [1]   = &sys_write_v,
+    [2]   = &sys_fork_v,
+    [60]  = &sys_exit_v,
 };
 
 int sys_write(const char *msg, size_t len) {
     fb_nprint_black(msg, len);
     return len;
+}
+
+int sys_exit(int code) {
+    exit(code);
+    return 0;
 }
 
 int sys_fork(void) { return fork(); }
