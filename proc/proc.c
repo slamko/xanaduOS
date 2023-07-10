@@ -24,10 +24,10 @@ void usermode_main(void);
 
 #define USER_STACK_SIZE 4
 
-uintptr_t proc_esp;
-uintptr_t user_entry;
-
 struct slab_cache *task_slab;
+
+size_t last_kernel_tid;
+size_t last_user_tid;
 
 enum task_state {
     EMPTY           = 0,
@@ -44,6 +44,7 @@ struct task {
     size_t map_page_num;
     enum task_state state;
 
+    size_t id;
     struct buddy_alloc *buddy;
     struct fs_node *exec_node;
     struct task *next;
@@ -60,16 +61,18 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
     
     size_t data_off;
 
-    if (kfsmmap(exec_node, user_addr, &data_off, USER | R_W | PRESENT)) {
+    if (kfsmmap(task->buddy, exec_node, user_addr, &data_off,
+                USER | R_W | PRESENT)) {
         panic("Failed to map init executable into memory\n", ENOMEM);
     }
 
     Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
     uintptr_t user_eip = elf->e_entry;
-    user_entry = *user_addr + data_off + user_eip + 0x100A;
+    uintptr_t user_entry = *user_addr + data_off + user_eip + 0x100A;
 
     uintptr_t user_esp[USER_STACK_SIZE];
-    knmmap(cur_pd, user_esp, 0, USER_STACK_SIZE, USER | R_W | PRESENT); 
+    knmmap(task->buddy, cur_pd, user_esp, 0, USER_STACK_SIZE,
+           USER | R_W | PRESENT); 
     user_esp[0] += (USER_STACK_SIZE - 1) * 0x1000;
 
     task->eip = user_entry;
@@ -87,9 +90,15 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
     return 0;
 }
 
-void run_task(struct task *task) {
+void run_user_task(struct task *task) {
     cur_task = task;
     jump_usermode(task->eip, task->esp);
+}
+
+void run_kernel_task(struct task *task) {
+    klog("Kernel again\n");
+
+    while(1);
 }
 
 void schedule(void) {
@@ -99,7 +108,7 @@ void schedule(void) {
             if (task->state == EMPTY) {
                 task->state = RUNNING;
                 load_elf(task, task->exec_node);
-                run_task(task);
+                run_user_task(task);
             }
         );
 }
@@ -118,23 +127,24 @@ void free_task(struct task *task) {
 
 static inline void switch_task(struct task *switch_task) {
     switch_page_dir(switch_task->pd);
-    free_task(cur_task);
-    run_task(switch_task);
+    klog("Switching task\n");
+
+    if (switch_task->id >= 1000) {
+        run_user_task(switch_task);
+    } else {
+        run_kernel_task(switch_task);
+    }
 }
 
 void exit(int code) {
     doubly_ll_remove(&task_list, cur_task);
 
     if (!task_list) {
-        switch_page_dir(kernel_pd);
-        free_task(cur_task);
-        kern();
-        // jump to kernel code
+        panic("Killed kernel task...\n", 0);
     }
 
-    if (task_list->state == IDLE) {
-        switch_task(task_list);
-    }
+    free_task(cur_task);
+    switch_task(task_list);
 }
 
 int fork(void) {
@@ -144,8 +154,14 @@ int fork(void) {
 int fork_task(struct task *new_task) {
     int ret;
 
+    memcpy(new_task, cur_task, sizeof(*new_task));
     new_task->pd = kzalloc(0, sizeof *new_task->pd);
-    
+    new_task->id = last_kernel_tid + 1;
+
+    if (cur_task->id >= 1000) {
+        cur_task->id = last_user_tid + 1;
+    }
+   
     if (clone_cur_page_dir(new_task->pd)) {
         klog("error");
         return 1;
@@ -159,46 +175,21 @@ int fork_task(struct task *new_task) {
 
     klog("Switched page dir\n");
 
-    return ret;
+   return ret;
 }
 
 int execve(const char *exec) {
     int ret = 0;
-
-    struct fs_node *exec_node;
-    struct DIR *root_dir = opendir_fs(fs_root);
-
-    for (struct dirent *ent = readdir_fs(root_dir);
-         ent;
-         ent = readdir_fs(root_dir)) {
-
-        if (strcmp(ent->name, exec) == 0) {
-            klog("Execve filename: %s\n", ent->name);
-            exec_node = ent->node;
-        }
-    }
-
-    closedir_fs(root_dir);
+    struct fs_node *exec_node = root_get_node_fs(exec);
 
     if (!exec_node) {
         return -ENOENT;
     }
 
-    uint32_t eflags = disable_int();
-    struct task *new_task = slab_alloc_from_cache(task_slab);
+    cur_task->exec_node = exec_node;
+    cur_task->state = EMPTY;
+    cur_task->buddy = buddy_alloc_create(0x100000, 0x40000000);
     
-    if ((ret = fork_task(new_task))) {
-        klog_error("Fork failed\n");
-
-        return ret;
-    }
-
-    klog("Add task to list\n");
-    new_task->exec_node = exec_node;
-    new_task->state = EMPTY;
-    doubly_ll_insert(task_list, new_task);
-
-    recover_int(eflags);
     return ret;
 }
 
@@ -206,10 +197,24 @@ void spawn_init(struct module_struct *mods) {
     initrd_init(mods, fs_root);
     
     fs_root = initrd_get_root();
+    uint32_t eflags = disable_int();
 
-    if (execve("init")) {
-        panic("Failed to launch init process\n", 0);
+    struct fs_node *exec_node = root_get_node_fs("init");
+    
+    struct task *new_task = slab_alloc_from_cache(task_slab);
+
+    if (fork_task(new_task)) {
+        panic("Failed to fork base kernel process\n", 0);
     }
+
+    new_task->id = last_user_tid;
+    new_task->state = EMPTY;
+    new_task->exec_node = exec_node;
+    last_user_tid++;
+
+    new_task->buddy = buddy_alloc_create(0x100000, 0x40000000);
+    doubly_ll_insert(task_list, new_task);
+    recover_int(eflags);
 
     return;
 }
@@ -217,6 +222,16 @@ void spawn_init(struct module_struct *mods) {
 int multiproc_init(void) {
     task_slab = slab_cache_create(sizeof(struct task));
     pit_add_callback(&schedule, 0, 8);
+    cur_task = slab_alloc_from_cache(task_slab);
+    cur_task->pd = kernel_pd;
+    cur_task->buddy = kern_buddy;
+    cur_task->eip = to_uintptr(&kern);
+    cur_task->id = 0;
+    cur_task->state = RUNNING;
+
+    last_kernel_tid = 0;
+    last_user_tid = 1000;
+    doubly_ll_insert(task_list, cur_task);
     
     return 0;
 }

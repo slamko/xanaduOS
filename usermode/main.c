@@ -16,12 +16,13 @@ int main(void) {
     /* __asm__ volatile("int $0x80"); */
     res = usr_intx80(1, 2, "Hello\n", 6);
     res = usr_intx80(1, 2, "Hello\n", 6);
+    res = usr_intx80(1, 2, "Hello\n", 6);
     /* res = usr_intx80(1, 2, "Hello\n", 6); */
-    res = usr_intx80(59, 1, "shell");
+    /* res = usr_intx80(59, 1, "shell"); */
     /* res = usr_sysenter(1, 2, "Hello\n", 6); */
 
-    /* while(1); */
     usr_intx80(60, 1, 0);
+    while(1);
     
     return res;
 }

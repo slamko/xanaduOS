@@ -21,7 +21,7 @@ typedef struct DIR *(*fs_opendir_f)(struct fs_node *);
 typedef void (*fs_closedir_f)(struct DIR *);
 
 typedef struct dirent *(*fs_readdir_f)(struct DIR*);
-typedef struct fs_node *(*fs_finddir_f)(struct fs_node *, char *name);
+typedef struct fs_node *(*fs_get_node_f)(struct fs_node *, const char *name);
 
 typedef size_t (*fs_mmap_f)(struct fs_node *node, uintptr_t *,
                             size_t, uint16_t);
@@ -41,7 +41,7 @@ struct fs_node {
     fs_close_f close;
 
     fs_readdir_f readdir;
-    fs_finddir_f finddir;
+    fs_get_node_f get_node;
     fs_opendir_f opendir;
     fs_closedir_f closedir;
     fs_mmap_f mmap;
@@ -71,12 +71,14 @@ void closedir_fs(struct DIR *dir);
 
 struct dirent *readdir_fs(struct DIR *dir);
 
-struct fs_node *finddir_fs(struct fs_node *node, char *name);
-
 void open_fs(struct fs_node *node);
 
 void close_fs(struct fs_node *node);
 
 size_t mmap_fs(struct fs_node *node, uintptr_t *addrs, size_t size, uint16_t);
+
+struct fs_node *get_node_fs(const char *name);
+
+struct fs_node *root_get_node_fs(const char *name);
 
 #endif

@@ -45,14 +45,6 @@ struct dirent *readdir_fs(struct DIR *dir) {
     return dir->node->readdir(dir);
 }
 
-struct fs_node *finddir_fs(struct fs_node *node, char *name) {
-    if (!node || !node->finddir) {
-        return NULL;
-    }
-
-    return node->finddir(node, name);
-}
-
 void open_fs(struct fs_node *node) {
     if (!node || !node->open) {
         return;
@@ -67,6 +59,14 @@ void close_fs(struct fs_node *node) {
     }
 
     node->close(node);
+}
+
+struct fs_node *root_get_node_fs(const char *name) {
+    if (!name) {
+        return NULL;
+    }
+
+    return fs_root->get_node(fs_root, name);
 }
 
 size_t mmap_fs(struct fs_node *node, uintptr_t *addrs, size_t size,

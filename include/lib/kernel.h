@@ -22,9 +22,11 @@
     if (member->prev) {                                                        \
         member->prev->next = member->next;                                     \
     }                                                                          \
-    if (*list == member) {                                                     \
-        *list = NULL;                                                          \
-    }
+    *list = member->next;
+
+/* if (*list == member) {                                                     \ */
+        /* *list = NULL;                                                          \ */
+    /* } */
 
 #define doubly_ll_insert(list, member)                                         \
     void *next = list;                                                         \

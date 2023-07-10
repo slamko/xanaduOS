@@ -84,7 +84,7 @@ _scall_push_args:
 senter_wrapper:
     
     push ecx
-    add edx, [user_entry]
+    ;; add edx, [user_entry]
     push edx
 
     lea ebp, [ecx + 7*4 + 4]

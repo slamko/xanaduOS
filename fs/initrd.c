@@ -146,6 +146,24 @@ struct fs_node *initrd_get_root(void) {
     return &rd_fs[0];
 }
 
+struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
+    struct fs_node *node;
+    struct DIR *root_dir = opendir_fs(root);
+
+    for (struct dirent *ent = readdir_fs(root_dir);
+         ent;
+         ent = readdir_fs(root_dir)) {
+
+        if (strcmp(ent->name, name) == 0) {
+            klog("Execve filename: %s\n", ent->name);
+            node = ent->node;
+        }
+    }
+
+    closedir_fs(root_dir);
+    return node;
+}
+
 unsigned int tar_parse(struct initrd_entry **rd_list,
                        uintptr_t initrd_addr, size_t *size) {
     uintptr_t next_addr = initrd_addr;
@@ -205,13 +223,13 @@ int initrd_build_fs(size_t nodes_n) {
         node->close = NULL;
         node->open = NULL;
         node->write = NULL;
-        node->finddir = NULL;
         node->readdir = NULL;
         node->mmap = &initrd_mmap;
         node->inode = i;
 
         if (node->type == FS_DIR) {
             node->readdir = &initrd_readdir;
+            node->get_node = &initrd_get_node;
             node->closedir = &initrd_closedir;
             node->opendir = &initrd_opendir;
         }
@@ -223,6 +241,7 @@ int initrd_build_fs(size_t nodes_n) {
 
     return 0;
 }
+
 
 int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     unsigned int i = rd_len;
@@ -263,7 +282,7 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
     initrd_addr = kmalloc(npages * sizeof(*initrd_addr));
     klog("Initrd map page number %d\n", npages);
 
-    ret = knmmap(cur_pd, initrd_addr, modules->mod_start, npages, R_W | PRESENT);
+    ret = knmmap(kern_buddy, cur_pd, initrd_addr, modules->mod_start, npages, R_W | PRESENT);
     
     if (ret) {
         klog_error("Initrd was overwritten\n");

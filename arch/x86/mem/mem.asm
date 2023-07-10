@@ -45,18 +45,27 @@ copy_page_data:
 
     mov esi, [ebp - 8]
     mov edi, [ebp - 12]
-    call disable_paging
 
-_copy:  
+    mov ebx, cr0
+    and ebx, ~CR_PG
+    mov cr0, ebx
+
     mov ecx, 0
+_copy:  
     mov ebx, [esi + ecx*4]
     mov [edi + ecx*4], ebx
     inc ecx
 
     cmp ecx, 1024
-    jl _copy
+    jl _copy - 0xC0000000
 
-    call enable_paging
+    mov ebx, cr0
+    or ebx, CR_PG | CR_WP | 1
+    mov cr0, ebx
+
+    mov ecx, cr4
+    or ecx, PGE
+    mov cr4, ecx
 
     popfd
     pop ebx

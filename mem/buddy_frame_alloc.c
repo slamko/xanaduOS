@@ -357,6 +357,12 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     return buddy;
 }
 
+struct buddy_alloc *buddy_alloc_copy(struct buddy_alloc *copy) {
+    struct buddy_alloc *new = copy;
+
+    return new;
+}
+
 void buddy_alloc_destroy(struct buddy_alloc *buddy) {
     if (!buddy) {
         return;

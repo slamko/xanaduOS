@@ -14,16 +14,11 @@ struct buddy_alloc *kern_buddy;
 
 struct buddy_alloc *user_buddy;
 
-int knmmap_table(struct page_dir *pd, uintptr_t **pt_ptr,
-                 uintptr_t *virt_addr, size_t page_num, uint16_t flags) {
+int knmmap_table(struct buddy_alloc *buddy, struct page_dir *pd,
+                 uintptr_t **pt_ptr, uintptr_t *virt_addr, size_t page_num, uint16_t flags) {
     int ret = 0;
     uint16_t pde, pte;
     page_table_t pt = NULL;
-    struct buddy_alloc *buddy = kern_buddy;
-
-    if (flags & USER) {
-        buddy = user_buddy;
-    }
 
     /* klog("Alloc phys addr %x\n", pd->page_tables[0]); */
     if ((ret = buddy_alloc_frames(buddy, virt_addr, page_num, 0))) {
@@ -42,12 +37,14 @@ int knmmap_table(struct page_dir *pd, uintptr_t **pt_ptr,
     return ret;
 }
 
-int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
+int knmmap(struct buddy_alloc *buddy, struct page_dir *pd,
+           uintptr_t *virt_addr, uintptr_t phys_addr,
            size_t page_num, uint16_t flags) {
+
     int ret = 0;
     page_table_t pt;
 
-    ret = knmmap_table(pd, &pt, virt_addr, page_num, flags);
+    ret = knmmap_table(buddy, pd, &pt, virt_addr, page_num, flags);
     if (ret) {
         return ret;
     }
@@ -68,13 +65,13 @@ int knmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
     return ret;
 }
 
-int kmmap(struct page_dir *pd, uintptr_t *virt_addr, uintptr_t phys_addr,
-          uint16_t flags) {
-    return knmmap(pd, virt_addr, phys_addr, 1, flags);
+int kmmap(struct buddy_alloc *buddy, struct page_dir *pd,
+          uintptr_t *virt_addr, uintptr_t phys_addr, uint16_t flags) {
+    return knmmap(buddy, pd, virt_addr, phys_addr, 1, flags);
 }
 
-int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
-            uint16_t flags) {
+int kfsmmap(struct buddy_alloc *buddy, struct fs_node *node,
+            uintptr_t *virt_addr, size_t *off, uint16_t flags) {
     if (!node) {
         return -1;
     }
@@ -88,7 +85,7 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     }
     npages *= 2;
 
-    ret = knmmap_table(cur_pd, &pt, virt_addr, npages, flags);
+    ret = knmmap_table(buddy, cur_pd, &pt, virt_addr, npages, flags);
     if (ret) {
         return ret;
     }
@@ -102,9 +99,9 @@ int kfsmmap(struct fs_node *node, uintptr_t *virt_addr, size_t *off,
     return ret;
 }
 
-void knmunmap(struct page_dir *pd, uintptr_t *virt_addrs,
-                         size_t page_num) {
-    buddy_free_frames(kern_buddy, *virt_addrs, page_num);
+void knmunmap(struct buddy_alloc *buddy, struct page_dir *pd,
+              uintptr_t *virt_addrs, size_t page_num) {
+    buddy_free_frames(buddy, *virt_addrs, page_num);
 
     for (unsigned int i = 0; i < page_num; i ++) {
         uint16_t pde, pte;
@@ -115,9 +112,9 @@ void knmunmap(struct page_dir *pd, uintptr_t *virt_addrs,
     flush_pages(virt_addrs, page_num);
 }
 
-void knmunmap_contiguous(struct page_dir *pd, uintptr_t virt_addr,
-                         size_t page_num) {
-    buddy_free_frames(kern_buddy, virt_addr, page_num);
+void knmunmap_contiguous(struct buddy_alloc *buddy, struct page_dir *pd,
+                         uintptr_t virt_addr, size_t page_num) {
+    buddy_free_frames(buddy, virt_addr, page_num);
 
     uint16_t pde, pte;
     get_pde_pte(virt_addr, &pde, &pte);
@@ -129,15 +126,15 @@ void knmunmap_contiguous(struct page_dir *pd, uintptr_t virt_addr,
     flush_pages_contiguous(virt_addr, page_num);
 }
 
-void kmunmap(struct page_dir *pd, uintptr_t virt_addr) {
-    knmunmap_contiguous(pd, virt_addr, 1);
+void kmunmap(struct buddy_alloc *buddy, struct page_dir *pd,
+             uintptr_t virt_addr) {
+    knmunmap_contiguous(buddy, pd, virt_addr, 1);
 }
 
 int kmmap_init() {
     int ret = 0;
     
     kern_buddy = buddy_alloc_create(0xD0000000, 0xFFFFFFFF);
-    user_buddy = buddy_alloc_create(0x100000, 0x40000000);
 
     if (ret) {
         return ret;
