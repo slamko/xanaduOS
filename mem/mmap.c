@@ -20,11 +20,11 @@ int knmmap_table(struct buddy_alloc *buddy, struct page_dir *pd,
     uint16_t pde, pte;
     page_table_t pt = NULL;
 
-    /* klog("Alloc phys addr %x\n", pd->page_tables[0]); */
     if ((ret = buddy_alloc_frames(buddy, virt_addr, page_num, 0))) {
         return ret;
     }
    
+    klog("Alloc virt addr %x\n", *virt_addr);
     get_pde_pte(*virt_addr, &pde, &pte);
 
     ret = map_alloc_pt(pd, &pt, pde, flags);
@@ -55,7 +55,7 @@ int knmmap(struct buddy_alloc *buddy, struct page_dir *pd,
         ret = find_alloc_nframes(page_num, pt, flags);
     }
 
-    klog("Mmap: Alloc phys addr %x\n", *pt);
+    /* klog("Mmap: Alloc phys addr %x\n", *pt); */
 
     if (ret) {
         return ret;
@@ -90,7 +90,7 @@ int kfsmmap(struct buddy_alloc *buddy, struct fs_node *node,
         return ret;
     }
     
-    klog("[T %x\n", pt);
+    /* klog("[T %x\n", pt); */
     *off = mmap_fs(node, pt, npages, flags);
     /* klog("Fsmap Alloc phys addr %x\n", *pt); */
 

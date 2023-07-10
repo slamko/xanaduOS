@@ -66,7 +66,7 @@ static int insert_buddy(struct buddy_alloc *buddy,
         /* fl->next = kmalloc(sizeof(*fl->next)); */
 
     if (!fl->next) {
-        klog_error("Slab allocation failed %x\n", buddy->fl_slab);
+        klog_error("Slab allocation failed %x\n", fl->next);
         return ENOMEM;
     }
     
@@ -111,11 +111,11 @@ static inline void remove_free_head(struct buddy_alloc *buddy, order_t order) {
         return;
     }
     
-    struct free_list *new_next = f_area->free_list.next->next;
+    struct free_list *new_next = f_area->free_list.next ? f_area->free_list.next->next : NULL;
 
+    
     slab_free(buddy->fl_slab, f_area->free_list.next);
-    /* kfree(f_area->free_list.next); */
-    /* fb_print_hex((uintptr_t)f_area->free_list.next); */
+    /* klog("Before slab free %x\n", f_area->free_list.next); */
     f_area->free_list.next = new_next;
     f_area->num_free --;
 }
@@ -201,6 +201,11 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
 
         /* debug_log("Search\n"); */
         if (fa->num_free) {
+            if (!fa->free_list.next) {
+                fa->num_free = 0;
+                continue;
+            }
+            
             /* klog("Found buddy %d\n", fa->num_free); */
             remove_free_head(buddy, i);
             uintptr_t addr = 0;
@@ -245,7 +250,7 @@ int buddy_alloc_frames(struct buddy_alloc *buddy,
             cur_nframes = MAX_BUDDY_NFRAMES;
         }
 
-        /* klog("Current number of frames %d\n", cur_nframes); */
+        klog("Current number of frames %d\n", cur_nframes);
         ret = buddy_alloc_frames_max_order(buddy,
                                            addrs + (i * MAX_BUDDY_NFRAMES),
                                            cur_nframes, flags);

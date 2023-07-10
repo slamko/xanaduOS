@@ -310,6 +310,10 @@ void slab_free(struct slab_cache *cache, void *obj) {
     uintptr_t chunk_addr = 0;
     uintptr_t obj_addr = (uintptr_t)obj;
 
+    if (!obj) {
+        return;
+    }
+
     if (!cache->alignment) {
         chunk_addr = obj_addr - sizeof(struct slab_chunk);
     } else {

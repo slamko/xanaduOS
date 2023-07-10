@@ -85,6 +85,8 @@ struct isr_handler_args {
     uint32_t cs;
     uint32_t esp;
     uintptr_t eip;
+
+    struct x86_cpu_state *cpu_regs;
 };
 
 void void_handler(struct isr_handler_args *);

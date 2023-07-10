@@ -94,6 +94,7 @@ void isr_x86(uint32_t esp, struct isr_full_stack isr) {
     args.eip = isr.eip;
     args.esp = esp;
     args.cs = isr.cs;
+    args.cpu_regs = &isr.cpu_st;
 
     if (isr.cs > 0x1B) {
         klog("Cs :%x\n", isr.cpu_st.esp);

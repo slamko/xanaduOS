@@ -60,7 +60,7 @@ void pit_handler(struct isr_handler_args *args) {
 
             if(tick - event->last_call_tick > event->period_ms * 100) {
                 /* insert_invent_in_queue(event); */
-                event->cb();
+                event->cb(args);
                 event->last_call_tick = tick;
             }
         );
@@ -110,8 +110,8 @@ void pit_event_loop(void) {
     struct pit_event *eiq = event_queue;
 
     for(; eiq; eiq = eiq->next_in_queue) {
-        eiq->cb();
-        remove_event_from_queue(eiq);
+        /* eiq->cb(a); */
+        /* remove_event_from_queue(eiq); */
     }
 }
 

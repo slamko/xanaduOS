@@ -193,7 +193,7 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
     }
 
     if (tab_present(pd->page_tables[pde])) {
-        klog("Page Table already mapped %x\n", pd->page_tables[pde]);
+        /* klog("Page Table already mapped %x\n", pd->page_tables[pde]); */
         pd->page_tables[pde] |= flags;
         *pt = pd->page_tables_virt[pde];
         return 0;
@@ -208,11 +208,18 @@ int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
     return 0;
 }
 
-void copy_page(uintptr_t dest_phys, uintptr_t src_virt) {
+int copy_page(struct page_dir *pd, uintptr_t dest_phys, uintptr_t src_virt) {
     uintptr_t v_map_addr;
-    kmmap(kern_buddy, kernel_pd, &v_map_addr, dest_phys, R_W | PRESENT);
 
+    if (kmmap(kern_buddy, pd, &v_map_addr, dest_phys, R_W | PRESENT)) {
+        return 1;
+    }
+
+    klog("Temp copy map addr %x\n", v_map_addr);
+    
     memcpy((void *)v_map_addr, (void *)src_virt, PAGE_SIZE); 
+    knmunmap_contiguous(kern_buddy, pd, v_map_addr, 1);
+    return 0;
 }
 
 int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
@@ -225,7 +232,6 @@ int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
         return EINVAL;
     }
     
-    /* *new_pt_ptr = kmalloc_align_phys(PAGE_SIZE, PAGE_SIZE, new_pt_phys_addr); */
     *new_pt_ptr = slab_alloc_from_cache(slab_cache);
     *new_pt_phys_addr = ptr_to_phys_addr(pd, *new_pt_ptr);
     new_pt = *new_pt_ptr;
@@ -235,18 +241,20 @@ int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
     }
 
     for (unsigned int i = 0; i < PT_SIZE; i++) {
-        uint16_t flags = get_tab_flags(new_pt[i]);
+        uint16_t flags = get_tab_flags(pt[i]);
 
-        if (pt[i] & USER && pt[i] & PRESENT) {
+        if (false && pt[i] & USER && pt[i] & PRESENT) {
             if (find_alloc_frame(&new_pt[i], flags)) {
                 klog_error("Frame allocation failed\n");
                 return ENOMEM;
             }
+
+            klog("Copy page data %x\n", new_pt[i]);
             
             uintptr_t paddr_new_pt = get_tab_pure_addr(new_pt[i]);
-            fb_print_hex(pt[i]);
-
-            copy_page(paddr_new_pt, get_ident_phys_page_addr(pde, i));
+            if (copy_page(pd, paddr_new_pt, get_ident_phys_page_addr(pde, i))) {
+                return 1;
+            }
         } else {
             new_pt[i] = pt[i];
         }
@@ -265,7 +273,8 @@ void free_pd(struct page_dir *pd) {
     kfree(pd);
 }
 
-int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
+int clone_page_dir(struct page_dir *restrict pd,
+                   struct page_dir *restrict new_pd) {
     uintptr_t ptables_phys;
 
     if (!new_pd) {
@@ -285,12 +294,18 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
     new_pd->pd_phys_addr = ptables_phys;
 
     for (unsigned int i = 0; i < PT_SIZE; i++) {
-        if (pd->page_tables[i] & USER && tab_present(pd->page_tables[i])) {
+
+        if (pd->page_tables[i] & ACCESSED) {
+            pd->page_tables[i] &= ~ACCESSED;
+        }
+
+
+        if (false && pd->page_tables[i] & USER && tab_present(pd->page_tables[i])) {
             int ret;
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
 
-            klog("Clone the page table\n");
+            /* klog("Clone the page table\n"); */
 
             ret = clone_page_table(pd, i, &new_pt, &new_pt_paddr);
 
@@ -304,7 +319,8 @@ int clone_page_dir(struct page_dir *pd, struct page_dir *new_pd) {
             new_pd->page_tables_virt[i] = pd->page_tables_virt[i];
             new_pd->page_tables[i] = pd->page_tables[i];
 
-            /* klog("cl Pddd: %x\n", cur_pd->page_tables_virt[768][1]); */
+            /* klog("cl Pddd: %x\n", pd->page_tables_virt[768][1]); */
+            /* if (new_pd->page_tables[i] > 0x2) */
             /* klog("Clone pt %x\n", new_pd->page_tables[i]); */
         }
     }
@@ -320,6 +336,10 @@ int switch_page_dir_asm(uintptr_t pd);
 
 int switch_page_dir(struct page_dir *pd) {
     /* fb_print_hex(pd->pd_phys_addr); */
+    if (cur_pd == pd) {
+        return 0;
+    }
+    
     cur_pd = pd;
     switch_page_dir_asm(pd->pd_phys_addr);
     return 0;

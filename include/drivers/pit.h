@@ -6,7 +6,7 @@
 
 typedef uint32_t tick_t;
 
-typedef void (*pit_callback_t)(void);
+typedef void (*pit_callback_t)(struct isr_handler_args *);
 
 int pit_init(unsigned long freq);
 

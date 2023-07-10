@@ -38,6 +38,7 @@ enum task_state {
 
 struct task {
     struct page_dir *pd;
+    struct x86_cpu_state reg;
     uintptr_t eip;
     uintptr_t esp;
     uintptr_t *map_addr;
@@ -53,6 +54,10 @@ struct task {
 
 struct task *task_list;
 struct task *cur_task;
+
+#define TASK_SWITCH_TICK 8
+
+size_t task_switch_tick;
 
 int load_elf(struct task *task, struct fs_node *exec_node) {
     uintptr_t *user_addr;
@@ -84,10 +89,15 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
     klog("\nElf entry point %x\n", user_entry);
 
     for (unsigned int i = 0; i < 0x100; i++) {
-        fb_print_hex(*(uint8_t *)(user_entry + i));
+        /* fb_print_hex(*(uint8_t *)(user_entry + i)); */
     }
 
     return 0;
+}
+
+void print_task(struct task *task) {
+    klog("Task id = %u, state = %u\n", task->id, task->state);
+    klog("Task eip = %x; esp = %x\n", task->eip, task->esp);
 }
 
 void run_user_task(struct task *task) {
@@ -101,16 +111,49 @@ void run_kernel_task(struct task *task) {
     while(1);
 }
 
-void schedule(void) {
+
+static inline void switch_task(struct task *switch_task) {
+    switch_page_dir(switch_task->pd);
+    klog("Switching task\n");
+
+    if (switch_task->id >= 1000) {
+        run_user_task(switch_task);
+    } else {
+        run_kernel_task(switch_task);
+    }
+}
+
+void schedule(struct isr_handler_args *isr_args) {
     struct task *task = task_list;
 
     foreach(task,
             if (task->state == EMPTY) {
                 task->state = RUNNING;
+
+                switch_page_dir(task->pd);
                 load_elf(task, task->exec_node);
-                run_user_task(task);
+                switch_task(task);
             }
         );
+
+    return;
+
+    for(task = cur_task->next; ; task = task->next) {
+        if (!task) {
+            task = task_list;
+        }
+
+        if (task == cur_task) {
+            break;
+        }
+        
+        if (task->state == IDLE) {
+            memcpy(&cur_task->reg, isr_args->cpu_regs,
+                    sizeof(cur_task->reg));
+
+            switch_task(task);
+        }
+    }
 }
 
 void kern() {
@@ -125,17 +168,6 @@ void free_task(struct task *task) {
     slab_free(task_slab, task);
 }
 
-static inline void switch_task(struct task *switch_task) {
-    switch_page_dir(switch_task->pd);
-    klog("Switching task\n");
-
-    if (switch_task->id >= 1000) {
-        run_user_task(switch_task);
-    } else {
-        run_kernel_task(switch_task);
-    }
-}
-
 void exit(int code) {
     doubly_ll_remove(&task_list, cur_task);
 
@@ -143,42 +175,50 @@ void exit(int code) {
         panic("Killed kernel task...\n", 0);
     }
 
+    if (!task_list->next) {
+        panic("Killed init process\n", 0);
+    }
+
     free_task(cur_task);
     switch_task(task_list);
 }
 
 int fork_task(struct task *new_task) {
-    int ret;
+    int ret = 0;
 
     memcpy(new_task, cur_task, sizeof(*new_task));
-    new_task->pd = kzalloc(0, sizeof *new_task->pd);
-    new_task->id = last_kernel_tid + 1;
+    new_task->pd = kzalloc(0, sizeof(*new_task->pd));
+
+    if (!new_task->pd) {
+        return ENOMEM;
+    }
+    
+    new_task->state = IDLE;
 
     if (cur_task->id >= 1000) {
-        cur_task->id = last_user_tid + 1;
+        new_task->id = last_user_tid + 1;
+        last_user_tid++;
+    } else {
+        new_task->id = last_kernel_tid + 1;
+        last_kernel_tid++;
     }
    
-    if (clone_cur_page_dir(new_task->pd)) {
-        klog("error");
-        return 1;
+    if ((ret = clone_cur_page_dir(new_task->pd))) {
+        klog_error("Failed to clone page directory\n");
+        return ret;
     }
 
-    ret = switch_page_dir(new_task->pd);
-
-    if (ret) {
-        klog_error("Switch directory failed\n");
-    }
-
-    klog("Switched page dir\n");
-
-   return ret;
+    return ret;
 }
 
 int fork(void) {
     struct task *new_task = slab_alloc_from_cache(task_slab);
 
+    /* klog("SDD: %x \n", a); */
     fork_task(new_task);
-    new_task->buddy = buddy_alloc_clone(cur_task->buddy);
+    print_task(new_task);
+    /* while(1); */
+    /* new_task->buddy = buddy_alloc_clone(cur_task->buddy); */
     return 0;
 }
 
@@ -215,7 +255,6 @@ void spawn_init(struct module_struct *mods) {
     new_task->id = last_user_tid;
     new_task->state = EMPTY;
     new_task->exec_node = exec_node;
-    last_user_tid++;
 
     new_task->buddy = buddy_alloc_create(0x100000, 0x40000000);
     doubly_ll_insert(task_list, new_task);
