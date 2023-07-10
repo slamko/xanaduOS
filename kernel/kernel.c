@@ -144,6 +144,7 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     pit_init(0);
     apic_init();
     rtc_init();
+    multiproc_init();
 
     syscall_init();
 

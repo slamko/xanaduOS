@@ -4,6 +4,7 @@
 #include "drivers/pic.h"
 #include "lib/kernel.h"
 #include "lib/slibc.h"
+#include <stddef.h>
 #include <stdint.h>
 
 typedef uint32_t tick_t;
@@ -11,7 +12,6 @@ typedef uint32_t tick_t;
 static const unsigned long XTAL_FREQ = 1193182;
 static volatile tick_t tick;
 static unsigned long pit_freq = 10*1000;
-
 
 enum PIT_channels{
     PIT_CH0         = 0x40,
@@ -21,14 +21,29 @@ enum PIT_channels{
 
 typedef enum PIT_channels pit_channel_t;
 
+
+static pit_callback_t callbacks[4];
+
 enum {
     SQUARE_WAVE     = 0x6,
     LOHI_MODE       = 0x30, 
     PIT_MODE_REG    = 0x43,
 };
 
+size_t last_reset;
+size_t cb_period;
+
 void pit_handler(struct isr_handler_args *args) {
-    tick++;
+    for (size_t i = 0; i < ARR_SIZE(callbacks); i++) {
+        if (last_reset <= cb_period * 10) break;
+        
+        if (callbacks[i]) {
+            callbacks[i]();
+        }
+    }
+    
+    tick += 2;
+    last_reset += 2;
 }
 
 uint16_t get_pit_count(pit_channel_t ch) {
@@ -57,13 +72,18 @@ void wait_ticks(tick_t delay) {
     }
 }
 
+void pit_add_callback(pit_callback_t cb, unsigned int priority, size_t period) {
+    cb_period = period;
+    callbacks[priority] = cb;
+}
+
 void sleep_us(uint32_t delay) {
     if (!delay) {
         return;
     }
     
     unsigned long min_delay = (1000*1000) / pit_freq;
-    min_delay *= 2; // for slow timers
+    /* min_delay *= 2; // for slow timers */
 
     if (delay < min_delay) {
         delay = min_delay;
@@ -80,7 +100,7 @@ void sleep_us(uint32_t delay) {
         delay_ticks = (delay / (1000 * 1000)) * pit_freq;
     }
 
-    delay_ticks /= 2; // for slow timers (like in qemu)
+    /* delay_ticks /= 2; // for slow timers (like in qemu) */
 
     wait_ticks(delay_ticks);
 }
@@ -97,7 +117,7 @@ void sleep_ms(uint32_t delay) {
         return;
     }
 
-    delay_ticks /= 2; // for slow timers (like in qemu)
+    /* delay_ticks /= 2; // for slow timers (like in qemu) */
 
     wait_ticks(delay_ticks);
 }
@@ -114,7 +134,7 @@ void sleep_sec(uint32_t delay) {
         return;
     }
    
-    delay_ticks /= 2; // for slow timers (like in qemu)
+    /* delay_ticks /= 2; // for slow timers (like in qemu) */
     wait_ticks(delay_ticks);
 }
 

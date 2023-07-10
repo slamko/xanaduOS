@@ -59,11 +59,21 @@ int idt_init(void) {
 }
 
 void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
+    if (isr_handlers[PIC_REMAP + irq_num]) {
+        klog_warn("Redefining irq handler\n");
+        /* return; */
+    }
+    
     isr_handlers[PIC_REMAP + irq_num] = handler;
     pic_unmask(irq_num);
 }
 
 int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
+    if (isr_handlers[int_num]) {
+        klog_warn("Redefining isr handler\n");
+        /* return; */
+    }
+
     isr_handlers[int_num] = handler;
 
     if (flags) {

@@ -9,4 +9,6 @@ void spawn_init(struct module_struct *mods);
 
 int fork(void);
 
+int multiproc_init(void);
+
 #endif
