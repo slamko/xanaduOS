@@ -13,7 +13,7 @@ int multiproc_init(void);
 
 int fork(void);
 
-int fork_task(struct task *new_task);
+int fork_task(struct task *new_task, int i);
 
 void exit(int code);
 

@@ -15,8 +15,8 @@ int main(void) {
 
     /* __asm__ volatile("int $0x80"); */
     res = usr_intx80(1, 2, "Hello\n", 6);
-    res = usr_intx80(1, 2, "Hello\n", 6);
-    res = usr_intx80(1, 2, "Hello\n", 6);
+    /* res = usr_intx80(1, 2, "Hello\n", 6); */
+    /* res = usr_intx80(1, 2, "Hello\n", 6); */
     /* res = usr_intx80(1, 2, "Hello\n", 6); */
 
     usr_intx80(2, 1, 0);

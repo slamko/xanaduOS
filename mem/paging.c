@@ -54,7 +54,7 @@ static uintptr_t last_fault_addr;
 
 static struct slab_cache *slab_cache;
 
-uintptr_t to_phys_addr(struct page_dir *pd, uintptr_t virt_addr) {
+uintptr_t to_phys_addr(const struct page_dir *pd, uintptr_t virt_addr) {
     pte_t pde;
     pte_t pte;
     pte_t page_offset = virt_addr & 0xfff;
@@ -81,7 +81,7 @@ uintptr_t to_phys_addr(struct page_dir *pd, uintptr_t virt_addr) {
 
 
 
-uintptr_t ptr_to_phys_addr(struct page_dir *pd, void *ptr) {
+uintptr_t ptr_to_phys_addr(const struct page_dir *pd, void *ptr) {
     return to_phys_addr(pd, to_uintptr(ptr));
 }
 
@@ -243,7 +243,7 @@ int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
     for (unsigned int i = 0; i < PT_SIZE; i++) {
         uint16_t flags = get_tab_flags(pt[i]);
 
-        if (false && pt[i] & USER && pt[i] & PRESENT) {
+        if (pt[i] & USER && pt[i] & PRESENT) {
             if (find_alloc_frame(&new_pt[i], flags)) {
                 klog_error("Frame allocation failed\n");
                 return ENOMEM;
@@ -274,16 +274,19 @@ void free_pd(struct page_dir *pd) {
 }
 
 int clone_page_dir(struct page_dir *restrict pd,
-                   struct page_dir *restrict new_pd) {
+                   struct page_dir *restrict new_pd, int r) {
     uintptr_t ptables_phys;
 
     if (!new_pd) {
         return EINVAL;
     }
 
-    new_pd->page_tables = slab_alloc_from_cache(slab_cache);
+    new_pd->page_tables = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
+    /* new_pd->page_tables = slab_alloc_from_cache(slab_cache); */
     ptables_phys = ptr_to_phys_addr(pd, new_pd->page_tables);
-    new_pd->page_tables_virt = slab_alloc_from_cache(slab_cache);
+    new_pd->page_tables_virt = kmalloc(PAGE_SIZE);
+    /* new_pd->page_tables_virt = slab_alloc_from_198cache(slab_cache); */
+    /* memset(new_pd->page_tables_virt, 0, PAGE_SIZE); */
 
     /* klog("Slab allocaed page tables\n"); */
     
@@ -300,7 +303,7 @@ int clone_page_dir(struct page_dir *restrict pd,
         }
 
 
-        if (false && pd->page_tables[i] & USER && tab_present(pd->page_tables[i])) {
+        if (pd->page_tables[i] & USER && tab_present(pd->page_tables[i])) {
             int ret;
             page_table_t new_pt;
             uintptr_t new_pt_paddr;
@@ -320,8 +323,6 @@ int clone_page_dir(struct page_dir *restrict pd,
             new_pd->page_tables[i] = pd->page_tables[i];
 
             /* klog("cl Pddd: %x\n", pd->page_tables_virt[768][1]); */
-            /* if (new_pd->page_tables[i] > 0x2) */
-            /* klog("Clone pt %x\n", new_pd->page_tables[i]); */
         }
     }
 
@@ -329,19 +330,21 @@ int clone_page_dir(struct page_dir *restrict pd,
 }
 
 int clone_cur_page_dir(struct page_dir *new_pd) {
-    return clone_page_dir(cur_pd, new_pd);
+    return clone_page_dir(cur_pd, new_pd, 0);
 }
 
 int switch_page_dir_asm(uintptr_t pd);
 
 int switch_page_dir(struct page_dir *pd) {
-    /* fb_print_hex(pd->pd_phys_addr); */
     if (cur_pd == pd) {
+        klog_warn("Page directory already selected\n");
         return 0;
     }
+    klog_warn("Switched page dir\n");
     
     cur_pd = pd;
     switch_page_dir_asm(pd->pd_phys_addr);
+    /* flush_tlb(); */
     return 0;
 }
 

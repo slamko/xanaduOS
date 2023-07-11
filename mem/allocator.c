@@ -90,7 +90,7 @@ void *kmalloc_align(size_t siz, size_t alignment) {
 
     struct block_header *header;
     size_t aligned_alloc_size = align_up(siz, alignment);
-    /* klog("Aligned alloc size %u\n", aligned_alloc_size); */
+    klog("Aligned alloc size %u\n", aligned_alloc_size);
 
     for (header = heap_base_block; ; header = header->next_hole) {
         uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
@@ -190,12 +190,21 @@ void *kmalloc_phys(size_t siz, uintptr_t *phys) {
 
 void *kzalloc_align(size_t val, size_t align, size_t size) {
     void *ret = kmalloc_align(size, align);
+
+    if (!ret) {
+        return ret;
+    }
+
     memset(ret, val, size);
     return ret;
 }
 
 void *kzalloc(size_t val, size_t size) {
     void *ret = kmalloc(size);
+    if (!ret) {
+        return ret;
+    }
+    
     memset(ret, val, size);
     return ret;
 }

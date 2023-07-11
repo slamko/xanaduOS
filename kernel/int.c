@@ -97,13 +97,22 @@ void isr_x86(uint32_t esp, struct isr_full_stack isr) {
     args.cpu_regs = &isr.cpu_st;
 
     if (isr.cs > 0x1B) {
-        klog("Cs :%x\n", isr.cpu_st.esp);
+        /* klog("Cs :%x\n", isr.cpu_st.esp); */
+    }
+
+    if (isr.int_num == 0x80) {
+        /* klog("Eip: %x\n", isr.eip); */
     }
     
     count++;
     isr_handlers[isr.int_num](&args);
 
     /* fb_print_num(isr.eip); */
+
+    if (isr.int_num == 0x80) {
+        /* klog("Eip: %x\n", isr.eip); */
+    }
+ 
 }
 
 

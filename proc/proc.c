@@ -183,7 +183,7 @@ void exit(int code) {
     switch_task(task_list);
 }
 
-int fork_task(struct task *new_task) {
+int fork_task(struct task *new_task, int i) {
     int ret = 0;
 
     memcpy(new_task, cur_task, sizeof(*new_task));
@@ -202,7 +202,7 @@ int fork_task(struct task *new_task) {
         new_task->id = last_kernel_tid + 1;
         last_kernel_tid++;
     }
-   
+
     if ((ret = clone_cur_page_dir(new_task->pd))) {
         klog_error("Failed to clone page directory\n");
         return ret;
@@ -214,11 +214,9 @@ int fork_task(struct task *new_task) {
 int fork(void) {
     struct task *new_task = slab_alloc_from_cache(task_slab);
 
-    /* klog("SDD: %x \n", a); */
-    fork_task(new_task);
+    fork_task(new_task, 1);
     print_task(new_task);
-    /* while(1); */
-    /* new_task->buddy = buddy_alloc_clone(cur_task->buddy); */
+    new_task->buddy = buddy_alloc_clone(cur_task->buddy);
     return 0;
 }
 
@@ -233,7 +231,6 @@ int execve(const char *exec) {
     buddy_alloc_clean(cur_task->buddy);
     cur_task->exec_node = exec_node;
     cur_task->state = EMPTY;
-    cur_task->buddy = buddy_alloc_create(0x100000, 0x40000000);
     
     return ret;
 }
@@ -248,7 +245,7 @@ void spawn_init(struct module_struct *mods) {
     
     struct task *new_task = slab_alloc_from_cache(task_slab);
 
-    if (fork_task(new_task)) {
+    if (fork_task(new_task, 0)) {
         panic("Failed to fork base kernel process\n", 0);
     }
 

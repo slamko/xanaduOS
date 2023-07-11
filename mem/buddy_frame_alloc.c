@@ -319,7 +319,12 @@ size_t get_buddy_map_size(size_t mem_size) {
     size_t map_size = 0;
 
     for (unsigned int i = 0; i < MAX_ORDER; i++) {
-        map_size += mem_size / (PAGE_SIZE * MAP_SIZE * (1 << i));
+        size_t map_factor = (PAGE_SIZE * MAP_SIZE * (1 << i));
+        map_size += mem_size / map_factor;
+
+        if (mem_size % map_factor) {
+            map_size++;
+        }
     }
     return map_size;
 }
@@ -337,7 +342,7 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     buddy->mem_size = mem_size;
     buddy->mem_start = mem_start;
 
-    size_t map_size = get_buddy_map_size(mem_size);
+    size_t map_size = get_buddy_map_size(mem_size) * sizeof(**buddy->maps);
     buddy->maps = kmalloc((sizeof(*buddy->maps) * MAX_ORDER) + map_size);
 
     size_t map_offset = 0;
@@ -419,7 +424,7 @@ struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy) {
     buddy = kmalloc(sizeof *buddy);
     buddy->fl_slab = slab_cache_create(sizeof(struct free_list));
     
-    size_t map_size = get_buddy_map_size(copy->mem_size);
+    size_t map_size = get_buddy_map_size(copy->mem_size) * sizeof(**buddy->maps);
     buddy->maps = kmalloc((sizeof(*buddy->maps) * MAX_ORDER) + map_size);
 
     size_t map_offset = 0;
@@ -429,6 +434,7 @@ struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy) {
         map_offset += copy->mem_size
             / (PAGE_SIZE * MAP_SIZE * (1 << i) * sizeof (*buddy->maps));
     }
+    klog("Buddy clone maps %u\n", map_size);
 
     size_t map_base_off = (sizeof(*buddy->maps) * MAX_ORDER);
     memcpy(buddy->maps + map_base_off, copy->maps + map_base_off, map_size);
@@ -436,6 +442,8 @@ struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy) {
     buddy->free_area = kzalloc(0, sizeof(struct free_area) * MAX_ORDER);
     size_t max_map_size = copy->mem_size / (MAX_BUDDY_SIZE);
     buddy->free_area[MAX_ORDER - 1].num_free = max_map_size;
+    klog("Buddy clone: allocated free area\n");
+
 
     for (size_t i = 0; i < MAX_ORDER; i++) {
         size_t num_free = copy->free_area[i].num_free;
