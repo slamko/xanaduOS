@@ -190,7 +190,7 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
     if (buddy->free_area[order].num_free) {
         /* debug_log("Free frame available\n"); */
         remove_free_head(buddy, order);
-        set_addrs(addrs, free->addr, nframes, 0);
+        *addrs = free->addr;
         set_frame_used(buddy, order, free->addr);
         return 0;
     }
@@ -213,20 +213,14 @@ int buddy_alloc_frames_max_order(struct buddy_alloc *buddy, uintptr_t *addrs,
             if (buddy_slice(buddy, upper_fl->addr, &addr, i, order)) {
                 return 1;
             }
-            set_addrs(addrs, addr, nframes, 0);
+            *addrs = addr;
 
             /* klog("Alloc addr %d\n", addrs[0]); */
             return 0;
         }
     }
     
-    /* klog("Divide frames\n"); */
-    size_t nnof = nframes / 2;
-    if (buddy_alloc_frames_max_order(buddy, addrs, nnof, flags)) {
-        return ENOMEM;
-    }
-
-    return buddy_alloc_frames_max_order(buddy, addrs + (nnof), nnof, flags);
+    return ENOMEM;
 }
 
 int buddy_alloc_frames(struct buddy_alloc *buddy,
@@ -241,7 +235,6 @@ int buddy_alloc_frames(struct buddy_alloc *buddy,
     if (nframes % MAX_BUDDY_NFRAMES) {
         rep_limit ++;
     }
-
     
     for (unsigned int i = 0; i < rep_limit; i++) {
         size_t cur_nframes = nframes - (i * MAX_BUDDY_NFRAMES);

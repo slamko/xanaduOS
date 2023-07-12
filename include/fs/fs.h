@@ -26,6 +26,8 @@ typedef struct fs_node *(*fs_get_node_f)(struct fs_node *, const char *name);
 typedef size_t (*fs_mmap_f)(struct fs_node *node, uintptr_t *,
                             size_t, uint16_t);
 
+typedef void (*fs_munmap_f)(struct fs_node *node, uintptr_t);
+
 struct fs_node {
     char name[256];
     inode_t inode;
@@ -45,6 +47,7 @@ struct fs_node {
     fs_opendir_f opendir;
     fs_closedir_f closedir;
     fs_mmap_f mmap;
+    fs_munmap_f munmap;
 
     struct fs_node *this;
 };
@@ -80,5 +83,7 @@ size_t mmap_fs(struct fs_node *node, uintptr_t *addrs, size_t size, uint16_t);
 struct fs_node *get_node_fs(const char *name);
 
 struct fs_node *root_get_node_fs(const char *name);
+
+void munmap_fs(struct fs_node *node, uintptr_t addr);
 
 #endif

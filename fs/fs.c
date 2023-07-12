@@ -69,13 +69,20 @@ struct fs_node *root_get_node_fs(const char *name) {
     return fs_root->get_node(fs_root, name);
 }
 
-size_t mmap_fs(struct fs_node *node, uintptr_t *addrs, size_t size,
+size_t mmap_fs(struct fs_node *node, uintptr_t *addrs, size_t npages,
                uint16_t flags) {
     if (!node || !node->mmap) {
         return 0;
     }
 
-    return node->mmap(node, addrs, size, flags);
+    return node->mmap(node, addrs, npages, flags);
 }
 
+void munmap_fs(struct fs_node *node, uintptr_t addr) {
+    if (!node || !node->munmap) {
+        return;
+    }
+
+    return node->munmap(node, addr);
+}
 

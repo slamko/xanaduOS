@@ -1,13 +1,16 @@
 #include "mem/allocator.h"
+#include "kernel/error.h"
+#include "drivers/fb.h"
+#include "lib/kernel.h"
+#include "lib/slibc.h"
+#include "mem/mmap.h"
+#include "mem/paging.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include "lib/kernel.h"
-#include "drivers/fb.h"
-#include "mem/paging.h"
-#include "lib/slibc.h"
 
 #define BLOCK_HEADER_MAGIC_NUM 0x0BADBABA
+#define MAP_CRITICAL_DIST 0x100000
 
 static const size_t HEAP_ALIGN = 16;
 
@@ -30,11 +33,11 @@ struct block_header {
 #define to_header_ptr(int_addr) ((struct block_header *)((void *)(int_addr)))
 
 void write_header(struct block_header *head, struct block_header *next,
-                        struct block_header *prev,
-                        struct block_header *next_hole,
-                        size_t size, uint8_t is_hole) {
-    if (!head) return;
-    
+                  struct block_header *prev, struct block_header *next_hole,
+                  size_t size, uint8_t is_hole) {
+    if (!head)
+        return;
+
     head->next_hole = next_hole;
     head->is_hole = is_hole;
     head->next = next;
@@ -48,7 +51,7 @@ void *alloc_test(size_t size) {
     if (!t) {
         klog("null\n");
     }
-    
+
     klog("alloc bytes: %u\n", size);
     klog("at address: %x\n", t);
 
@@ -70,109 +73,128 @@ void allocator_test(void) {
 
 void heap_init(uintptr_t heap_base) {
     heap_base_addr = heap_base;
-    heap_end_addr = heap_base_addr + INIT_HEAP_SIZE;
+    heap_end_addr = map_limit;
 
     heap_base_block = to_header_ptr(heap_base_addr);
-    
+
     memset(heap_base_block, 0, sizeof(*heap_base_block));
 
     heap_base_block[0].magic_num = BLOCK_HEADER_MAGIC_NUM;
     heap_base_block[0].is_hole = true;
-    heap_base_block[0].size = heap_end_addr - heap_base_addr;  
+    heap_base_block[0].size = heap_end_addr - heap_base_addr;
+    heap_base_block[0].next_hole = NULL;
+    heap_base_block[0].next = NULL;
+}
+
+static inline int expand_heap(struct block_header *header) {
+    uintptr_t prev_end_addr = heap_end_addr;
+    heap_end_addr += PT_SIZE * PAGE_SIZE;
+    header->size += PT_SIZE * PAGE_SIZE;
+
+    return mmap_pages(prev_end_addr, PT_SIZE);
+}
+
+void *do_alloc(struct block_header *header, size_t size, uintptr_t data_base) {
+
+    if (!header->next ||
+        (header->size >= size + (3 * sizeof(*header)) && header->next)) {
+
+        /* klog("Insert new header %x\n", header->next); */
+
+        struct block_header *new_block = (void *)(data_base + size);
+        if (!heap_base_block->next_hole ||
+            heap_base_block->next_hole == header) {
+
+            heap_base_block->next_hole = new_block;
+        }
+
+        memset(new_block, 0, sizeof(*new_block));
+        new_block->magic_num = BLOCK_HEADER_MAGIC_NUM;
+        new_block->is_hole = true;
+        new_block->size = heap_end_addr - data_base - size;
+
+        new_block->prev = header;
+        new_block->next = header->next;
+        if (new_block->next == (void *)0xFFFFFFFF) {
+            new_block->next = NULL;
+        }
+        
+        new_block->next_hole = header->next_hole;
+        if (new_block->next_hole == (void *)0xFFFFFFFF) {
+            new_block->next_hole = NULL;
+        }
+
+        header->next_hole = new_block;
+        header->next = new_block;
+
+        /* klog("Insert new header %x\n", header->next); */
+    }
+
+    header->is_hole = false;
+    header->size = size + sizeof(*header);
+
+    if (to_uintptr(header->next) > heap_end_addr - MAP_CRITICAL_DIST) {
+        /* klog_warn("Running out of heap\n"); */
+
+        klog("Running out of heap %x\n", header->next->size);
+        klog("Mapped additional heap space %x\n", heap_end_addr);
+
+        if (expand_heap(header)) {
+            panic("Could not expand kernel heap\n", 0);
+        }
+    }
+
+    return (void *)data_base;
+}
+
+static inline uintptr_t get_data_base(struct block_header *header) {
+    return to_uintptr(header) + sizeof(*header);
 }
 
 void *kmalloc_align(size_t siz, size_t alignment) {
-    if (siz == 0) return NULL;
+    if (siz == 0) {
+        return NULL;
+    }
 
     if (alignment == 0) {
         alignment = 1;
     }
 
     struct block_header *header;
+    struct block_header *last_header = NULL;
     size_t aligned_alloc_size = align_up(siz, alignment);
-    klog("Aligned alloc size %u\n", aligned_alloc_size);
 
-    for (header = heap_base_block; ; header = header->next_hole) {
-        uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
+    for (header = heap_base_block; header;
+         header = header->next_hole) {
+
+        uintptr_t data_base = get_data_base(header);
         data_base = align_up(data_base, alignment);
-        
-        if (header->is_hole
-            && header->size >=
+
+        /* klog("Aligned alloc size %x\n", header->size); */
+
+        if (header->is_hole &&
+            header->size >=
                 (aligned_alloc_size + (data_base - (uintptr_t)header))) {
-
-            if (!header->next ||
-                (header->size >= aligned_alloc_size + (3 * sizeof(*header))
-                 && header->next)) {
-
-                /* fb_print_black("insert new\n"); */
-                struct block_header *new_block =
-                    (void *)(data_base + aligned_alloc_size);
-                if (!heap_base_block->next_hole
-                    || heap_base_block->next_hole == header) {
-
-                    heap_base_block->next_hole = new_block;
-                }
-
-
-                memset(new_block, 0, sizeof(*new_block));
-                new_block->magic_num = BLOCK_HEADER_MAGIC_NUM;
-                new_block->is_hole = true;
-                new_block->size =
-                    heap_end_addr - data_base - aligned_alloc_size;
-
-                new_block->prev = header;
-                new_block->next = header->next;
-                new_block->next_hole = header->next_hole;
-
-                header->next_hole = new_block;
-                header->next = new_block;
-            }
-
-            header->is_hole = false;
-            header->size = aligned_alloc_size + sizeof(*header);
-
-            return (void *)data_base;
+            return do_alloc(header, aligned_alloc_size, data_base);
         }
-    }
-    klog("not enough\n");
 
-    heap_end_addr += PAGE_SIZE;
-
-    if (aligned_alloc_size > PAGE_SIZE) {
-        heap_end_addr +=
-            (aligned_alloc_size - (aligned_alloc_size % PAGE_SIZE)) * 2;
+        last_header = header;
     }
 
-    header =
-        to_header_ptr((uintptr_t)header + header->size + sizeof(*header));
-        
-    uintptr_t data_base = ((uintptr_t)header + sizeof(*header));
-    struct block_header *new_block =
-        (void *)(data_base + aligned_alloc_size);
+    klog("Not enough heap memory %x\n", last_header->size);
 
-    header->next_hole = new_block;
-    header->next = new_block;
-    header->is_hole = false;
-    header->size = aligned_alloc_size + sizeof(*header);
-
-    if (!heap_base_block->next_hole
-        || heap_base_block->next_hole == header) {
-        heap_base_block->next_hole = new_block;
+    if (expand_heap(last_header)) {
+        panic("Could not expand kernel heap\n", 0);
     }
+    klog("Expanded heap %x\n", heap_end_addr);
+ 
+    uintptr_t data_base = get_data_base(header);
+    klog("Mapped additional heap space %x\n", heap_end_addr);
 
-    memset(new_block, 0, sizeof(*new_block));
-    new_block->magic_num = BLOCK_HEADER_MAGIC_NUM;
-    new_block->is_hole = true;
-    new_block->size = heap_end_addr - data_base - aligned_alloc_size;
-    new_block->prev = header;
-    new_block->next = header->next;
-    new_block->next_hole = header->next_hole;
-
-    return (void *)data_base;
+    return do_alloc(last_header, aligned_alloc_size, data_base);
 }
-void *kmalloc(size_t siz) {
-    return kmalloc_align(siz, HEAP_ALIGN);
-}
+
+void *kmalloc(size_t siz) { return kmalloc_align(siz, HEAP_ALIGN); }
 
 void *kmalloc_align_phys(size_t siz, size_t align, uintptr_t *phys) {
     void *virt = kmalloc_align(siz, align);
@@ -204,7 +226,7 @@ void *kzalloc(size_t val, size_t size) {
     if (!ret) {
         return ret;
     }
-    
+
     memset(ret, val, size);
     return ret;
 }
@@ -214,16 +236,18 @@ static inline void *get_block_header_addr(void *addr) {
 }
 
 void kfree(void *addr) {
-    if (!addr) return;
+    if (!addr)
+        return;
 
     if ((uintptr_t)addr > heap_end_addr || (uintptr_t)addr < heap_base_addr) {
         return;
     }
-    
+
     void *block_addr = get_block_header_addr(addr);
     struct block_header *header = (struct block_header *)block_addr;
-    
-    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM) return;
+
+    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM)
+        return;
 
     header->is_hole = true;
 
@@ -233,7 +257,8 @@ void kfree(void *addr) {
     } else {
         struct block_header *prev_hole = heap_base_block;
         for (; to_uintptr(prev_hole->next_hole) < to_uintptr(header);
-            prev_hole = prev_hole->next_hole);
+             prev_hole = prev_hole->next_hole)
+            ;
 
         header->next_hole = prev_hole->next_hole;
         prev_hole->next_hole = header;
@@ -264,24 +289,23 @@ void kfree(void *addr) {
 }
 
 size_t check_block_size(void *addr) {
-    if (!addr) return 0;
+    if (!addr)
+        return 0;
 
     if ((uintptr_t)addr > heap_end_addr || (uintptr_t)addr < heap_base_addr) {
         return 0;
     }
-    
+
     void *block_addr = get_block_header_addr(addr);
     struct block_header *header = (struct block_header *)block_addr;
-    
-    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM) return 0;
 
-    if (header->is_hole) return 0;
+    if (header->magic_num != BLOCK_HEADER_MAGIC_NUM)
+        return 0;
+
+    if (header->is_hole)
+        return 0;
 
     return header->size;
 }
 
-void ktest() {
-
-}
-
-
+void ktest() {}

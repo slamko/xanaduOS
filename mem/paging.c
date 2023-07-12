@@ -34,6 +34,8 @@ void disable_paging(void);
 #define DEFAULT_FLAGS (R_W | PRESENT)
 #define MAP_LOWER_ADDR 0x100000
 
+uintptr_t map_limit;
+
 struct page_dir init_pd;
 struct page_dir *cur_pd;
 struct page_dir *kernel_pd;
@@ -76,9 +78,6 @@ uintptr_t to_phys_addr(const struct page_dir *pd, uintptr_t virt_addr) {
     /* klog("Pddd: %x\n", cur_pd->page_tables_virt[768]); */
     return phys_addr;
 }
-
-/* uintptr_t to_phys_addr(uintptr_t virt_addr) { */
-
 
 
 uintptr_t ptr_to_phys_addr(const struct page_dir *pd, void *ptr) {
@@ -145,6 +144,8 @@ void paging_init(size_t pmem_limit) {
     rodata_end = to_phys_addr(cur_pd, rodata_end);
 
     pt_base_addr = kernel_end_addr + (PAGE_SIZE * 1);
+    map_limit = virt_kernel_addr +
+        (KERNEL_INIT_PT_COUNT * PT_SIZE * PAGE_SIZE);
 
     heap_init(pt_base_addr);
     slab_alloc_init(pt_base_addr);
@@ -176,36 +177,48 @@ void paging_init(size_t pmem_limit) {
 uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     uintptr_t phys_addr;
     *new_pt = slab_alloc_from_cache(slab_cache);
+    /* *new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE); */
     phys_addr = ptr_to_phys_addr(cur_pd, *new_pt);
     memset(*new_pt, 0x0, PAGE_SIZE);
 
     return phys_addr | flags;
 }
 
-int map_alloc_pt(struct page_dir *pd, page_table_t *pt, uint16_t pde,
-                 uint16_t flags) {
+int map_alloc_npt(struct page_dir *pd, page_table_t *pt, size_t npt,
+                  pte_t pde, uint16_t flags) {
     if (!pd || !pt) {
         return EINVAL;
     }
 
-    if (pd->page_tables[pde] & ACCESSED) {
-        pd->page_tables[pde] &= ~ACCESSED;
+    for (size_t n = 0; n < npt; n++) {
+        size_t cur_pde = pde + n;
+
+        if (pd->page_tables[cur_pde] & ACCESSED) {
+            pd->page_tables[cur_pde] &= ~ACCESSED;
+        }
+
+        if (tab_present(pd->page_tables[cur_pde])) {
+            klog("Page Table already mapped %x\n", pd->page_tables[cur_pde]);
+            pd->page_tables[cur_pde] |= flags;
+            pt[n] = pd->page_tables_virt[cur_pde];
+            return 0;
+        }
+
+        pd->page_tables[cur_pde] = alloc_pt(&pt[n], flags);
+        if (!pd->page_tables[cur_pde]) {
+            return ENOMEM;
+        }
+
+        klog("Allocating page table %u\n", cur_pde - 1);
+        pd->page_tables_virt[cur_pde] = *pt;
     }
 
-    if (tab_present(pd->page_tables[pde])) {
-        /* klog("Page Table already mapped %x\n", pd->page_tables[pde]); */
-        pd->page_tables[pde] |= flags;
-        *pt = pd->page_tables_virt[pde];
-        return 0;
-    }
-   
-    pd->page_tables[pde] = alloc_pt(pt, flags);
-    if (!pd->page_tables[pde]) {
-        return ENOMEM;
-    }
-    
-    pd->page_tables_virt[pde] = *pt;
     return 0;
+}
+
+int map_alloc_pt(struct page_dir *pd, page_table_t *pt,
+                 pte_t pde, uint16_t flags) {
+    return map_alloc_npt(pd, pt, 1, pde, flags);
 }
 
 int copy_page(struct page_dir *pd, uintptr_t dest_phys, uintptr_t src_virt) {
@@ -252,7 +265,7 @@ int clone_page_table(struct page_dir *pd, pte_t pde, page_table_t *new_pt_ptr,
             klog("Copy page data %x\n", new_pt[i]);
             
             uintptr_t paddr_new_pt = get_tab_pure_addr(new_pt[i]);
-            if (copy_page(pd, paddr_new_pt, get_ident_phys_page_addr(pde, i))) {
+            if (copy_page(pd, paddr_new_pt, get_virt_addr(pde, i))) {
                 return 1;
             }
         } else {
@@ -375,6 +388,22 @@ void unmap_page(struct page_dir *pd, pte_t pde, pte_t pte) {
     pt[pte] &= ~PRESENT;
 }
 
+void unmap_pages(struct page_dir *pd, pte_t pde, pte_t pte, size_t npages) {
+    int overflow = 0;
+    for (unsigned int i = 0; i < npages; i ++) {
+        if (pte + overflow + i >= PT_SIZE) {
+            overflow -= PT_SIZE;
+            pde++;
+        }
+
+        if (pde >= PT_SIZE) {
+            break;
+        }
+        
+        unmap_page(pd, pde, overflow + pte + i);
+    }
+}
+
 int non_present_page_hanler(uint16_t pde, uint16_t pte) {
     if (!pt_present(cur_pd, pde)) {
         /* klog_warn("Page table not present\n"); */
@@ -391,7 +420,7 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
             return ret;
         }
 
-        flush_page(get_ident_phys_page_addr(pde, pte));
+        flush_page(get_virt_addr(pde, pte));
     } else if (!page_present(cur_pd, pde, pte)) {
         /* klog_warn("Page not present\n"); */
         uintptr_t *pt_entry = get_pd_page(cur_pd, pde, pte);
@@ -400,7 +429,6 @@ int non_present_page_hanler(uint16_t pde, uint16_t pte) {
 
     return 1;
 }
-
 
 void page_fault(struct isr_handler_args *args) {
     uintptr_t fault_addr;
@@ -414,10 +442,8 @@ void page_fault(struct isr_handler_args *args) {
     }
 
     last_fault_addr = fault_addr;
+    get_pde_pte(fault_addr, &pde, &pte);
 
-    pde = fault_addr >> 22;
-    /* fb_print_hex(pde); */
-    pte = (fault_addr >> 12) & 0x3ff;
     /* fb_print_hex(pte); */
 
     if (args->error ^ PRESENT) {

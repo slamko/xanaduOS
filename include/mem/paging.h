@@ -17,7 +17,16 @@
 
 #define align_down(num, alignment) ((num) - ((num) % (alignment)))
 
-#define page_align_down(num) align_down((num), PAGE_SIZE) 
+#define page_align_down(num) align_down((num), PAGE_SIZE)
+#define div_align_up(num, alignment) (((num) / (alignment)) + \
+    (((num) % (alignment)) ? 1 : 0))
+
+#define div_align_down(num, alignment) ((num) / (alignment))
+
+#define div_page_align_up(num) div_align_up(num, PAGE_SIZE)
+
+#define div_page_align_down(num) div_align_down(num, PAGE_SIZE) 
+
 
 typedef uint16_t pte_t;
 
@@ -45,7 +54,7 @@ struct page_dir {
 
 void paging_init(size_t pmem_amount);
 
-static inline uintptr_t get_ident_phys_page_addr(uint16_t pde, uint16_t pte) {
+static inline uintptr_t get_virt_addr(uint16_t pde, uint16_t pte) {
     return (pde * 0x400000) + (pte * PAGE_SIZE);
 }
 
@@ -101,5 +110,12 @@ int clone_page_dir(struct page_dir *restrict pd,
 
 int clone_page_table(struct page_dir *pd, pte_t pde,
 page_table_t *new_pt_ptr, uintptr_t *new_pt_phys_addr);
+
+extern uintptr_t map_limit;
+
+int map_alloc_npt(struct page_dir *pd, page_table_t *pt, size_t npt,
+                  pte_t pde, uint16_t flags);
+
+void unmap_pages(struct page_dir *pd, pte_t pde, pte_t pte, size_t npages);
 
 #endif

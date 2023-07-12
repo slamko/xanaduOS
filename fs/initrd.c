@@ -95,9 +95,14 @@ struct DIR *initrd_opendir(struct fs_node *node) {
     return dir;
 }
 
+void initrd_munmap(struct fs_node *node, uintptr_t addr) {
+    (void)node;
+    (void)addr;
+}
+
 size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
                    size_t size, uint16_t flags) {
-    struct initrd_node *rd_node = &rd_nodes[1];
+    struct initrd_node *rd_node = &rd_nodes[node->inode];
 
     uintptr_t start_paddr = page_align_down(
         ptr_to_phys_addr(cur_pd, rd_node->header));
@@ -225,6 +230,7 @@ int initrd_build_fs(size_t nodes_n) {
         node->write = NULL;
         node->readdir = NULL;
         node->mmap = &initrd_mmap;
+        node->munmap = &initrd_munmap;
         node->inode = i;
 
         if (node->type == FS_DIR) {

@@ -28,4 +28,10 @@ int kmmap_init();
 
 extern struct buddy_alloc *kern_buddy;
 
+int mmap_pages(uintptr_t addr, size_t npages);
+
+int map_pages(pte_t pde, pte_t pte, size_t npages);
+
+int mmap_page(uintptr_t addr);
+
 #endif

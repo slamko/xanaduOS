@@ -104,7 +104,7 @@ static inline uint32_t get_frame_submap_mask(uint32_t nframes,
     return 0xFFu << (3 * MAX_BUDDY_SIZE);
 }
 
-uintptr_t alloc_nframes(size_t nframes, uintptr_t addr,
+int alloc_nframes(size_t nframes, uintptr_t addr,
                         uintptr_t *alloc_addrs, uint16_t flags) {
     if (!alloc_addrs) {
         return 1;
@@ -217,38 +217,10 @@ int map_frame(page_table_t pt, unsigned int pte, uint16_t flags) {
     return find_alloc_frame(&pt[pte], flags);
 }
 
-int map_pt_ident(struct page_dir *page_dir, uint16_t pde, uint16_t flags) {
-    int ret;
-    page_table_t pt;
-
-    if (!page_dir) {
-        return EINVAL;
-    }
-
-    page_dir->page_tables[pde] = alloc_pt(&pt, flags);
-    page_dir->page_tables_virt[pde] = pt;
-    
-    for (unsigned int i = 0; i < PT_SIZE; i++) {
-        ret = map_frame(pt, i, flags);
-
-        if (ret) {
-            return ret;
-        }
-    }
-
-    return 0;
-} 
-
-int dealloc_nframes(uintptr_t *addrs, size_t nframes) {
-    if (!addrs) {
-        return EINVAL;
-    }
-
+void dealloc_nframes(uintptr_t addr, size_t nframes) {
     for (unsigned int i = 0; i < nframes; i++) {
-        dealloc_frame(addrs[i]);
+        dealloc_frame(addr + (PAGE_SIZE * i));
     }
-
-    return 0;
 }
 
 void dealloc_frame(uintptr_t addr) {
