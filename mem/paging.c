@@ -176,8 +176,9 @@ void paging_init(size_t pmem_limit) {
 
 uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
     uintptr_t phys_addr;
-    *new_pt = slab_alloc_from_cache(slab_cache);
-    /* *new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE); */
+    /* *new_pt = slab_alloc_from_cache(slab_cache); */
+    /* klog("Slab alloc\n"); */
+    *new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
     phys_addr = ptr_to_phys_addr(cur_pd, *new_pt);
     memset(*new_pt, 0x0, PAGE_SIZE);
 
@@ -209,7 +210,7 @@ int map_alloc_npt(struct page_dir *pd, page_table_t *pt, size_t npt,
             return ENOMEM;
         }
 
-        klog("Allocating page table %u\n", cur_pde - 1);
+        klog("Allocating page table %u\n", cur_pde);
         pd->page_tables_virt[cur_pde] = *pt;
     }
 

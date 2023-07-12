@@ -175,12 +175,14 @@ void mem_test(void) {
     }
     */
 
-    for (size_t i = 0; i < 0x2000; i++) {
-        kmalloc(0xf00);
+    for (size_t i = 0; i < 0x4000; i++) {
+        char *c= kmalloc(0x1000);
+        c[0x256] = 'a';
     }
 
 
-    /* char *a = kmalloc(0x300000); */
+    /* char *a = kmalloc(0xb00000); */
+    /* a = kmalloc(0xb00000); */
     /* a[0x10000] = 'a'; */
     /* a = kmalloc(0x300000); */
 

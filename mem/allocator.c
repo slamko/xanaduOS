@@ -86,12 +86,12 @@ void heap_init(uintptr_t heap_base) {
     heap_base_block[0].next = NULL;
 }
 
-static inline int expand_heap(struct block_header *header) {
+static inline int expand_heap(struct block_header *header, size_t pt_num) {
     uintptr_t prev_end_addr = heap_end_addr;
     heap_end_addr += PT_SIZE * PAGE_SIZE;
     header->size += PT_SIZE * PAGE_SIZE;
 
-    return mmap_pages(prev_end_addr, PT_SIZE);
+    return mmap_pages(prev_end_addr, PT_SIZE * pt_num);
 }
 
 void *do_alloc(struct block_header *header, size_t size, uintptr_t data_base) {
@@ -139,7 +139,7 @@ void *do_alloc(struct block_header *header, size_t size, uintptr_t data_base) {
         klog("Running out of heap %x\n", header->next->size);
         klog("Mapped additional heap space %x\n", heap_end_addr);
 
-        if (expand_heap(header)) {
+        if (expand_heap(header, 1)) {
             panic("Could not expand kernel heap\n", 0);
         }
     }
@@ -182,8 +182,11 @@ void *kmalloc_align(size_t siz, size_t alignment) {
     }
 
     klog("Not enough heap memory %x\n", last_header->size);
+    size_t heap_expand_size =
+        div_align_up(aligned_alloc_size, PT_SIZE * PAGE_SIZE) * 2;
+    klog("Heap expand size %x\n", heap_expand_size);
 
-    if (expand_heap(last_header)) {
+    if (expand_heap(last_header, heap_expand_size)) {
         panic("Could not expand kernel heap\n", 0);
     }
     klog("Expanded heap %x\n", heap_end_addr);

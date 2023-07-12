@@ -141,14 +141,21 @@ int map_pages(pte_t pde, pte_t pte, size_t npages) {
         int ret;
         page_table_t pt;
 
+        if (pde + i >= PT_SIZE) {
+            klog("No more phys memory\n");
+            return ENOMEM;
+        }
+
         ret = map_alloc_pt(cur_pd, &pt, pde + i, R_W | PRESENT);
         if (ret) {
+            klog_error("Page Table allocation failed\n");
             return ret;
         }
 
         klog("Page table mapped %x\n", pde);
         ret = find_alloc_nframes(npages, &pt[pte], R_W | PRESENT);
         if (ret) {
+            klog_error("Frame allocation failed %x\n", pt[pte + 514]);
             return ret;
         }
 
