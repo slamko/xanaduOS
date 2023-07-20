@@ -322,6 +322,27 @@ size_t get_buddy_map_size(size_t mem_size) {
     return map_size;
 }
 
+static int alloc_buddy_maps(struct buddy_alloc *buddy, size_t map_size) {
+    
+    buddy->maps = kmalloc((sizeof(*buddy->maps) * MAX_ORDER));
+    uint32_t *map_data = kmalloc(map_size);
+
+    if (!buddy->maps) {
+        return ENOMEM;
+    }
+
+    size_t map_offset = 0;
+    for (unsigned int i = 0; i < MAX_ORDER; i++) {
+        buddy->maps[i] = &map_data[MAX_ORDER + map_offset];
+        /* klog("Buddy map addr %x\n", buddy->maps[i]); */
+        map_offset +=
+            buddy->mem_size
+            / (PAGE_SIZE * MAP_SIZE * (1 << i) * sizeof(map_data));
+    }
+
+    return 0;
+}
+
 struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     size_t mem_size = mem_limit - mem_start;
     struct buddy_alloc *buddy;
@@ -336,16 +357,8 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
     buddy->mem_start = mem_start;
 
     size_t map_size = get_buddy_map_size(mem_size) * sizeof(**buddy->maps);
-    buddy->maps = kmalloc((sizeof(*buddy->maps) * MAX_ORDER) + map_size);
-
-    size_t map_offset = 0;
-    for (unsigned int i = 0; i < MAX_ORDER; i++) {
-        buddy->maps[i] = (uintptr_t *)&buddy->maps[MAX_ORDER + map_offset];
-        /* klog("Buddy map addr %x\n", buddy->maps[i]); */
-        map_offset += mem_size
-            / (PAGE_SIZE * MAP_SIZE * (1 << i) * sizeof (*buddy->maps));
-    }
-
+    alloc_buddy_maps(buddy, map_size);
+    
     buddy->free_area = kzalloc(0, sizeof(struct free_area) * MAX_ORDER);
     size_t max_map_size = mem_size / (MAX_BUDDY_SIZE);
     struct free_area *last_fa = &buddy->free_area[MAX_ORDER - 1];
@@ -366,6 +379,48 @@ struct buddy_alloc *buddy_alloc_create(size_t mem_start, size_t mem_limit) {
         cur_free = &(*cur_free)->next;
     }
     
+    return buddy;
+}
+
+struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy) {
+    struct buddy_alloc *buddy;
+
+    buddy = kmalloc(sizeof *buddy);
+    buddy->fl_slab = slab_cache_create(sizeof(struct free_list));
+    buddy->mem_size = copy->mem_size;
+    buddy->mem_start = copy->mem_start;
+    
+    size_t map_size = get_buddy_map_size(copy->mem_size) * sizeof(**buddy->maps);
+    klog("Map size %x\n", map_size);
+    alloc_buddy_maps(buddy, map_size);
+
+    size_t map_base_off = sizeof(*buddy->maps) * MAX_ORDER;
+    klog("Map base off%x\n", map_base_off);
+    /* void *new = kmalloc(map_size); */
+    for (size_t i = 0;i < map_size/sizeof(*buddy->maps); i++) {
+        /* fb_print_hex(buddy->maps[0][i]); */
+    }
+    memcpy(buddy->maps[0], copy->maps[0], map_size);
+
+    klog("Buddy clone maps %u\n", map_size);
+    buddy->free_area = kzalloc(0, sizeof(struct free_area) * MAX_ORDER);
+    size_t max_map_size = copy->mem_size / (MAX_BUDDY_SIZE);
+    buddy->free_area[MAX_ORDER - 1].num_free = max_map_size;
+    klog("Buddy clone: allocated free area\n");
+
+    for (size_t i = 0; i < MAX_ORDER; i++) {
+        size_t num_free = copy->free_area[i].num_free;
+        buddy->free_area[i].num_free = num_free;
+        struct free_list **new_list = &buddy->free_area[i].free_list.next;
+        struct free_list *copy_list = copy->free_area[i].free_list.next;
+        
+        foreach(copy_list,
+                *new_list = slab_alloc_from_cache(buddy->fl_slab);
+                (*new_list)->addr = copy_list->addr;
+                new_list = &(*new_list)->next;
+            );
+    }
+ 
     return buddy;
 }
 
@@ -411,48 +466,6 @@ void buddy_alloc_clean(struct buddy_alloc *buddy) {
     
 }
 
-struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy) {
-    struct buddy_alloc *buddy;
-
-    buddy = kmalloc(sizeof *buddy);
-    buddy->fl_slab = slab_cache_create(sizeof(struct free_list));
-    
-    size_t map_size = get_buddy_map_size(copy->mem_size) * sizeof(**buddy->maps);
-    buddy->maps = kmalloc((sizeof(*buddy->maps) * MAX_ORDER) + map_size);
-
-    size_t map_offset = 0;
-    for (unsigned int i = 0; i < MAX_ORDER; i++) {
-        buddy->maps[i] = (uintptr_t *)&buddy->maps[MAX_ORDER + map_offset];
-        /* klog("Buddy map addr %x\n", buddy->maps[i]); */
-        map_offset += copy->mem_size
-            / (PAGE_SIZE * MAP_SIZE * (1 << i) * sizeof (*buddy->maps));
-    }
-    klog("Buddy clone maps %u\n", map_size);
-
-    size_t map_base_off = (sizeof(*buddy->maps) * MAX_ORDER);
-    memcpy(buddy->maps + map_base_off, copy->maps + map_base_off, map_size);
-
-    buddy->free_area = kzalloc(0, sizeof(struct free_area) * MAX_ORDER);
-    size_t max_map_size = copy->mem_size / (MAX_BUDDY_SIZE);
-    buddy->free_area[MAX_ORDER - 1].num_free = max_map_size;
-    klog("Buddy clone: allocated free area\n");
-
-
-    for (size_t i = 0; i < MAX_ORDER; i++) {
-        size_t num_free = copy->free_area[i].num_free;
-        buddy->free_area[i].num_free = num_free;
-        struct free_list **new_list = &buddy->free_area[i].free_list.next;
-        struct free_list *copy_list = copy->free_area[i].free_list.next;
-        
-        foreach(copy_list,
-                *new_list = slab_alloc_from_cache(buddy->fl_slab);
-                (*new_list)->addr = copy_list->addr;
-                new_list = &(*new_list)->next;
-            );
-    }
- 
-    return buddy;
-}
 
 void buddy_alloc_destroy(struct buddy_alloc *buddy) {
     if (!buddy) {

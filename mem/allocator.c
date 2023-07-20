@@ -170,7 +170,9 @@ void *kmalloc_align(size_t siz, size_t alignment) {
         uintptr_t data_base = get_data_base(header);
         data_base = align_up(data_base, alignment);
 
-        /* klog("Aligned alloc size %x\n", header->size); */
+        if (siz == 0xFFA4) {
+            klog("Aligned alloc size %x\n", header->size);
+        }
 
         if (header->is_hole &&
             header->size >=

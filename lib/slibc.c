@@ -27,8 +27,8 @@ void *memset(void *buf, int val, size_t siz) {
 void *memcpy(void *buf, const void *cpy, size_t len) {
     if (!buf || !cpy) return NULL;
     
-    char *dest = (char *)buf;
-    char *copy = (char *)cpy;
+    unsigned char *dest = (unsigned char *)buf;
+    unsigned char *copy = (unsigned char *)cpy;
     
     for (size_t i = 0; i < len; i++) {
         dest[i] = copy[i];

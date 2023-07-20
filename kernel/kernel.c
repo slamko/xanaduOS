@@ -142,18 +142,17 @@ void mem_test(void) {
         char y;
         struct x86_cpu_state *st;
     };
-    /* 
+/*
     for (unsigned int i = 0; i < 1; i++) {
-        struct slab_cache **cache = kmalloc(sizeof(*cache) * 0x200);
+        struct slab_cache **cache = kmalloc(sizeof(*cache) * 0x100);
         void ***addrs = kmalloc(sizeof(*addrs) * 0x100);
         struct slab_cache *addr_cache = slab_cache_create(sizeof (**addrs) * 0x1000);
 
         for (size_t i = 0; i < 256; i++) {
             cache[i] = slab_cache_create(sizeof **cache);
 
-            klog("Fault\n");
             addrs[i] = slab_alloc_from_cache(addr_cache);
-            for (size_t j = 0; j < 0x1000; j++) {
+            for (size_t j = 0; j < 0x100; j++) {
                 addrs[i][j] = slab_alloc_from_cache(cache[i]);
             }
         }
@@ -173,21 +172,24 @@ void mem_test(void) {
             slab_cache_destroy(cache[i]);
         }
     }
-    */
+*/
 
-    for (size_t i = 0; i < 0x4000; i++) {
-        char *c= kmalloc(0x1000);
-        c[0x256] = 'a';
+    kmalloc(0xe00000);
+    struct slab_cache *cache = slab_cache_create_align(PAGE_SIZE, PAGE_SIZE);
+    for (size_t i = 0; i < 0x100; i++) {
+        char *c = slab_alloc_from_cache(cache);
+        kmalloc(0x100);
+        /* klog("Addr %x\n", c); */
+        c[0x50] = 'a';
     }
 
-
-    /* char *a = kmalloc(0xb00000); */
-    /* a = kmalloc(0xb00000); */
-    /* a[0x10000] = 'a'; */
-    /* a = kmalloc(0x300000); */
-
-    /* a[0x10000] = 'a'; */
-    kmalloc(0x10);
+    kmalloc(0x300000);
+    for (size_t i = 0; i < 0x100; i++) {
+        char *c = slab_alloc_from_cache(cache);
+        kmalloc(0x100);
+        /* klog("Addr %x\n", c); */
+        c[0x50] = 'a';
+    }
 }
 
 void kernel_main(struct multiboot_meta *multiboot_data) {
@@ -212,17 +214,17 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     pit_init(0);
     apic_init();
     rtc_init();
-    /* multiproc_init(); */
+    multiproc_init();
 
-    mem_test();
+    /* mem_test(); */
     klog("Hello %x\n", to_phys_addr(cur_pd, map_limit - 1));
 
-    /* syscall_init(); */
+    syscall_init();
 
     /* buddy_test(0); */
     /* slab_test(); */
 
-    /* spawn_init(&s); */
+    spawn_init(&s);
     /* klog("Kernel gain\n"); */
 
     while (1) {

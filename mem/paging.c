@@ -175,9 +175,9 @@ void paging_init(size_t pmem_limit) {
 }
 
 uintptr_t alloc_pt(page_table_t *new_pt, uint16_t flags) {
-    uintptr_t phys_addr;
+    uintptr_t phys_addr = 0;
+    /* klog("Slab alloc %x\n", phys_addr); */
     /* *new_pt = slab_alloc_from_cache(slab_cache); */
-    /* klog("Slab alloc\n"); */
     *new_pt = kmalloc_align(PAGE_SIZE, PAGE_SIZE);
     phys_addr = ptr_to_phys_addr(cur_pd, *new_pt);
     memset(*new_pt, 0x0, PAGE_SIZE);
@@ -191,9 +191,16 @@ int map_alloc_npt(struct page_dir *pd, page_table_t *pt, size_t npt,
         return EINVAL;
     }
 
+    /* klog("Allocating page table %u\n", pde); */
     for (size_t n = 0; n < npt; n++) {
         size_t cur_pde = pde + n;
 
+        if (cur_pde > PT_SIZE) {
+            klog_error("Ran out of virtual memory\n");
+            return ENOMEM;
+        }
+
+        /* while(1); */
         if (pd->page_tables[cur_pde] & ACCESSED) {
             pd->page_tables[cur_pde] &= ~ACCESSED;
         }
@@ -210,7 +217,6 @@ int map_alloc_npt(struct page_dir *pd, page_table_t *pt, size_t npt,
             return ENOMEM;
         }
 
-        klog("Allocating page table %u\n", cur_pde);
         pd->page_tables_virt[cur_pde] = *pt;
     }
 

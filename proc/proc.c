@@ -59,6 +59,10 @@ struct task *cur_task;
 
 size_t task_switch_tick;
 
+struct buddy_alloc *create_user_buddy_alloc(void) {
+    return buddy_alloc_create(0x100000, 0x40000000);
+}
+
 int load_elf(struct task *task, struct fs_node *exec_node) {
     uintptr_t *user_addr;
     size_t map_npages = page_align_up(exec_node->size);
@@ -213,10 +217,12 @@ int fork_task(struct task *new_task, int i) {
 
 int fork(void) {
     struct task *new_task = slab_alloc_from_cache(task_slab);
+    /* struct task *new_task = kmalloc(sizeof *new_task); */
 
     fork_task(new_task, 1);
     print_task(new_task);
     new_task->buddy = buddy_alloc_clone(cur_task->buddy);
+    /* new_task->buddy = create_user_buddy_alloc(); */
     return 0;
 }
 
@@ -253,7 +259,7 @@ void spawn_init(struct module_struct *mods) {
     new_task->state = EMPTY;
     new_task->exec_node = exec_node;
 
-    new_task->buddy = buddy_alloc_create(0x100000, 0x40000000);
+    new_task->buddy = create_user_buddy_alloc();
     doubly_ll_insert(task_list, new_task);
     recover_int(eflags);
 
