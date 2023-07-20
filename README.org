@@ -1,0 +1,18 @@
+** X86 hobby operating system for fun (and profit (no))
+
+*** Currently implemented:
+- Segmentation support
+- Interrupts with PIC
+- Paging (virtual memory manegement with slab allocator, physical memory allocation)
+- PIT and Real Time Clock
+- Initrd filesystem
+- Elf file loading as user process
+- Systemcalls
+
+*** Some useful tutorials:
+ - [[http://www.jamesmolloy.co.uk/tutorial_html/index.html][JamesM's kernel development tutorials]]
+ - [[https://wiki.osdev.org/Interrupts_tutorial][Interrupts tutorial]]
+ - [[https://wiki.osdev.org/Setting_Up_Paging][Setting up paging]]
+ - [[https://wiki.osdev.org/Getting_to_Ring_3][Getting to ring 3]]
+  
+   
