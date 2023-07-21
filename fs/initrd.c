@@ -168,8 +168,23 @@ struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
     return node;
 }
 
-static const char *parse_file_name(const char *fname) {
-    size_t offset = strlen(fname);
+static const char *parse_file_name(const char *fname, size_t *len) {
+    size_t offset = *len - 1;
+
+    while (offset > 0) {
+        offset--;
+        
+        if (fname[offset] == '/') {
+            offset++;
+            break;
+        }
+    }
+
+    if (fname[*len - 1] == '/') {
+        *len -= 1;
+    }
+
+    return fname + offset;
 }
 
 unsigned int tar_parse(struct initrd_entry **rd_list,
@@ -198,11 +213,17 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
             initrd_list->node.gid = gid;
             initrd_list->node.uid = uid;
             initrd_list->node.mode = mode;
-            initrd_list->node.type = FS_FILE;
+
+            if (header->name[strnlen(header->name, sizeof header->name) - 1]
+                 == '/') {
+                initrd_list->node.type = FS_DIR;
+            } else {
+                initrd_list->node.type = FS_FILE;
+            }
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
             initrd_list->node.header = header;
-            klog("Initrd header location %s\n", header->name);
+            /* klog("Initrd header location %s\n", header->name); */
         }
 
         next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
@@ -219,8 +240,15 @@ int initrd_build_fs(size_t nodes_n) {
     for (unsigned int i = 0; i < nodes_n; i++) {
         struct fs_node *node = &rd_fs[i];
 
-        strcpy(node->name, rd_nodes[i].header->name,
-               sizeof(rd_nodes[i].header->name));
+        const char *node_name = rd_nodes[i].header->name;
+        size_t fname_len = strnlen(node_name, sizeof(rd_nodes[i].header->name));
+        const char *fname = parse_file_name(node_name, &fname_len);
+        ptrdiff_t offset = fname - node_name;
+        /* klog("offset: %d ; fname_len %d \n", offset, fname_len - offset); */
+
+        strcpy(node->name, fname, sizeof(rd_nodes[i].header->name));
+        node->name[fname_len - offset] = 0;
+        klog("Registered node name %s\n", node->name);
 
         node->gid = rd_nodes[i].gid;
         node->uid = rd_nodes[i].uid;

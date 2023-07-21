@@ -62,6 +62,12 @@ char *strcpy(char *str, const char *cpy, size_t len) {
     return str;
 }
 
+size_t strnlen(const char *str, size_t len) {
+    size_t i;
+    for (i = 0; str[i] != 0 && i < len; i++);
+    return i;
+}
+
 size_t strlen(const char *str) {
     size_t i;
     for (i = 0; str[i] != 0; i++);
@@ -80,11 +86,6 @@ int strneq(const char *str, const char *cmp, size_t len) {
     return 0;
 }
 
-size_t strnlen(const char *str, size_t len) {
-    size_t i;
-    for (i = 0; i < len && str[i] != 0; i++);
-    return i;
-}
 inline void io_wait(void)
 {
     outb(0x80, 0);
