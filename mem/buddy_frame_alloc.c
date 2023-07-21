@@ -325,15 +325,14 @@ size_t get_buddy_map_size(size_t mem_size) {
 static int alloc_buddy_maps(struct buddy_alloc *buddy, size_t map_size) {
     
     buddy->maps = kmalloc((sizeof(*buddy->maps) * MAX_ORDER));
-    uint32_t *map_data = kmalloc(map_size);
-
+    uint32_t *map_data = kzalloc(0, map_size);
     if (!buddy->maps) {
         return ENOMEM;
     }
 
     size_t map_offset = 0;
     for (unsigned int i = 0; i < MAX_ORDER; i++) {
-        buddy->maps[i] = &map_data[MAX_ORDER + map_offset];
+        buddy->maps[i] = map_data+ map_offset;
         /* klog("Buddy map addr %x\n", buddy->maps[i]); */
         map_offset +=
             buddy->mem_size
@@ -397,9 +396,7 @@ struct buddy_alloc *buddy_alloc_clone(struct buddy_alloc *copy) {
     size_t map_base_off = sizeof(*buddy->maps) * MAX_ORDER;
     klog("Map base off%x\n", map_base_off);
     /* void *new = kmalloc(map_size); */
-    for (size_t i = 0;i < map_size/sizeof(*buddy->maps); i++) {
-        /* fb_print_hex(buddy->maps[0][i]); */
-    }
+    
     memcpy(buddy->maps[0], copy->maps[0], map_size);
 
     klog("Buddy clone maps %u\n", map_size);
