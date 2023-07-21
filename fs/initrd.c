@@ -124,7 +124,6 @@ struct dirent *initrd_readdir(struct DIR *dir) {
 
     /* print_node(&rd_fs[ent_inode]); */
     /* print_node(&rd_fs[dir->node->inode]); */
-    klog("Dir offset %x\n", ent->header);
     struct dirent *dirent = &dir->data[dir->ofset];
     strcpy(dirent->name, ent->header->name, sizeof(ent->header->name));
     dirent->node = &rd_fs[ent_inode];
@@ -141,10 +140,10 @@ void print_header(int inode) {
 }
 
 void initrd_closedir(struct DIR *dir) {
-    inode_t ent_inode = dir->node->inode + dir->ofset;
-    struct initrd_node *ent = &rd_nodes[ent_inode];
+    /* inode_t ent_inode = dir->node->inode + dir->ofset; */
+    /* struct initrd_node *ent = &rd_nodes[ent_inode]; */
     kfree(dir);
-    klog("Dir offset close %x\n", ent->header);
+    /* klog("Dir offset close %x\n", ent->header); */
 }
 
 struct fs_node *initrd_get_root(void) {
@@ -167,6 +166,10 @@ struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
 
     closedir_fs(root_dir);
     return node;
+}
+
+static const char *parse_file_name(const char *fname) {
+    size_t offset = strlen(fname);
 }
 
 unsigned int tar_parse(struct initrd_entry **rd_list,
@@ -199,7 +202,7 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
             initrd_list->node.header = header;
-            klog("Initrd header location %x\n", header);
+            klog("Initrd header location %s\n", header->name);
         }
 
         next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);

@@ -49,7 +49,7 @@ int idt_init(void) {
     }
 
     load_idt((uint32_t)&idtr);
-    pic_init(0x00, true);
+    pic_init(0x00, false);
     exception_handlers_init();
     
     sti();
@@ -84,7 +84,7 @@ int add_isr_handler(uint8_t int_num, isr_handler_t handler, uint8_t flags) {
 }
 
 void isr_x86(uint32_t esp, struct isr_full_stack isr) {
-    /* pic_eoi(isr.int_num); */
+    pic_eoi(isr.int_num);
     /* fb_newline(); */
     /* fb_print_num(isr.cs); */
 

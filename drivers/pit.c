@@ -11,8 +11,9 @@
 typedef uint32_t tick_t;
 
 static const unsigned long XTAL_FREQ = 1193182;
+static const tick_t tick_inc_factor = 1;
 static volatile tick_t tick;
-static unsigned long pit_freq = 10*1000;
+static unsigned long pit_freq = 1*1000;
 
 enum PIT_channels{
     PIT_CH0         = 0x40,
@@ -55,17 +56,22 @@ void pit_handler(struct isr_handler_args *args) {
     (void)args;
     struct pit_event *event = events;
 
+    /* klog("timer\n"); */
     foreach(event,
             if (!event->cb) continue;
 
-            if(tick - event->last_call_tick > event->period_ms * 100) {
+            if (tick < event->last_call_tick) {
+                event->last_call_tick = 0;
+            }
+
+            if (tick - event->last_call_tick > event->period_ms * 100) {
                 /* insert_invent_in_queue(event); */
                 event->cb(args);
                 event->last_call_tick = tick;
             }
         );
-    
-    tick += 2;
+
+    tick += tick_inc_factor;
 }
 
 uint16_t get_pit_count(pit_channel_t ch) {
@@ -95,6 +101,10 @@ void wait_ticks(tick_t delay) {
 }
 
 void pit_add_callback(pit_callback_t cb, unsigned int priority, size_t period) {
+    if (events[priority].cb) {
+        return;
+    }
+    
     struct pit_event *new_event;
     new_event = kmalloc(sizeof *new_event);
     new_event->cb = cb;

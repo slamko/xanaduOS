@@ -130,6 +130,8 @@ static inline void switch_task(struct task *switch_task) {
 void schedule(struct isr_handler_args *isr_args) {
     struct task *task = task_list;
 
+    klog("Empty task scheduling\n");
+
     foreach(task,
             if (task->state == EMPTY) {
                 task->state = RUNNING;
@@ -139,8 +141,8 @@ void schedule(struct isr_handler_args *isr_args) {
                 switch_task(task);
             }
         );
-
     return;
+
 
     for(task = cur_task->next; ; task = task->next) {
         if (!task) {
@@ -180,7 +182,8 @@ void exit(int code) {
     }
 
     if (!task_list->next) {
-        panic("Killed init process\n", 0);
+        kern();
+        /* panic("Killed init process\n", 0); */
     }
 
     free_task(cur_task);
@@ -217,12 +220,10 @@ int fork_task(struct task *new_task, int i) {
 
 int fork(void) {
     struct task *new_task = slab_alloc_from_cache(task_slab);
-    /* struct task *new_task = kmalloc(sizeof *new_task); */
 
     fork_task(new_task, 1);
-    print_task(new_task);
+    /* print_task(new_task); */
     new_task->buddy = buddy_alloc_clone(cur_task->buddy);
-    /* new_task->buddy = create_user_buddy_alloc(); */
     return 0;
 }
 
@@ -237,6 +238,8 @@ int execve(const char *exec) {
     buddy_alloc_clean(cur_task->buddy);
     cur_task->exec_node = exec_node;
     cur_task->state = EMPTY;
+    /* doubly_ll_insert(task_list, new_task); */
+    klog("Execve done\n");
     
     return ret;
 }
