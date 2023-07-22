@@ -250,7 +250,7 @@ void spawn_init(struct module_struct *mods) {
     fs_root = initrd_get_root();
     uint32_t eflags = disable_int();
 
-    struct fs_node *exec_node = root_get_node_fs("init");
+    struct fs_node *exec_node = root_get_node_fs("/usr/bin/init");
     
     struct task *new_task = slab_alloc_from_cache(task_slab);
 

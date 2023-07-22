@@ -58,7 +58,7 @@ struct dirent {
 };
 
 struct DIR {
-    unsigned int ofset;
+    unsigned int offset;
     struct fs_node *node;
     struct dirent data[];
 };

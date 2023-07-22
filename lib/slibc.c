@@ -83,6 +83,7 @@ int strneq(const char *str, const char *cmp, size_t len) {
             return 1;
         }
     }
+
     return 0;
 }
 

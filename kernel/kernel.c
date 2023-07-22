@@ -217,7 +217,6 @@ void kernel_main(struct multiboot_meta *multiboot_data) {
     multiproc_init();
 
     /* mem_test(); */
-    klog("Hello %x\n", to_phys_addr(cur_pd, map_limit - 1));
 
     syscall_init();
 

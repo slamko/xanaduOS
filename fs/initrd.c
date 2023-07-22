@@ -58,11 +58,16 @@ enum {
     FS_DIR = 0x1,
 };
 
-struct initrd_node *rd_nodes;
+struct initrd {
+    struct initrd_node *nodes;
+    size_t entry_num;
+};
+
+struct initrd rd;
+
 struct fs_node *rd_fs;
 
 struct slab_cache *fs_cache;
-struct slab_cache *dir_cache;
 struct slab_cache *initrd_cache;
 
 size_t initrd_read(struct fs_node *node, uint32_t offset,
@@ -71,7 +76,7 @@ size_t initrd_read(struct fs_node *node, uint32_t offset,
         return 0;
     }
     
-    void *read_addr = (void *)(rd_nodes[node->inode].data + offset);
+    void *read_addr = (void *)(rd.nodes[node->inode].data + offset);
     memcpy(buf, read_addr, size);
     return node->size;
 }
@@ -79,18 +84,18 @@ size_t initrd_read(struct fs_node *node, uint32_t offset,
 void print_node(struct fs_node *node) {
     klog("Node name: %s\n", node->name);
     klog("Node inode: %u\n", node->inode);
-    klog("Node sub entry num: %u\n", rd_nodes[node->inode].sub_ent_num);
+    klog("Node sub entry num: %u\n", rd.nodes[node->inode].sub_ent_num);
     klog("Node type: %d\n", node->type);
 }
 
 struct DIR *initrd_opendir(struct fs_node *node) {
-    struct initrd_node *ent = &rd_nodes[node->inode];
+    struct initrd_node *ent = &rd.nodes[node->inode];
     size_t allocation = ent->sub_ent_num * sizeof(struct dirent);
     struct DIR *dir = kmalloc(sizeof(*dir) + allocation);
 
-    klog("Root sub entry num %d\n", rd_nodes[0].sub_ent_num);
+    /* klog("Root sub entry num %d\n", rd.nodes[0].sub_ent_num); */
     dir->node = node;
-    dir->ofset = 0;
+    dir->offset = 0;
 
     return dir;
 }
@@ -102,7 +107,7 @@ void initrd_munmap(struct fs_node *node, uintptr_t addr) {
 
 size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
                    size_t size, uint16_t flags) {
-    struct initrd_node *rd_node = &rd_nodes[node->inode];
+    struct initrd_node *rd_node = &rd.nodes[node->inode];
 
     uintptr_t start_paddr = page_align_down(
         ptr_to_phys_addr(cur_pd, rd_node->header));
@@ -114,34 +119,35 @@ size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
 }
 
 struct dirent *initrd_readdir(struct DIR *dir) {
-    struct initrd_node *dir_node = &rd_nodes[dir->node->inode];
-    if (dir->ofset >= dir_node->sub_ent_num) {
+    /* struct initrd_node *dir_node = &rd.nodes[dir->node->inode]; */
+
+    if (dir->offset > rd.entry_num) {
         return NULL;
     }
 
-    inode_t ent_inode = dir->node->inode + dir->ofset + 1;
-    struct initrd_node *ent = &rd_nodes[ent_inode];
+    inode_t ent_inode = dir->node->inode + dir->offset + 1;
+    struct initrd_node *ent = &rd.nodes[ent_inode];
 
     /* print_node(&rd_fs[ent_inode]); */
     /* print_node(&rd_fs[dir->node->inode]); */
-    struct dirent *dirent = &dir->data[dir->ofset];
+    struct dirent *dirent = &dir->data[dir->offset];
     strcpy(dirent->name, ent->header->name, sizeof(ent->header->name));
     dirent->node = &rd_fs[ent_inode];
 
-    dir->ofset++;
+    dir->offset += ent->sub_ent_num + 1;
     return dirent;
 }
 
 void print_header(int inode) {
-    if (rd_nodes && rd_nodes[inode].header) {
-        klog("SZieof %u\n", check_block_size(rd_nodes));
-        klog("Print header initrd %x\n", rd_nodes[inode].header);
+    if (rd.nodes && rd.nodes[inode].header) {
+        klog("SZieof %u\n", check_block_size(rd.nodes));
+        klog("Print header initrd %x\n", rd.nodes[inode].header);
     }
 }
 
 void initrd_closedir(struct DIR *dir) {
-    /* inode_t ent_inode = dir->node->inode + dir->ofset; */
-    /* struct initrd_node *ent = &rd_nodes[ent_inode]; */
+    /* inode_t ent_inode = dir->node->inode + dir->offset; */
+    /* struct initrd_node *ent = &rd.nodes[ent_inode]; */
     kfree(dir);
     /* klog("Dir offset close %x\n", ent->header); */
 }
@@ -150,25 +156,74 @@ struct fs_node *initrd_get_root(void) {
     return &rd_fs[0];
 }
 
-struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
-    struct fs_node *node;
-    struct DIR *root_dir = opendir_fs(root);
-
-    for (struct dirent *ent = readdir_fs(root_dir);
-         ent;
-         ent = readdir_fs(root_dir)) {
-
-        if (strcmp(ent->name, name) == 0) {
-            klog("Execve filename: %s\n", ent->name);
-            node = ent->node;
-        }
-    }
-
-    closedir_fs(root_dir);
-    return node;
+static size_t get_filename_len(const char *name) {
+    return strnlen(name, sizeof(rd_fs[0].name));
 }
 
-static const char *parse_file_name(const char *fname, size_t *len) {
+static int ent_name_eq(struct dirent *ent, const char *name) {
+    size_t nlen = get_filename_len(name);
+    
+    if (ent->node->type == FS_DIR) {
+        nlen --;
+    }
+
+    return strneq(ent->name, name, nlen) == 0;
+}
+
+static const char *parse_file_dir_name(const char *full_name, size_t *len) {
+    size_t offset = 1;
+    size_t dlen = 0;
+
+    for (; dlen < *len && full_name[offset + dlen] != '/'; dlen++);
+
+    *len = dlen;
+    return full_name + offset;
+}
+
+struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
+
+    if (name[0] != '/') {
+        klog_error("Invalid file path\n");
+        return NULL;
+    }
+
+    const char *full_name = name + 1;
+    size_t fname_len = get_filename_len(full_name);
+
+    size_t cur_name_len = fname_len;
+    const char *cur_name = parse_file_dir_name(name, &cur_name_len);
+
+    struct fs_node *cur_root = root;
+    
+    for(; cur_name_len ;
+         cur_name = parse_file_dir_name(cur_name, &cur_name_len)) {
+
+        if (!cur_root) {
+            klog_error("No such file or directory %s\n", name);
+            return NULL;
+        }
+        
+        struct DIR *root_dir = opendir_fs(cur_root);
+        for (struct dirent *ent = readdir_fs(root_dir);
+            ent;
+            ent = readdir_fs(root_dir)) {
+
+            klog("Cur name %s\n", cur_name);
+            if (strneq(ent->name, cur_name, cur_name_len) == 0) {
+                klog("Execve filename: %s\n", ent->name);
+                cur_root = ent->node;
+                /* break; */
+            }
+        }
+
+        closedir_fs(root_dir);
+        cur_name += cur_name_len;
+    }
+
+    return cur_root;
+}
+
+static const char *parse_file_basename(const char *fname, size_t *len) {
     size_t offset = *len - 1;
 
     while (offset > 0) {
@@ -214,12 +269,15 @@ void tar_parse_rec(struct initrd_entry **rd_list,
             size_t fname_len = strnlen(header->name, sizeof header->name);
             size_t file_depth = get_file_depth(header->name, fname_len);
 
-            if (file_depth != depth) {
+            if (file_depth > depth) {
                 tar_parse_rec(rd_list, *rd_list,
                               header, file_depth, next_addr, i);
                 continue;
+            } else if (file_depth < depth) {
+                break;
             }
 
+            klog("File name %s - %d\n", header->name, depth);
             sub_ent_num ++;
             uint32_t gid = atoi(header->gid, sizeof header->gid, 8);
             uint32_t uid = atoi(header->uid, sizeof header->uid, 8);
@@ -241,6 +299,7 @@ void tar_parse_rec(struct initrd_entry **rd_list,
                 initrd_list->node.type = FS_DIR;
             } else {
                 initrd_list->node.type = FS_FILE;
+                initrd_list->node.sub_ent_num = 0;
             }
 
             initrd_list->node.data = to_uintptr(header) + HEADER_SIZE;
@@ -253,7 +312,7 @@ void tar_parse_rec(struct initrd_entry **rd_list,
         (*i)++;
     }
 
-    /* klog("Parsed sub ent num %d\n", sub_ent_num); */
+    klog("Parsed sub ent num %d\n", sub_ent_num);
 
     parent_ent->node.sub_ent_num = sub_ent_num;
 }
@@ -261,7 +320,7 @@ void tar_parse_rec(struct initrd_entry **rd_list,
 unsigned int tar_parse(struct initrd_entry **rd_list,
                        uintptr_t initrd_addr, size_t *size) {
     uintptr_t next_addr = initrd_addr;
-    unsigned int i = 0;
+    unsigned int i = 2;
 
     struct initrd_entry *next = *rd_list;
     *rd_list = slab_alloc_from_cache(initrd_cache);
@@ -283,20 +342,20 @@ int initrd_build_fs(size_t nodes_n) {
     for (unsigned int i = 0; i < nodes_n; i++) {
         struct fs_node *node = &rd_fs[i];
 
-        const char *node_name = rd_nodes[i].header->name;
-        size_t fname_len = strnlen(node_name, sizeof(rd_nodes[i].header->name));
-        const char *fname = parse_file_name(node_name, &fname_len);
+        const char *node_name = rd.nodes[i].header->name;
+        size_t fname_len = strnlen(node_name, sizeof(rd.nodes[i].header->name));
+        const char *fname = parse_file_basename(node_name, &fname_len);
         ptrdiff_t offset = fname - node_name;
 
-        strcpy(node->name, fname, sizeof(rd_nodes[i].header->name));
+        strcpy(node->name, fname, sizeof(rd.nodes[i].header->name));
         node->name[fname_len - offset] = 0;
         klog("Registered node name %s\n", node->name);
 
-        node->gid = rd_nodes[i].gid;
-        node->uid = rd_nodes[i].uid;
-        node->type = rd_nodes[i].type;
-        node->mode = rd_nodes[i].mode;
-        node->size = rd_nodes[i].size;
+        node->gid = rd.nodes[i].gid;
+        node->uid = rd.nodes[i].uid;
+        node->type = rd.nodes[i].type;
+        node->mode = rd.nodes[i].mode;
+        node->size = rd.nodes[i].size;
 
         node->close = NULL;
         node->open = NULL;
@@ -313,7 +372,7 @@ int initrd_build_fs(size_t nodes_n) {
             node->opendir = &initrd_opendir;
         }
 
-        /* klog("FS Build node %x\n", rd_nodes[i].header); */
+        /* klog("FS Build node %x\n", rd.nodes[i].header); */
         node->read = &initrd_read;
         node->this = node;
     }
@@ -325,13 +384,14 @@ int initrd_build_fs(size_t nodes_n) {
 int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     unsigned int i = rd_len;
 
-    rd_nodes = kmalloc(i * sizeof(*rd_nodes));
+    rd.nodes = kmalloc(i * sizeof(*rd.nodes));
+    rd.entry_num = i;
 
     struct initrd_entry *ent = initrd_list;
     foreach(ent, 
-            memcpy(&rd_nodes[i], &ent->node, sizeof(ent->node));
+            memcpy(&rd.nodes[i - 1], &ent->node, sizeof(ent->node));
 
-            if (i == 0) {
+            if (i == 1) {
                 break;
             }
 
