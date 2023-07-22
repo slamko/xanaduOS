@@ -95,7 +95,7 @@ struct DIR *initrd_opendir(struct fs_node *node) {
 
     /* klog("Root sub entry num %d\n", rd.nodes[0].sub_ent_num); */
     dir->node = node;
-    dir->offset = 0;
+    dir->offset = 1;
 
     return dir;
 }
@@ -121,17 +121,16 @@ size_t initrd_mmap(struct fs_node *node, uintptr_t *addrs,
 struct dirent *initrd_readdir(struct DIR *dir) {
     /* struct initrd_node *dir_node = &rd.nodes[dir->node->inode]; */
 
-    if (dir->offset > rd.entry_num) {
+    if (dir->offset > rd.entry_num - dir->node->inode - 1) {
         return NULL;
     }
 
-    inode_t ent_inode = dir->node->inode + dir->offset + 1;
+    inode_t ent_inode = dir->node->inode + dir->offset;
     struct initrd_node *ent = &rd.nodes[ent_inode];
+    /* struct fs_node *fnode = &rd_fs[ent_inode]; */
 
-    /* print_node(&rd_fs[ent_inode]); */
-    /* print_node(&rd_fs[dir->node->inode]); */
     struct dirent *dirent = &dir->data[dir->offset];
-    strcpy(dirent->name, ent->header->name, sizeof(ent->header->name));
+    /* strcpy(dirent->name, fnode->name, sizeof(fnode->name)); */
     dirent->node = &rd_fs[ent_inode];
 
     dir->offset += ent->sub_ent_num + 1;
@@ -160,21 +159,27 @@ static size_t get_filename_len(const char *name) {
     return strnlen(name, sizeof(rd_fs[0].name));
 }
 
-static int ent_name_eq(struct dirent *ent, const char *name) {
-    size_t nlen = get_filename_len(name);
-    
+static int ent_name_eq(struct dirent *ent, const char *name, size_t nlen) {
     if (ent->node->type == FS_DIR) {
-        nlen --;
+        if (name[nlen - 1] == '/') {
+            nlen --;
+        }
     }
 
-    return strneq(ent->name, name, nlen) == 0;
+    return strneq(ent->node->name, name, nlen) == 0;
 }
 
-static const char *parse_file_dir_name(const char *full_name, size_t *len) {
-    size_t offset = 1;
+static const char *parse_file_dir_name(const char *full_name,
+                                       size_t full_len, size_t *len) {
+    size_t offset = 0;
     size_t dlen = 0;
 
-    for (; dlen < *len && full_name[offset + dlen] != '/'; dlen++);
+    for (; dlen < full_len; dlen++) {
+        if (full_name[offset + dlen] == '/') {
+            dlen ++;
+            break;
+        }
+    }
 
     *len = dlen;
     return full_name + offset;
@@ -191,12 +196,12 @@ struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
     size_t fname_len = get_filename_len(full_name);
 
     size_t cur_name_len = fname_len;
-    const char *cur_name = parse_file_dir_name(name, &cur_name_len);
+    const char *cur_name = parse_file_dir_name(full_name, fname_len, &cur_name_len);
 
     struct fs_node *cur_root = root;
     
     for(; cur_name_len ;
-         cur_name = parse_file_dir_name(cur_name, &cur_name_len)) {
+        cur_name = parse_file_dir_name(cur_name, fname_len, &cur_name_len)) {
 
         if (!cur_root) {
             klog_error("No such file or directory %s\n", name);
@@ -204,20 +209,25 @@ struct fs_node *initrd_get_node(struct fs_node *root, const char *name) {
         }
         
         struct DIR *root_dir = opendir_fs(cur_root);
+        cur_root = NULL;
+
         for (struct dirent *ent = readdir_fs(root_dir);
             ent;
             ent = readdir_fs(root_dir)) {
 
-            klog("Cur name %s\n", cur_name);
-            if (strneq(ent->name, cur_name, cur_name_len) == 0) {
-                klog("Execve filename: %s\n", ent->name);
+            klog("Cur name %s = %u left = %u, ent name = %s\n", cur_name,
+                 cur_name_len, fname_len, ent->node->name);
+
+            if (ent_name_eq(ent, cur_name, cur_name_len)) {
+                klog("Execve filename: %s\n", ent->node->name);
                 cur_root = ent->node;
-                /* break; */
+                break;
             }
         }
 
         closedir_fs(root_dir);
         cur_name += cur_name_len;
+        fname_len -= cur_name_len;
     }
 
     return cur_root;

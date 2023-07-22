@@ -19,7 +19,6 @@ typedef void (*fs_open_f)(struct fs_node *);
 typedef void (*fs_close_f)(struct fs_node *);
 typedef struct DIR *(*fs_opendir_f)(struct fs_node *);
 typedef void (*fs_closedir_f)(struct DIR *);
-
 typedef struct dirent *(*fs_readdir_f)(struct DIR*);
 typedef struct fs_node *(*fs_get_node_f)(struct fs_node *, const char *name);
 
@@ -53,7 +52,7 @@ struct fs_node {
 };
 
 struct dirent {
-    char name[256];
+    /* char name[256]; */
     struct fs_node *node;
 };
 
