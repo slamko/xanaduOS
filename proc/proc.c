@@ -130,7 +130,7 @@ static inline void switch_task(struct task *switch_task) {
 void schedule(struct isr_handler_args *isr_args) {
     struct task *task = task_list;
 
-    klog("Empty task scheduling\n");
+    /* klog("Empty task scheduling\n"); */
 
     foreach(task,
             if (task->state == EMPTY) {

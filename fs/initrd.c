@@ -180,29 +180,51 @@ static const char *parse_file_name(const char *fname, size_t *len) {
         }
     }
 
-    if (fname[*len - 1] == '/') {
+    if (offset != *len -1 && fname[*len - 1] == '/') {
         *len -= 1;
     }
 
     return fname + offset;
 }
 
-unsigned int tar_parse(struct initrd_entry **rd_list,
-                       uintptr_t initrd_addr, size_t *size) {
-    uintptr_t next_addr = initrd_addr;
-    char *dir_prefix;
-    unsigned int i = 0;
+static size_t get_file_depth(const char *fname, size_t nlen) {
+    size_t depth = 1;
 
-    for (struct tar_pax_header *header = (struct tar_pax_header *)initrd_addr;
-         header->name[0];
-         header = (struct tar_pax_header *)next_addr) {
+    for (size_t i = 0; i < nlen - 1 && fname[i]; i++) {
+        if (fname[i] == '/') {
+            depth ++;
+        }
+    }
 
+    return depth;
+}
+
+void tar_parse_rec(struct initrd_entry **rd_list,
+                           struct initrd_entry *parent_ent,
+                           struct tar_pax_header *header,
+                           size_t depth,
+                           uintptr_t *next_addr, size_t *i) {
+    size_t sub_ent_num = 0;
+    
+    for (; header->name[0];
+         header = (struct tar_pax_header *)*next_addr) {
         size_t file_size = atoi(header->size, sizeof header->size, 8);
-        uint32_t gid = atoi(header->gid, sizeof header->gid, 8);
-        uint32_t uid = atoi(header->uid, sizeof header->uid, 8);
-        uint32_t mode = atoi(header->mode, sizeof header->mode, 8);
 
-        if (i % 2) {
+        if (*i % 2) {
+            size_t fname_len = strnlen(header->name, sizeof header->name);
+            size_t file_depth = get_file_depth(header->name, fname_len);
+
+            if (file_depth != depth) {
+                tar_parse_rec(rd_list, *rd_list,
+                              header, file_depth, next_addr, i);
+                continue;
+            }
+
+            sub_ent_num ++;
+            uint32_t gid = atoi(header->gid, sizeof header->gid, 8);
+            uint32_t uid = atoi(header->uid, sizeof header->uid, 8);
+            uint32_t mode = atoi(header->mode, sizeof header->mode, 8);
+
             struct initrd_entry *next = *rd_list;
             *rd_list = slab_alloc_from_cache(initrd_cache);
 
@@ -214,7 +236,7 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
             initrd_list->node.uid = uid;
             initrd_list->node.mode = mode;
 
-            if (header->name[strnlen(header->name, sizeof header->name) - 1]
+            if (header->name[fname_len - 1]
                  == '/') {
                 initrd_list->node.type = FS_DIR;
             } else {
@@ -226,11 +248,32 @@ unsigned int tar_parse(struct initrd_entry **rd_list,
             /* klog("Initrd header location %s\n", header->name); */
         }
 
-        next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
-
+        *next_addr += align_up(HEADER_SIZE + file_size, HEADER_SIZE);
         
-        i++;
+        (*i)++;
     }
+
+    /* klog("Parsed sub ent num %d\n", sub_ent_num); */
+
+    parent_ent->node.sub_ent_num = sub_ent_num;
+}
+
+unsigned int tar_parse(struct initrd_entry **rd_list,
+                       uintptr_t initrd_addr, size_t *size) {
+    uintptr_t next_addr = initrd_addr;
+    unsigned int i = 0;
+
+    struct initrd_entry *next = *rd_list;
+    *rd_list = slab_alloc_from_cache(initrd_cache);
+
+    struct initrd_entry *root = *rd_list;
+    root->next = next;
+    root->node.type = FS_DIR;
+    root->node.header = kmalloc(sizeof(*root->node.header));
+    strcpy(root->node.header->name, "/", 1);
+
+    struct tar_pax_header *header = (struct tar_pax_header*)(void*)initrd_addr;
+    tar_parse_rec(rd_list, root, header, 1, &next_addr, &i);
 
     *size = (next_addr - initrd_addr);
     return i / 2;
@@ -244,7 +287,6 @@ int initrd_build_fs(size_t nodes_n) {
         size_t fname_len = strnlen(node_name, sizeof(rd_nodes[i].header->name));
         const char *fname = parse_file_name(node_name, &fname_len);
         ptrdiff_t offset = fname - node_name;
-        /* klog("offset: %d ; fname_len %d \n", offset, fname_len - offset); */
 
         strcpy(node->name, fname, sizeof(rd_nodes[i].header->name));
         node->name[fname_len - offset] = 0;
@@ -283,26 +325,20 @@ int initrd_build_fs(size_t nodes_n) {
 int initrd_build_tree(struct initrd_entry *initrd_list, size_t rd_len) {
     unsigned int i = rd_len;
 
-    rd_nodes = kmalloc((i + 1) * sizeof(*rd_nodes));
+    rd_nodes = kmalloc(i * sizeof(*rd_nodes));
 
     struct initrd_entry *ent = initrd_list;
     foreach(ent, 
             memcpy(&rd_nodes[i], &ent->node, sizeof(ent->node));
 
-            if (i == 1) {
+            if (i == 0) {
                 break;
             }
 
             i--;
         );
-
-    struct initrd_node *root = &rd_nodes[0];
-    root->type = FS_DIR;
-    root->header = kmalloc(sizeof(*root->header));
-    root->sub_ent_num = rd_len;
-    strcpy(root->header->name, "/", 1);
-    
-    return rd_len + 1;
+   
+    return rd_len;
 }
 
 int initrd_init(struct module_struct *modules, struct fs_node *root) {
@@ -339,6 +375,8 @@ int initrd_init(struct module_struct *modules, struct fs_node *root) {
     
     rd_fs = kmalloc(node_num * sizeof(*rd_fs));
     initrd_build_fs(node_num);
+    /* const char *test = "usr/bin/"; */
+    /* klog("File depth %d\n", get_file_depth(test, strlen(test))); */
 
     return ret;
 }
