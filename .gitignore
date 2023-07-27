@@ -7,6 +7,7 @@
 *.img
 **out.txt
 **log.txt
+**.txt
 bochslog.txt
 
     

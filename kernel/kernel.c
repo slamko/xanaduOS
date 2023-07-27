@@ -55,9 +55,9 @@ void lookup_pci_dev(void);
 
 #define MB_SECTION __attribute__((section(".multiboot.data")))
  
-MB_SECTION unsigned int MB_MAGIC_NUM = MB_MAGIC_NUM_DEF;
-MB_SECTION unsigned int MB_FLAGS = MB_FLAGS_DEF;
-MB_SECTION unsigned int MB_CHECKSUM = -(MB_FLAGS_DEF + MB_MAGIC_NUM_DEF);
+MB_SECTION volatile unsigned int MB_MAGIC_NUM = MB_MAGIC_NUM_DEF;
+MB_SECTION volatile unsigned int MB_FLAGS = MB_FLAGS_DEF;
+MB_SECTION volatile unsigned int MB_CHECKSUM = -(MB_FLAGS_DEF + MB_MAGIC_NUM_DEF);
 #define MB_FLAG(NUM) ((MB_FLAGS_DEF >> NUM) & 0xFFFFFFFF)
 
 struct multiboot_meta {

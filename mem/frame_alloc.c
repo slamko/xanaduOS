@@ -1,3 +1,4 @@
+#include "lib/slibc.h"
 #include "mem/frame_allocator.h"
 #include "mem/allocator.h"
 #include "kernel/error.h"
@@ -7,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
 
 uint32_t *frames;
 uint32_t frames_num;
@@ -237,7 +237,7 @@ int frame_alloc_init(size_t pmem_limit) {
     frames = kmalloc(frames_num / BIT_FRAME_SIZE);
     memset(frames, 0, frames_num / BIT_FRAME_SIZE);
 
-    for (unsigned int i = 0; i < sizeof(last_frame); i++) {
+    for (unsigned int i = 0; i < ARR_SIZE(last_frame); i++) {
         last_frame[i].frame_map = 0;
         last_frame[i].frame = MAX_BUDDY_SIZE * i;
     }
