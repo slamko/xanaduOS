@@ -55,6 +55,8 @@ void remove_event_from_queue(struct pit_event *event) {
 void pit_handler(struct isr_handler_args *args) {
     (void)args;
     struct pit_event *event = events;
+    tick += tick_inc_factor;
+    return;
 
     /* klog("timer\n"); */
     foreach(event,
@@ -71,7 +73,6 @@ void pit_handler(struct isr_handler_args *args) {
             }
         );
 
-    tick += tick_inc_factor;
 }
 
 uint16_t get_pit_count(pit_channel_t ch) {

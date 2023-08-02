@@ -160,6 +160,7 @@ extern fb_print_num
 extern fb_print_hex    
 extern proc_esp
 
+    ;;  takes two arguments: [eip], [esp]
 jump_usermode:
     mov ebp, esp
     
@@ -171,12 +172,12 @@ jump_usermode:
     mov gs, ax
 
     push dword 0x23
-    push dword [ebp + 8]
-    pushfd
-    push 0x1B
+    ;; esp
+    mov ecx, [ebp + 8]
+;;  eip 
+    mov edx, [ebp + 4]
     sti
-    push dword [ebp + 4]
-    iret
+    sysexit
 
 global ltr
 ltr:

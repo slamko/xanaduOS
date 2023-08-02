@@ -58,6 +58,7 @@ struct task *cur_task;
 #define TASK_SWITCH_TICK 8
 
 size_t task_switch_tick;
+volatile _Bool ready_schedule = 0;
 
 struct buddy_alloc *create_user_buddy_alloc(void) {
     return buddy_alloc_create(0x100000, 0x40000000);
@@ -67,7 +68,7 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
     uintptr_t *user_addr;
     size_t map_npages = page_align_up(exec_node->size);
     user_addr = kmalloc(map_npages);
-    
+     
     size_t data_off;
 
     if (kfsmmap(task->buddy, exec_node, user_addr, &data_off,
@@ -77,7 +78,7 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
 
     Elf32_Ehdr *elf = (Elf32_Ehdr *)(*user_addr + data_off);
     uintptr_t user_eip = elf->e_entry;
-    uintptr_t user_entry = *user_addr + data_off + user_eip + 0x100A;
+    uintptr_t user_entry = *user_addr + data_off + user_eip + PAGE_SIZE;
 
     uintptr_t user_esp[USER_STACK_SIZE];
     knmmap(task->buddy, cur_pd, user_esp, 0, USER_STACK_SIZE,
@@ -93,7 +94,7 @@ int load_elf(struct task *task, struct fs_node *exec_node) {
     klog("\nElf entry point %x\n", user_entry);
 
     for (unsigned int i = 0; i < 0x100; i++) {
-        /* fb_print_hex(*(uint8_t *)(user_entry + i)); */
+        fb_print_hex(*(uint8_t *)(user_entry + i));
     }
 
     return 0;
@@ -119,6 +120,7 @@ void run_kernel_task(struct task *task) {
 static inline void switch_task(struct task *switch_task) {
     switch_page_dir(switch_task->pd);
     klog("Switching task\n");
+    sti();
 
     if (switch_task->id >= 1000) {
         run_user_task(switch_task);
@@ -136,9 +138,7 @@ void schedule(struct isr_handler_args *isr_args) {
             if (task->state == EMPTY) {
                 task->state = RUNNING;
 
-                switch_page_dir(task->pd);
-                load_elf(task, task->exec_node);
-                switch_task(task);
+                ready_schedule = 1;
             }
         );
     return;
@@ -264,7 +264,17 @@ void spawn_init(struct module_struct *mods) {
 
     new_task->buddy = create_user_buddy_alloc();
     doubly_ll_insert(task_list, new_task);
-    recover_int(eflags);
+    /* recover_int(eflags); */
+
+    /* while (!ready_schedule) { */
+    /* } */
+
+    struct task *task = task_list ;
+
+    switch_page_dir(task->pd);
+    load_elf(task, task->exec_node);
+ 
+    switch_task(task);
 
     return;
 }

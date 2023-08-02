@@ -64,7 +64,9 @@ void add_irq_handler(uint8_t irq_num, isr_handler_t handler) {
         /* return; */
     }
     
-    isr_handlers[PIC_REMAP + irq_num] = handler;
+    size_t int_num = PIC_REMAP + irq_num;
+    isr_handlers[int_num] = handler;
+    /* idt_set_entry(int_num, isr_table[int_num], IDTD_RING3 | IDTD_DEFAULT); */
     pic_unmask(irq_num);
 }
 
@@ -100,8 +102,8 @@ void isr_x86(uint32_t esp, struct isr_full_stack isr) {
         /* klog("Cs :%x\n", isr.cpu_st.esp); */
     }
 
-    if (isr.int_num == 0x80) {
-        /* klog("Eip: %x\n", isr.eip); */
+    if (isr.int_num == 33) {
+        klog("Eip: %x\n", isr.cpu_st.eax);
     }
     
     count++;
